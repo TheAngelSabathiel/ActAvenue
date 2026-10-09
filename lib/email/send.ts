@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { formatDateTimeLong } from "@/lib/datetime";
 import type { Performance, Production, Reservation, ReservationItem, TicketTier } from "@/types/database";
 
 // Lazily constructed: `new Resend(undefined)` throws immediately if
@@ -38,10 +39,7 @@ function itemsList(items: ReservationEmailContext["items"]) {
 }
 
 function showDetails(production: Production, performance: Performance) {
-  const when = new Date(performance.datetime).toLocaleString("en-PH", {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
+  const when = formatDateTimeLong(performance.datetime);
   return `${production.title}\n${performance.label} - ${when}\n${performance.venue}`;
 }
 

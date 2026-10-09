@@ -3,18 +3,9 @@
 import { useEffect, useState } from "react";
 import { useCart } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
+import { formatDateTime } from "@/lib/datetime";
 import { isTierDiscountActive } from "@/lib/pricing";
 import type { PerformanceWithTiers, TicketTier } from "@/types/database";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("en-PH", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export function PerformancePicker({
   performances: initialPerformances,
@@ -109,7 +100,7 @@ export function PerformancePicker({
       {active && (
         <div className="space-y-4">
           <p className="text-muted mb-0">
-            {formatDate(active.datetime)} - {active.venue}
+            {formatDateTime(active.datetime)} - {active.venue}
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
