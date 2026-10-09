@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { MediaUploader } from "@/components/media-uploader";
+import { IMAGES } from "@/lib/images";
 import { Spinner } from "@/components/spinner";
 import { toManilaInput, fromManilaInput } from "@/lib/datetime";
 import { useParams } from "next/navigation";
-import Image from "next/image";
 
 type Production = {
   id: string;
@@ -64,17 +65,6 @@ export default function ProductionEditorPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
     });
-    const data = await res.json();
-    setSaving(false);
-    if (res.ok) setProduction(data.production);
-  }
-
-  async function uploadMedia(kind: "poster" | "banner", file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("kind", kind);
-    setSaving(true);
-    const res = await fetch(`/api/admin/productions/${id}/media`, { method: "POST", body: formData });
     const data = await res.json();
     setSaving(false);
     if (res.ok) setProduction(data.production);
@@ -190,43 +180,27 @@ export default function ProductionEditorPage() {
       <section className="aa-card p-6 space-y-5">
         <h2 className="font-extrabold text-xl">Landing page content</h2>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold uppercase text-muted mb-1">Banner</label>
-            {production.banner_url && (
-              <Image
-                src={production.banner_url}
-                alt="Banner"
-                width={300}
-                height={150}
-                className="rounded mb-2 object-cover w-full h-32"
-              />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files?.[0] && uploadMedia("banner", e.target.files[0])}
-              className="text-xs"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold uppercase text-muted mb-1">Poster</label>
-            {production.poster_url && (
-              <Image
-                src={production.poster_url}
-                alt="Poster"
-                width={120}
-                height={180}
-                className="rounded mb-2 object-cover"
-              />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files?.[0] && uploadMedia("poster", e.target.files[0])}
-              className="text-xs"
-            />
-          </div>
+        <div className="grid sm:grid-cols-[2fr_1fr] gap-6">
+          <MediaUploader
+            productionId={id}
+            kind="banner"
+            label="Banner"
+            hint="Wide image, 1600x600 recommended. JPG, PNG or WebP, up to 5 MB."
+            url={production.banner_url}
+            fallback={IMAGES.bannerPlaceholder}
+            aspect="aspect-[8/3]"
+            onChange={(p) => setProduction(p as Production)}
+          />
+          <MediaUploader
+            productionId={id}
+            kind="poster"
+            label="Main poster"
+            hint="Portrait image, 600x900 (2:3) recommended. Up to 5 MB."
+            url={production.poster_url}
+            fallback={IMAGES.posterPlaceholder}
+            aspect="aspect-[2/3]"
+            onChange={(p) => setProduction(p as Production)}
+          />
         </div>
 
         <div>
