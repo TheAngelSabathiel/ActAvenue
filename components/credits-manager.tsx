@@ -31,6 +31,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
   const [plays, setPlays] = useState<Play[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [catalog, setCatalog] = useState<{ id: string; title: string }[]>([]);
   const [pick, setPick] = useState("");
@@ -43,16 +44,33 @@ export function CreditsManager({ productionId }: { productionId: string }) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    const get = async (url: string) => {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        return res.ok ? { data, error: null } : { data: {}, error: (data.error as string) ?? `Request failed (${res.status})` };
+      } catch {
+        return { data: {}, error: "Could not load. Check your connection and refresh." };
+      }
+    };
     const [c, p, a, cat] = await Promise.all([
-      fetch(`/api/admin/productions/${productionId}/credits`).then((r) => r.json()),
-      fetch(`/api/admin/productions/${productionId}/plays`).then((r) => r.json()),
-      fetch(`/api/admin/actors`).then((r) => r.json()),
-      fetch(`/api/admin/plays`).then((r) => r.json()),
+      get(`/api/admin/productions/${productionId}/credits`),
+      get(`/api/admin/productions/${productionId}/plays`),
+      get(`/api/admin/actors`),
+      get(`/api/admin/plays`),
     ]);
-    setCatalog(cat.plays ?? []);
-    setCredits(c.credits ?? []);
-    setPlays(p.plays ?? []);
-    setPeople(a.actors ?? []);
+    setCredits(c.data.credits ?? []);
+    setPlays(p.data.plays ?? []);
+    setPeople(a.data.actors ?? []);
+    setCatalog(cat.data.plays ?? []);
+    const err = [c, p, a, cat].find((r) => r.error)?.error;
+    setLoadError(
+      err
+        ? /production_plays|schema cache|does not exist/i.test(err)
+          ? "Plays are not set up yet. Run supabase/migration-play-catalog.sql in the Supabase SQL Editor, then refresh."
+          : err
+        : null
+    );
   }, [productionId]);
 
   useEffect(() => {
@@ -206,7 +224,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
           A person can hold several credits.
         </p>
       </div>
-      {message && <p className="text-sm text-danger">{message}</p>}
+      {(loadError || message) && <p className="text-sm text-danger">{loadError ?? message}</p>}
 
       <div className="space-y-2">
         <h3 className="font-extrabold">Plays in this production</h3>
@@ -222,6 +240,11 @@ export function CreditsManager({ productionId }: { productionId: string }) {
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
           </select>
+          {catalog.length === 0 && !loadError && (
+            <p className="text-xs text-muted w-full mb-0">
+              No plays in the list yet. Type a title below to create one, or add plays under Admin &gt; Plays.
+            </p>
+          )}
           {!pick && (
             <input value={newPlay} onChange={(e) => setNewPlay(e.target.value)} placeholder="or a new play title" className={`${field} w-56`} />
           )}
