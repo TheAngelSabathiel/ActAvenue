@@ -72,9 +72,12 @@ export default async function HomePage() {
           <div className="border-l-[5px] border-black pl-6">
             <h2 className="text-2xl mb-3">About</h2>
             <p className="text-lg">
-              Act Avenue builds actors through the ABCD Framework, so every workshop and show has a clear structure:
+              Founded in 2019, <strong>ACT AVENUE</strong>, is a young, fast-running,
+and multi-awarded theater group in the country today.
+We aim to promote the value of arts and cultural
+performances by providing an <strong>avenue</strong> and a <strong>safe spacce</strong> for artists where they can freely discover and
+hone their full potential.
             </p>
-            <strong>Authenticity, Believability, Creativity, and Development.</strong>
           </div>
           <div id="contact">
             <h2 className="text-2xl mb-3">Get In Touch</h2>
