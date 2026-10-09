@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { formatDateTime } from "@/lib/datetime";
 import { createServiceClient } from "@/lib/supabase/service";
 
 async function getReservation(code: string) {
@@ -53,6 +54,13 @@ export default async function ReservationStatusPage({
         <div>
           <span className={`aa-label inline-block px-3 py-1 ${status.tone}`}>{status.label}</span>
           <h1 className="text-2xl mt-4 mb-1">{reservation.production.title}</h1>
+          <p className="font-bold mb-0">{reservation.performance.label}</p>
+          <p className="mb-0">
+            <i className="bi bi-calendar-event" /> {formatDateTime(reservation.performance.datetime)}
+          </p>
+          <p className="mb-2">
+            <i className="bi bi-geo-alt" /> {reservation.performance.venue}
+          </p>
           <p className="aa-label text-muted mb-0">Reference code: {reservation.reference_code}</p>
         </div>
 

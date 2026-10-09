@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getAccountReservations } from "@/lib/data/account";
+import { formatDateTime } from "@/lib/datetime";
 
 const STATUS_STYLE: Record<string, string> = {
   pending_review: "bg-accent text-black",
@@ -69,7 +70,8 @@ function ReservationCard({
     reference_code: string;
     payment_status: string;
     production: { title: string };
-    performance: { label: string; datetime: string };
+    performance: { label: string; datetime: string; venue: string };
+    total: number;
     reservation_items: { id: string; quantity: number; ticket_tier: { label: string } }[];
   };
 }) {
@@ -84,11 +86,20 @@ function ReservationCard({
         {r.payment_status.replace("_", " ")}
       </span>
       <p className="font-black text-lg mb-1">{r.production.title}</p>
-      <p className="text-xs text-muted mb-0">
-        {r.performance.label} - {new Date(r.performance.datetime).toLocaleDateString()} - {r.reference_code}
+      <p className="font-bold mb-0">{r.performance.label}</p>
+      <p className="text-sm mb-0">
+        <i className="bi bi-calendar-event" /> {formatDateTime(r.performance.datetime)}
       </p>
-      <p className="text-xs text-muted mt-1 mb-0">
-        {r.reservation_items.map((i) => `${i.quantity}× ${i.ticket_tier.label}`).join(", ")}
+      <p className="text-sm mb-2">
+        <i className="bi bi-geo-alt" /> {r.performance.venue}
+      </p>
+      <ul className="text-sm list-none p-0 m-0 mb-2">
+        {r.reservation_items.map((i) => (
+          <li key={i.id}>{i.quantity} × {i.ticket_tier.label}</li>
+        ))}
+      </ul>
+      <p className="text-sm font-black mb-0">
+        ₱{r.total.toFixed(2)} <span className="aa-label text-muted ml-2">Ref {r.reference_code}</span>
       </p>
     </Link>
   );

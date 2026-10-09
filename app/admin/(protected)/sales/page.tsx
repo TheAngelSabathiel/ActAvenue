@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { manilaToday } from "@/lib/datetime";
 
 type Totals = {
   revenue: number;
@@ -80,7 +81,7 @@ export default function SalesSummaryPage() {
     rows.push([]);
     rows.push(["Promo code", "Uses", "Discount given", ""]);
     byPromo.forEach((p) => rows.push(["", p.code, p.uses, p.discountGiven.toFixed(2)]));
-    downloadCsv(`sales-summary-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    downloadCsv(`sales-summary-${manilaToday()}.csv`, rows);
   }
 
   return (

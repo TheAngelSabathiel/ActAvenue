@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { manilaDayStart, manilaDayEnd, formatDate } from "@/lib/datetime";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
 
@@ -32,12 +33,10 @@ export async function GET(req: NextRequest) {
     .eq("payment_status", "confirmed");
 
   if (productionId) query = query.eq("production_id", productionId);
-  if (from) query = query.gte("created_at", new Date(from).toISOString());
+  if (from) query = query.gte("created_at", manilaDayStart(from));
   if (to) {
     // Make "to" inclusive of the entire day rather than midnight-exclusive.
-    const inclusiveTo = new Date(to);
-    inclusiveTo.setHours(23, 59, 59, 999);
-    query = query.lte("created_at", inclusiveTo.toISOString());
+    query = query.lte("created_at", manilaDayEnd(to));
   }
 
   const { data: reservations, error } = await query;
@@ -76,7 +75,7 @@ export async function GET(req: NextRequest) {
       const entry =
         byPerformance.get(key) ??
         {
-          label: `${performance.label} (${new Date(performance.datetime).toLocaleDateString()})`,
+          label: `${performance.label} (${formatDate(performance.datetime)})`,
           production: production.title,
           revenue: 0,
           tickets: 0,

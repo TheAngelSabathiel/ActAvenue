@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDateTime } from "@/lib/datetime";
 
 type Result = {
   id: string;
@@ -77,7 +78,7 @@ export default function CheckinPage() {
             </div>
             {r.checked_in ? (
               <span className="text-xs font-bold uppercase text-green-700 shrink-0">
-                Checked in {r.checked_in_at ? new Date(r.checked_in_at).toLocaleTimeString() : ""}
+                Checked in {r.checked_in_at ? formatDateTime(r.checked_in_at) : ""}
               </span>
             ) : (
               <button

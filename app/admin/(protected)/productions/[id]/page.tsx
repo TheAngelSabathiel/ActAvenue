@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toManilaInput, fromManilaInput } from "@/lib/datetime";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 
@@ -33,13 +34,6 @@ type Performance = {
   capacity: number;
   ticket_tiers: Tier[];
 };
-
-// Converts an ISO timestamp to the value <input type="datetime-local"> expects.
-function toDatetimeLocal(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export default function ProductionEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -275,8 +269,8 @@ export default function ProductionEditorPage() {
                 />
                 <input
                   type="datetime-local"
-                  defaultValue={toDatetimeLocal(perf.datetime)}
-                  onBlur={(e) => updatePerformance(perf.id, "datetime", new Date(e.target.value).toISOString())}
+                  defaultValue={toManilaInput(perf.datetime)}
+                  onBlur={(e) => updatePerformance(perf.id, "datetime", fromManilaInput(e.target.value))}
                   className="border border-ink/20  px-2 py-1.5 text-sm"
                   aria-label="Performance date and time"
                 />
@@ -353,12 +347,12 @@ export default function ProductionEditorPage() {
                       <>
                         <input
                           type="datetime-local"
-                          defaultValue={t.discount_valid_from ? toDatetimeLocal(t.discount_valid_from) : ""}
+                          defaultValue={t.discount_valid_from ? toManilaInput(t.discount_valid_from) : ""}
                           onBlur={(e) =>
                             updateTier(
                               t.id,
                               "discount_valid_from",
-                              e.target.value ? new Date(e.target.value).toISOString() : null
+                              e.target.value ? fromManilaInput(e.target.value) : null
                             )
                           }
                           className="border border-ink/20  px-2 py-1 text-xs"
@@ -367,12 +361,12 @@ export default function ProductionEditorPage() {
                         <span className="text-muted">to</span>
                         <input
                           type="datetime-local"
-                          defaultValue={t.discount_valid_until ? toDatetimeLocal(t.discount_valid_until) : ""}
+                          defaultValue={t.discount_valid_until ? toManilaInput(t.discount_valid_until) : ""}
                           onBlur={(e) =>
                             updateTier(
                               t.id,
                               "discount_valid_until",
-                              e.target.value ? new Date(e.target.value).toISOString() : null
+                              e.target.value ? fromManilaInput(e.target.value) : null
                             )
                           }
                           className="border border-ink/20  px-2 py-1 text-xs"
