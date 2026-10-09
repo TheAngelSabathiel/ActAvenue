@@ -22,19 +22,19 @@ join auth.users u on lower(u.email) = lower(people.email)
 where p.id = u.id
   and p.role in ('actor', 'public', 'admin', 'organizer');   -- admin/organizer keep their role
 
--- 2) Production credits: email, production slug, role (use 'Director', 'Stage Manager', etc. for crew)
+-- 2) Artistic credits (actors): email, production slug, character. Crew go through seed-members.sql or the admin page.
 with credits (email, production_slug, role_played) as (
   values
     ('actor1@example.com', 'your-production-slug', 'Maria'),
     ('actor2@example.com', 'your-production-slug', 'Juan'),
     ('crew1@example.com',  'your-production-slug', 'Stage Manager')
 )
-insert into production_credits (profile_id, production_id, role_played)
-select u.id, pr.id, credits.role_played
+insert into production_credits (profile_id, production_id, role_played, section, credit_type)
+select u.id, pr.id, credits.role_played, 'artistic', 'actor'
 from credits
 join auth.users u on lower(u.email) = lower(credits.email)
 join productions pr on pr.slug = credits.production_slug
-on conflict (profile_id, production_id, role_played) do nothing;
+on conflict do nothing;
 
 -- 3) Check
 select p.display_name, p.is_public, p.is_approved, count(c.id) as credits

@@ -45,6 +45,7 @@ export async function getPublicActor(id: string): Promise<ActorProfileWithDetail
     .from("production_credits")
     .select("*, production:productions(title, slug)")
     .eq("profile_id", id)
+    .eq("is_discredited", false)
     .order("created_at", { ascending: false });
 
   return { ...profile, actor_photos: photos ?? [], production_credits: credits ?? [] };

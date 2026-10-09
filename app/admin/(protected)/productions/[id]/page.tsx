@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { MediaUploader } from "@/components/media-uploader";
 import { IMAGES } from "@/lib/images";
+import { CreditsManager } from "@/components/credits-manager";
 import { Spinner } from "@/components/spinner";
 import { toManilaInput, fromManilaInput } from "@/lib/datetime";
 import { useParams } from "next/navigation";
@@ -395,141 +396,7 @@ export default function ProductionEditorPage() {
         </details>
       </section>
 
-      <CastCreditsSection productionId={id} />
+      <CreditsManager productionId={id} />
     </div>
-  );
-}
-
-type Actor = {
-  id: string;
-  display_name: string | null;
-  photo_url: string | null;
-  is_public: boolean;
-  is_approved: boolean;
-};
-
-type Credit = {
-  id: string;
-  role_played: string;
-  profile: Actor;
-};
-
-function CastCreditsSection({ productionId }: { productionId: string }) {
-  const [credits, setCredits] = useState<Credit[]>([]);
-  const [actors, setActors] = useState<Actor[]>([]);
-  const [selectedActorId, setSelectedActorId] = useState("");
-  const [rolePlayed, setRolePlayed] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function load() {
-    const [creditsRes, actorsRes] = await Promise.all([
-      fetch(`/api/admin/productions/${productionId}/credits`),
-      fetch(`/api/admin/actors`),
-    ]);
-    setCredits((await creditsRes.json()).credits ?? []);
-    setActors((await actorsRes.json()).actors ?? []);
-  }
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function addCredit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setMessage(null);
-    const res = await fetch(`/api/admin/productions/${productionId}/credits`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_id: selectedActorId, role_played: rolePlayed }),
-    });
-    const data = await res.json();
-    setSubmitting(false);
-    if (!res.ok) {
-      setMessage(data.error);
-      return;
-    }
-    setRolePlayed("");
-    load();
-  }
-
-  async function removeCredit(creditId: string) {
-    await fetch(`/api/admin/credits/${creditId}`, { method: "DELETE" });
-    load();
-  }
-
-  return (
-    <section className="space-y-4">
-      <h2 className="font-extrabold text-xl">Cast &amp; crew</h2>
-      <p className="text-sm text-muted">
-        Tag actor accounts to this production with the role they played. Shows on both the
-        production page and the actor&apos;s public profile.
-      </p>
-
-      {credits.length > 0 && (
-        <div className="space-y-2">
-          {credits.map((credit) => (
-            <div key={credit.id} className="aa-card p-4 flex items-center justify-between gap-3">
-              <div>
-                <p className="font-extrabold">{credit.profile.display_name ?? "Untitled profile"}</p>
-                <p className="text-xs text-muted tabular-nums">{credit.role_played}</p>
-              </div>
-              <button
-                onClick={() => removeCredit(credit.id)}
-                className="text-xs font-bold uppercase text-danger/70 hover:text-danger"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <form onSubmit={addCredit} className="aa-card p-5 flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-xs font-bold uppercase text-muted mb-1">Actor</label>
-          <select
-            value={selectedActorId}
-            onChange={(e) => setSelectedActorId(e.target.value)}
-            required
-            className="border border-ink/20  px-3 py-2 text-sm w-56"
-          >
-            <option value="">Select actor...</option>
-            {actors.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.display_name ?? a.id.slice(0, 8)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-bold uppercase text-muted mb-1">Role played</label>
-          <input
-            value={rolePlayed}
-            onChange={(e) => setRolePlayed(e.target.value)}
-            placeholder="e.g. Maria"
-            required
-            className="border border-ink/20  px-3 py-2 text-sm w-56"
-          />
-        </div>
-        <button
-          disabled={submitting || actors.length === 0}
-          className="px-4 py-2  bg-black text-paper text-sm font-bold uppercase disabled:opacity-50"
-        >
-          {submitting ? "Adding..." : "Add credit"}
-        </button>
-        {message && <p className="text-sm text-danger w-full">{message}</p>}
-      </form>
-
-      {actors.length === 0 && (
-        <p className="text-xs text-muted">
-          No actor accounts yet - actors show up here once someone signs up (or upgrades from
-          Settings) with an actor profile.
-        </p>
-      )}
-    </section>
   );
 }

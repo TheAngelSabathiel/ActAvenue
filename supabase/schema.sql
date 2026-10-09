@@ -218,14 +218,32 @@ create index actor_photos_profile_idx on actor_photos (profile_id);
 -- editor, shown on both the production's public page and the actor's
 -- public profile.
 -- ============================================================
+create table plays (
+  id uuid primary key default gen_random_uuid(),
+  production_id uuid not null references productions (id) on delete cascade,
+  title text not null,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+create index plays_production_idx on plays (production_id);
+
+-- section: 'artistic' (writers, directors, actors, grouped by play) or
+-- 'production' (production and crew, ordered by sort_order).
+-- is_discredited hides a credit publicly without deleting it.
 create table production_credits (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references profiles (id) on delete cascade,
   production_id uuid not null references productions (id) on delete cascade,
   role_played text not null,
-  created_at timestamptz not null default now(),
-  unique (profile_id, production_id, role_played)
+  section text not null default 'production' check (section in ('artistic', 'production')),
+  credit_type text check (credit_type in ('writer', 'director', 'actor')),
+  play_id uuid references plays (id) on delete set null,
+  sort_order int not null default 0,
+  is_discredited boolean not null default false,
+  created_at timestamptz not null default now()
 );
+create unique index production_credits_unique
+  on production_credits (profile_id, production_id, section, coalesce(play_id, '00000000-0000-0000-0000-000000000000'::uuid), role_played);
 
 create index production_credits_profile_idx on production_credits (profile_id);
 create index production_credits_production_idx on production_credits (production_id);
@@ -281,6 +299,7 @@ alter table reservations enable row level security;
 alter table reservation_items enable row level security;
 alter table actor_photos enable row level security;
 alter table production_credits enable row level security;
+alter table plays enable row level security;
 
 -- Helper: is the current user staff (admin/organizer)?
 create or replace function is_staff()
@@ -390,7 +409,10 @@ create policy "actors read own photos"
 
 create policy "public read production credits"
   on production_credits for select
-  using (true);
+  using (not is_discredited or is_staff());
+
+create policy "public read plays" on plays for select using (true);
+create policy "staff manage plays" on plays for all using (is_staff()) with check (is_staff());
 
 -- Writes go through admin-only server routes (service role), same pattern
 -- as everything else tagged "staff write" in this file.

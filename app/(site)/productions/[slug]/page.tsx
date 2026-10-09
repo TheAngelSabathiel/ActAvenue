@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { getProductionBySlug } from "@/lib/data/productions";
+import { CreditsDisplay } from "@/components/credits-display";
 import { PerformancePicker } from "@/components/performance-picker";
 import { IMAGES } from "@/lib/images";
 
@@ -55,33 +55,7 @@ export default async function ProductionPage({
           <PerformancePicker performances={production.performances} />
         </section>
 
-        {production.credits.length > 0 && (
-          <section>
-            <h2 className="text-2xl mb-2">Cast &amp; Crew</h2>
-            <hr className="aa-divider" />
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-              {production.credits.map((credit) => (
-                <Link
-                  key={credit.id}
-                  href={`/actors/${credit.profile.id}`}
-                  className="aa-card aa-lift p-4 flex items-center gap-3"
-                >
-                  <Image
-                    src={credit.profile.photo_url ?? IMAGES.headshotPlaceholder}
-                    alt={credit.profile.display_name ?? ""}
-                    width={56}
-                    height={56}
-                    className="h-14 w-14 object-cover shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <p className="font-black mb-0">{credit.profile.display_name ?? "Cast member"}</p>
-                    <p className="aa-label text-muted mb-0">{credit.role_played}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <CreditsDisplay plays={production.plays} credits={production.credits} />
       </div>
     </>
   );

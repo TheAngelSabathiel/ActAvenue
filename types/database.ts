@@ -43,6 +43,19 @@ export interface ProductionCredit {
   profile_id: string;
   production_id: string;
   role_played: string;
+  section: "artistic" | "production";
+  credit_type: "writer" | "director" | "actor" | null;
+  play_id: string | null;
+  sort_order: number;
+  is_discredited: boolean;
+  created_at: string;
+}
+
+export interface Play {
+  id: string;
+  production_id: string;
+  title: string;
+  sort_order: number;
   created_at: string;
 }
 
