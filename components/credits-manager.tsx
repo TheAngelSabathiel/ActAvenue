@@ -32,6 +32,8 @@ export function CreditsManager({ productionId }: { productionId: string }) {
   const [people, setPeople] = useState<Person[]>([]);
   const [message, setMessage] = useState<string | null>(null);
 
+  const [catalog, setCatalog] = useState<{ id: string; title: string }[]>([]);
+  const [pick, setPick] = useState("");
   const [newPlay, setNewPlay] = useState("");
   const [personId, setPersonId] = useState("");
   const [section, setSection] = useState<CreditSection>("artistic");
@@ -41,11 +43,13 @@ export function CreditsManager({ productionId }: { productionId: string }) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const [c, p, a] = await Promise.all([
+    const [c, p, a, cat] = await Promise.all([
       fetch(`/api/admin/productions/${productionId}/credits`).then((r) => r.json()),
       fetch(`/api/admin/productions/${productionId}/plays`).then((r) => r.json()),
       fetch(`/api/admin/actors`).then((r) => r.json()),
+      fetch(`/api/admin/plays`).then((r) => r.json()),
     ]);
+    setCatalog(cat.plays ?? []);
     setCredits(c.credits ?? []);
     setPlays(p.plays ?? []);
     setPeople(a.actors ?? []);
@@ -71,8 +75,12 @@ export function CreditsManager({ productionId }: { productionId: string }) {
 
   async function addPlay(e: React.FormEvent) {
     e.preventDefault();
-    if (!newPlay.trim()) return;
-    if (await send(`/api/admin/productions/${productionId}/plays`, "POST", { title: newPlay.trim() })) setNewPlay("");
+    const body = pick ? { play_id: pick } : { title: newPlay.trim() };
+    if (!pick && !newPlay.trim()) return;
+    if (await send(`/api/admin/productions/${productionId}/plays`, "POST", body)) {
+      setPick("");
+      setNewPlay("");
+    }
   }
 
   async function movePlay(index: number, dir: -1 | 1) {
@@ -83,9 +91,9 @@ export function CreditsManager({ productionId }: { productionId: string }) {
     await send(`/api/admin/productions/${productionId}/reorder`, "POST", { table: "plays", ids });
   }
 
-  async function deletePlay(p: Play) {
-    if (!confirm(`Delete "${p.title}"? Its credits stay, but move to "no specific play".`)) return;
-    await send(`/api/admin/plays/${p.id}`, "DELETE");
+  async function removePlay(p: Play) {
+    if (!confirm(`Remove "${p.title}" from this production? Its credits here move to "no specific play".`)) return;
+    await send(`/api/admin/productions/${productionId}/plays?play_id=${p.id}`, "DELETE");
   }
 
   async function addCredit(e: React.FormEvent) {
@@ -201,14 +209,23 @@ export function CreditsManager({ productionId }: { productionId: string }) {
       {message && <p className="text-sm text-danger">{message}</p>}
 
       <div className="space-y-2">
-        <h3 className="font-extrabold">Plays</h3>
+        <h3 className="font-extrabold">Plays in this production</h3>
+        <p className="text-xs text-muted">Every performance stages this set. Edit photos and descriptions under Admin &gt; Plays.</p>
         {plays.map((p, i) => (
-          <PlayRow key={p.id + p.title} p={p} i={i} n={plays.length} onMove={movePlay} onDelete={deletePlay}
-            onRename={(t) => send(`/api/admin/plays/${p.id}`, "PATCH", { title: t })} />
+          <PlayRow key={p.id + p.title} p={p} i={i} n={plays.length} onMove={movePlay} onDelete={removePlay}
+            />
         ))}
-        <form onSubmit={addPlay} className="flex gap-2">
-          <input value={newPlay} onChange={(e) => setNewPlay(e.target.value)} placeholder="Play title" className={`${field} w-64`} />
-          <button className="px-4 py-2 bg-black text-paper text-sm font-bold uppercase">Add play</button>
+        <form onSubmit={addPlay} className="flex flex-wrap gap-2">
+          <select value={pick} onChange={(e) => setPick(e.target.value)} className={`${field} w-56`}>
+            <option value="">Pick from Act Avenue plays...</option>
+            {catalog.filter((c) => !plays.some((p) => p.id === c.id)).map((c) => (
+              <option key={c.id} value={c.id}>{c.title}</option>
+            ))}
+          </select>
+          {!pick && (
+            <input value={newPlay} onChange={(e) => setNewPlay(e.target.value)} placeholder="or a new play title" className={`${field} w-56`} />
+          )}
+          <button className="px-4 py-2 bg-black text-paper text-sm font-bold uppercase">Add to production</button>
         </form>
       </div>
 
@@ -287,22 +304,19 @@ export function CreditsManager({ productionId }: { productionId: string }) {
   );
 }
 
-function PlayRow({ p, i, n, onMove, onDelete, onRename }: {
+function PlayRow({ p, i, n, onMove, onDelete }: {
   p: Play; i: number; n: number;
   onMove: (i: number, d: -1 | 1) => void;
   onDelete: (p: Play) => void;
-  onRename: (t: string) => void;
 }) {
-  const [t, setT] = useState(p.title);
   return (
     <div className="aa-card p-3 flex items-center gap-3">
       <div className="flex flex-col">
         <button className={mini} disabled={i === 0} onClick={() => onMove(i, -1)} aria-label="Move up">▲</button>
         <button className={mini} disabled={i === n - 1} onClick={() => onMove(i, 1)} aria-label="Move down">▼</button>
       </div>
-      <input value={t} onChange={(e) => setT(e.target.value)} onBlur={() => t.trim() && t !== p.title && onRename(t.trim())}
-        className={`${field} flex-1`} />
-      <button className="text-xs font-bold uppercase text-danger/70 hover:text-danger" onClick={() => onDelete(p)}>Delete</button>
+      <p className="flex-1 font-bold mb-0">{p.title}</p>
+      <button className="text-xs font-bold uppercase text-danger/70 hover:text-danger" onClick={() => onDelete(p)}>Remove</button>
     </div>
   );
 }

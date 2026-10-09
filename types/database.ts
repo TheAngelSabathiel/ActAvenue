@@ -53,8 +53,9 @@ export interface ProductionCredit {
 
 export interface Play {
   id: string;
-  production_id: string;
   title: string;
+  description: string | null;
+  photo_url: string | null;
   sort_order: number;
   created_at: string;
 }

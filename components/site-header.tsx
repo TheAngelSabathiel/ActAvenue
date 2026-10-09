@@ -57,6 +57,7 @@ export function SiteHeader() {
           className={`${open ? "flex" : "hidden"} md:flex absolute md:static left-0 right-0 top-full bg-white md:bg-transparent border-b md:border-0 border-[#dee2e6] flex-col md:flex-row md:items-center gap-1 md:gap-1 px-6 py-3 md:p-0`}
         >
           <Link href="/#now-showing" className="aa-nav-link" onClick={close}>Shows</Link>
+          <Link href="/plays" className="aa-nav-link" onClick={close}>Plays</Link>
           <Link href="/actors" className="aa-nav-link" onClick={close}>Cast &amp; Crew</Link>
           <Link href="/#about" className="aa-nav-link" onClick={close}>About</Link>
           {email ? (

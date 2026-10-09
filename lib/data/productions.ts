@@ -73,11 +73,18 @@ export async function getProductionBySlug(
         (a.profile.display_name ?? "").localeCompare(b.profile.display_name ?? "")
     );
 
-  const { data: plays } = await supabase
-    .from("plays")
-    .select("id, title, sort_order")
+  const { data: playRows } = await supabase
+    .from("production_plays")
+    .select("sort_order, play:plays(id, title)")
     .eq("production_id", production.id)
     .order("sort_order", { ascending: true });
 
-  return { ...production, performances: performancesWithAvailability, credits, plays: plays ?? [] };
+  const plays: PublicPlay[] = (playRows ?? [])
+    .map((r) => {
+      const play = Array.isArray(r.play) ? r.play[0] : r.play;
+      return play ? { id: play.id as string, title: play.title as string, sort_order: r.sort_order as number } : null;
+    })
+    .filter((p): p is PublicPlay => p !== null);
+
+  return { ...production, performances: performancesWithAvailability, credits, plays };
 }

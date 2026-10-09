@@ -71,7 +71,11 @@ export function CreditsDisplay({
               );
               return (
                 <div key={g.id}>
-                  {g.title && <h3 className="text-xl mb-3">{g.title}</h3>}
+                  {g.title && (
+                    <h3 className="text-xl mb-3">
+                      {g.id !== "none" ? <Link href={`/plays/${g.id}`} className="hover:underline">{g.title}</Link> : g.title}
+                    </h3>
+                  )}
                   <NameList label="Writer" credits={ofType("writer")} />
                   <NameList label="Director" credits={ofType("director")} />
                   {cast.length > 0 && (

@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/admin-auth";
 
 // POST { table: "credits" | "plays", ids: string[] }
 // Sets sort_order from the position in `ids` (first = shown first).
-const TABLES = { credits: "production_credits", plays: "plays" } as const;
+const TABLES = { credits: "production_credits", plays: "production_plays" } as const;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireStaff();
@@ -22,8 +22,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       db
         .from(TABLES[table as keyof typeof TABLES])
         .update({ sort_order: (i + 1) * 10 })
-        .eq("id", rowId)
         .eq("production_id", id)
+        .eq(table === "plays" ? "play_id" : "id", rowId)
     )
   );
   const failed = results.find((r) => r.error);

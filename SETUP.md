@@ -118,8 +118,12 @@ Cast & Crew shows only approved, public actor profiles, so it starts empty.
 
 **Admins on Cast & Crew.** Run `supabase/migration-staff-profiles.sql` once in the SQL Editor. Then sign in with your admin account, open Admin > My profile, fill in your bio and photo, and switch on "Make my profile public". Staff profiles go live without approval. Tag yourself on a production from Admin > Productions > credits.
 
-**Plays and credits.** Run `supabase/migration-credits-plays.sql` once in the SQL Editor. Then in Admin > Productions > edit, use Cast & crew to:
-- Add plays, rename and reorder them.
+**Plays and credits.** Run `supabase/migration-credits-plays.sql`, then `supabase/migration-play-catalog.sql`, once each in the SQL Editor.
+
+**Plays page.** Admin > Plays holds every Act Avenue play (title, description, display photo). The public Plays tab lists them A to Z. Each play page shows current and past showings by production, with the cast.
+
+Then in Admin > Productions > edit, use Cast & crew to:
+- Pick the plays this production stages from the catalog (or add a new one), and reorder them.
 - Add artistic credits (Writer, Director, Actor) per play. The page lists Writer and Director under each play, then the actors.
 - Add Production & Crew credits and reorder them with the arrows. Top shows first.
 - Edit the involvement text, or Discredit a credit to hide it without deleting.

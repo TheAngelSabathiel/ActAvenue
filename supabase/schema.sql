@@ -220,12 +220,22 @@ create index actor_photos_profile_idx on actor_photos (profile_id);
 -- ============================================================
 create table plays (
   id uuid primary key default gen_random_uuid(),
-  production_id uuid not null references productions (id) on delete cascade,
   title text not null,
+  description text,
+  photo_url text,
   sort_order int not null default 0,
   created_at timestamptz not null default now()
 );
-create index plays_production_idx on plays (production_id);
+create unique index plays_title_unique on plays (lower(trim(title)));
+
+-- Which plays a production stages, and their order on its page.
+create table production_plays (
+  production_id uuid not null references productions (id) on delete cascade,
+  play_id uuid not null references plays (id) on delete cascade,
+  sort_order int not null default 0,
+  primary key (production_id, play_id)
+);
+create index production_plays_play_idx on production_plays (play_id);
 
 -- section: 'artistic' (writers, directors, actors, grouped by play) or
 -- 'production' (production and crew, ordered by sort_order).
@@ -300,6 +310,7 @@ alter table reservation_items enable row level security;
 alter table actor_photos enable row level security;
 alter table production_credits enable row level security;
 alter table plays enable row level security;
+alter table production_plays enable row level security;
 
 -- Helper: is the current user staff (admin/organizer)?
 create or replace function is_staff()
@@ -413,6 +424,8 @@ create policy "public read production credits"
 
 create policy "public read plays" on plays for select using (true);
 create policy "staff manage plays" on plays for all using (is_staff()) with check (is_staff());
+create policy "public read production_plays" on production_plays for select using (true);
+create policy "staff manage production_plays" on production_plays for all using (is_staff()) with check (is_staff());
 
 -- Writes go through admin-only server routes (service role), same pattern
 -- as everything else tagged "staff write" in this file.

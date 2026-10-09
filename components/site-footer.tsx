@@ -34,13 +34,14 @@ export function SiteFooter() {
         <h3 className="mb-4 tracking-[0.12em]">ACT AVENUE</h3>
         <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-bold uppercase tracking-[0.08em] mb-6">
           <Link href="/#now-showing" className="hover:underline">Shows</Link>
+          <Link href="/plays" className="hover:underline">Plays</Link>
           <Link href="/actors" className="hover:underline">Cast &amp; Crew</Link>
           <Link href="/account" className="hover:underline">My Tickets</Link>
           <Link href="/cart" className="hover:underline">Cart</Link>
         </nav>
         <SocialLinks className="justify-center mb-4" />
         <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm opacity-75 hover:opacity-100">{CONTACT_EMAIL}</a>
-        <p className="text-xs opacity-50 mt-6 mb-0">© 2026 Act Avenue | Developed by TheAngelSabathiel</p>
+        <p className="text-xs opacity-50 mt-6 mb-0">© 2026 Act Avenue</p>
       </div>
     </footer>
   );
