@@ -44,7 +44,9 @@ export default async function ProductionPage({
 
       <div className="aa-container py-12 space-y-12">
         {production.description && (
-          <p className="max-w-2xl text-lg mb-0 border-l-[5px] border-black pl-6">{production.description}</p>
+          <p className="w-full text-lg text-justify hyphens-auto whitespace-pre-line border-l-[5px] border-black pl-6 mb-0 pb-8">
+            {production.description}
+          </p>
         )}
 
         <section>
