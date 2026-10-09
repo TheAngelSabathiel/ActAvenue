@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { IMAGES } from "@/lib/images";
 import { createClient } from "@/lib/supabase/client";
+import { validateImageFile } from "@/lib/upload";
 
 type Profile = {
   id: string;
@@ -67,6 +68,8 @@ export default function AccountSettingsPage() {
     <>
       <main className="flex-1 mx-auto max-w-xl w-full px-6 py-12 space-y-10">
         <h1 className="font-extrabold text-3xl">Account settings</h1>
+
+        <ProfilePhotoSection profile={profile} onSaved={load} />
 
         <PasswordSection />
 
@@ -201,6 +204,86 @@ function VisibilityStatus({ isPublic, isApproved }: { isPublic: boolean; isAppro
   );
 }
 
+function ProfilePhotoSection({ profile, onSaved }: { profile: Profile; onSaved: () => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(file: File) {
+    setError(null);
+    const invalid = validateImageFile(file);
+    if (invalid) return setError(invalid);
+    const formData = new FormData();
+    formData.append("file", file);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/account/photo", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) setError(data.error ?? "Upload failed.");
+      else onSaved();
+    } catch {
+      setError("Upload failed. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  }
+
+  async function remove() {
+    if (!confirm("Remove your profile photo?")) return;
+    setError(null);
+    setBusy(true);
+    const res = await fetch("/api/account/photo", { method: "DELETE" });
+    setBusy(false);
+    if (!res.ok) return setError("Could not remove the photo.");
+    onSaved();
+  }
+
+  return (
+    <section className="aa-card p-6">
+      <h2 className="font-extrabold text-xl mb-4">Profile photo</h2>
+      <div className="flex items-center gap-5">
+        <div className="relative h-24 w-24 shrink-0 border-2 border-black overflow-hidden">
+          <Image
+            key={profile.photo_url ?? "none"}
+            src={profile.photo_url ?? IMAGES.headshotPlaceholder}
+            alt="Profile photo"
+            fill
+            sizes="96px"
+            className="object-cover"
+          />
+          {busy && (
+            <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+              <div className="aa-spinner !w-8 !h-8" />
+            </div>
+          )}
+        </div>
+        <div>
+          <p className="text-sm text-muted mb-3">Square photo, 400x400 or larger. JPG, PNG or WebP, up to 5 MB.</p>
+          <input
+            ref={input}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+          />
+          <div className="flex gap-2">
+            <button type="button" disabled={busy} onClick={() => input.current?.click()} className="aa-btn aa-btn-sm">
+              {profile.photo_url ? "Replace" : "Upload"}
+            </button>
+            {profile.photo_url && (
+              <button type="button" disabled={busy} onClick={remove} className="aa-btn aa-btn-outline aa-btn-sm">
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      {error && <p className="text-sm text-danger font-bold mt-3 mb-0">{error}</p>}
+    </section>
+  );
+}
+
 function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: () => void }) {
   const [displayName, setDisplayName] = useState(profile.display_name ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
@@ -239,37 +322,11 @@ function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: 
     onSaved();
   }
 
-  async function handlePhoto(file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/account/photo", { method: "POST", body: formData });
-    if (res.ok) onSaved();
-  }
-
   return (
     <section className="aa-card p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-extrabold text-xl">Actor profile</h2>
+        <h2 className="font-extrabold text-xl">Cast &amp; crew profile</h2>
         <VisibilityStatus isPublic={profile.is_public} isApproved={profile.is_approved} />
-      </div>
-
-      <div className="flex items-center gap-4">
-        <Image
-          src={profile.photo_url ?? IMAGES.headshotPlaceholder}
-          alt="Headshot"
-          width={72}
-          height={72}
-          className="h-[72px] w-[72px] object-cover"
-        />
-        <div>
-          <p className="text-xs text-muted mb-1">Main headshot</p>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => e.target.files?.[0] && handlePhoto(e.target.files[0])}
-            className="text-xs"
-          />
-        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -341,8 +398,10 @@ function GallerySection() {
   }, []);
 
   async function handleUpload(file: File) {
-    setUploading(true);
     setError(null);
+    const invalid = validateImageFile(file);
+    if (invalid) return setError(invalid);
+    setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
     const res = await fetch("/api/account/photos", { method: "POST", body: formData });
@@ -356,7 +415,22 @@ function GallerySection() {
   }
 
   async function handleDelete(id: string) {
+    if (!confirm("Remove this photo?")) return;
     await fetch(`/api/account/photos/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  async function handleReplace(id: string, file: File) {
+    setError(null);
+    const invalid = validateImageFile(file);
+    if (invalid) return setError(invalid);
+    setReordering(id);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`/api/account/photos/${id}`, { method: "PUT", body: formData });
+    const data = await res.json();
+    setReordering(null);
+    if (!res.ok) return setError(data.error ?? "Could not replace the photo.");
     load();
   }
 
@@ -390,8 +464,8 @@ function GallerySection() {
     <section className="aa-card p-6 space-y-4">
       <h2 className="font-extrabold text-xl">Setcard gallery</h2>
       <p className="text-sm text-muted">
-        Extra photos shown on your public profile, beyond your main headshot above. Up to 8 - use
-        the arrows to reorder how they appear.
+        Extra photos shown on your public profile, beyond your main profile photo. Up to 8. Use the
+        arrows to reorder, or replace a photo to swap the picture and keep its place.
       </p>
 
       {!loading && (
@@ -399,12 +473,33 @@ function GallerySection() {
           {photos.map((photo, index) => (
             <div key={photo.id} className="relative aspect-[3/4]  overflow-hidden group">
               <Image src={photo.photo_url} alt={photo.caption ?? ""} fill className="object-cover" />
-              <button
-                onClick={() => handleDelete(photo.id)}
-                className="absolute top-1 right-1 bg-black/80 text-paper text-xs px-1.5 py-0.5  font-bold uppercase"
-              >
-                Remove
-              </button>
+              <div className="absolute top-1 left-1 right-1 flex justify-between gap-1">
+                <label className="bg-black/80 text-paper text-xs px-1.5 py-0.5 font-bold uppercase cursor-pointer">
+                  Replace
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={reordering === photo.id}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) handleReplace(photo.id, f);
+                    }}
+                  />
+                </label>
+                <button
+                  onClick={() => handleDelete(photo.id)}
+                  className="bg-black/80 text-paper text-xs px-1.5 py-0.5 font-bold uppercase"
+                >
+                  Remove
+                </button>
+              </div>
+              {reordering === photo.id && (
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                  <div className="aa-spinner !w-8 !h-8" />
+                </div>
+              )}
               <div className="absolute bottom-1 left-1 right-1 flex justify-between">
                 <button
                   onClick={() => move(index, -1)}
@@ -428,11 +523,12 @@ function GallerySection() {
         </div>
       )}
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && <p className="text-sm text-danger font-bold">{error}</p>}
+      {uploading && <p className="text-sm text-muted">Uploading...</p>}
 
       <input
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp"
         disabled={uploading || photos.length >= 8}
         onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
         className="text-xs"

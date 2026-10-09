@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateImageFile, safeFileName } from "@/lib/upload";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -34,6 +35,9 @@ export async function POST(req: NextRequest) {
   const caption = (formData.get("caption") as string) || null;
   if (!file) return NextResponse.json({ error: "file is required" }, { status: 400 });
 
+  const invalid = validateImageFile(file);
+  if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
+
   const db = createServiceClient();
 
   const { count } = await db
@@ -49,7 +53,7 @@ export async function POST(req: NextRequest) {
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const path = `actor-photos/${user.id}-gallery-${Date.now()}-${file.name}`;
+  const path = `actor-photos/${user.id}-gallery-${Date.now()}-${safeFileName(file.name)}`;
   const { error: uploadError } = await db.storage
     .from("production-media")
     .upload(path, bytes, { contentType: file.type });
