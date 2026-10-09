@@ -11,6 +11,7 @@ const NAV = [
   { href: "/admin/sales", label: "Sales" },
   { href: "/admin/new-reservation", label: "New reservation" },
   { href: "/admin/checkin", label: "Check-in" },
+  { href: "/account/settings", label: "My profile" },
 ];
 
 /**

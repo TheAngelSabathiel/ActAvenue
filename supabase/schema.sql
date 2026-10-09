@@ -368,7 +368,7 @@ create policy "users read own profile"
 
 create policy "public read approved actor profiles"
   on profiles for select
-  using (role = 'actor' and is_public = true and is_approved = true);
+  using (role in ('actor', 'admin', 'organizer') and is_public = true and is_approved = true);
 
 create policy "public read approved actor photos"
   on actor_photos for select

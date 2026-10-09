@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MEMBER_ROLES } from "@/lib/member-roles";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
 import { sendActorTakenDownEmail } from "@/lib/email/send";
@@ -20,7 +21,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     .from("profiles")
     .update({ is_approved: false })
     .eq("id", id)
-    .eq("role", "actor")
+    .in("role", [...MEMBER_ROLES])
     .select()
     .single();
 

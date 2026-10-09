@@ -109,6 +109,17 @@ Vercel warns about names starting with `NEXT_PUBLIC_`. Keep that prefix on the t
 3. Productions: create one, upload poster and banner, add performances and ticket tiers, set status to Published.
 4. The show now appears on the homepage.
 
+## 7b. Fill Cast & Crew (optional)
+
+Cast & Crew shows only approved, public actor profiles, so it starts empty.
+1. Supabase > Authentication > Users > Add user for each person (tick Auto Confirm User).
+2. Open `supabase/seed-actors.sql`, replace the sample emails, names, bios, production slug and roles, then run it in the SQL Editor.
+3. Hand each person their email and temporary password. They can change it and upload a headshot in Settings.
+
+**Admins on Cast & Crew.** Run `supabase/migration-staff-profiles.sql` once in the SQL Editor. Then sign in with your admin account, open Admin > My profile, fill in your bio and photo, and switch on "Make my profile public". Staff profiles go live without approval. Tag yourself on a production from Admin > Productions > credits.
+
+All times are shown and entered in Philippine time (Asia/Manila).
+
 ## 8. Test the full flow
 
 1. Open the site in a private window. Add tickets to the cart. Check out with a screenshot as proof.

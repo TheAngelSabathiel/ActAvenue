@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MEMBER_ROLES } from "@/lib/member-roles";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
 
@@ -11,8 +12,8 @@ export async function GET(req: NextRequest) {
 
   let query = db
     .from("profiles")
-    .select("id, display_name, bio, photo_url, is_public, is_approved, created_at")
-    .eq("role", "actor")
+    .select("id, role, display_name, bio, photo_url, is_public, is_approved, created_at")
+    .in("role", [...MEMBER_ROLES])
     .order("created_at", { ascending: false });
 
   // "Pending" = wants to be listed (is_public) but hasn't been approved yet

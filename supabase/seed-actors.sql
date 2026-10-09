@@ -12,7 +12,7 @@ with people (email, display_name, bio) as (
     ('crew1@example.com',  'Crew One',   'Short bio here.')
 )
 update profiles p
-set role         = 'actor',
+set role         = case when p.role in ('admin', 'organizer') then p.role else 'actor' end,
     display_name = people.display_name,
     bio          = people.bio,
     is_public    = true,
@@ -20,7 +20,7 @@ set role         = 'actor',
 from people
 join auth.users u on lower(u.email) = lower(people.email)
 where p.id = u.id
-  and p.role in ('actor', 'public');   -- never touches admin/organizer rows
+  and p.role in ('actor', 'public', 'admin', 'organizer');   -- admin/organizer keep their role
 
 -- 2) Production credits: email, production slug, role (use 'Director', 'Stage Manager', etc. for crew)
 with credits (email, production_slug, role_played) as (
@@ -40,5 +40,5 @@ on conflict (profile_id, production_id, role_played) do nothing;
 select p.display_name, p.is_public, p.is_approved, count(c.id) as credits
 from profiles p
 left join production_credits c on c.profile_id = p.id
-where p.role = 'actor'
+where p.role in ('actor', 'admin', 'organizer') and p.is_public
 group by p.id order by p.display_name;

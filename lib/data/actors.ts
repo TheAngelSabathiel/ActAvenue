@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { MEMBER_ROLES } from "@/lib/member-roles";
 import type { ActorPhoto, Profile, ProductionCredit } from "@/types/database";
 
 export async function listPublicActors(): Promise<Profile[]> {
@@ -9,7 +10,7 @@ export async function listPublicActors(): Promise<Profile[]> {
   const { data } = await supabase
     .from("profiles")
     .select("*")
-    .eq("role", "actor")
+    .in("role", [...MEMBER_ROLES])
     .eq("is_public", true)
     .eq("is_approved", true)
     .order("display_name", { ascending: true });
@@ -27,7 +28,7 @@ export async function getPublicActor(id: string): Promise<ActorProfileWithDetail
     .from("profiles")
     .select("*")
     .eq("id", id)
-    .eq("role", "actor")
+    .in("role", [...MEMBER_ROLES])
     .eq("is_public", true)
     .eq("is_approved", true)
     .maybeSingle();

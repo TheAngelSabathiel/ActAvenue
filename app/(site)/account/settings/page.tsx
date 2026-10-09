@@ -71,10 +71,10 @@ export default function AccountSettingsPage() {
         <PasswordSection />
 
         {profile.role === "public" && <BecomeActorSection onUpgraded={load} />}
-        {profile.role === "actor" && <ActorProfileSection profile={profile} onSaved={load} />}
-        {profile.role === "actor" && <GallerySection />}
+        {(profile.role === "actor" || profile.role === "admin" || profile.role === "organizer") && <ActorProfileSection profile={profile} onSaved={load} />}
+        {(profile.role === "actor" || profile.role === "admin" || profile.role === "organizer") && <GallerySection />}
 
-        <DangerZone />
+        {profile.role !== "admin" && profile.role !== "organizer" && <DangerZone />}
       </main>
     </>
   );

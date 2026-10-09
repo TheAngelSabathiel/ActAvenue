@@ -25,6 +25,14 @@ export async function POST() {
   }
 
   const admin = createServiceClient();
+
+  // Staff accounts can't be deleted from here. It would remove the admin
+  // login, and possibly the last one.
+  const { data: profile } = await admin.from("profiles").select("role").eq("id", user.id).single();
+  if (profile && ["admin", "organizer"].includes(profile.role)) {
+    return NextResponse.json({ error: "Admin accounts can't be deleted here. Ask another admin." }, { status: 403 });
+  }
+
   const { error } = await admin.auth.admin.deleteUser(user.id);
 
   if (error) {

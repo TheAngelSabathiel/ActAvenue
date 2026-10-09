@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { STAFF_ROLES } from "@/lib/member-roles";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * Updates the caller's own profile fields. Deliberately whitelists columns
- * - role and is_approved are never accepted here even if present in the
- * body, both as defense in depth and because the DB-level column grants
+ * - role and is_approved are never accepted from the request body, both as defense in depth and because the DB-level column grants
  * (see schema.sql) would reject them anyway.
  */
 export async function POST(req: NextRequest) {
@@ -26,6 +26,14 @@ export async function POST(req: NextRequest) {
   }
 
   const db = createServiceClient();
+
+  // Staff (admin/organizer) are already trusted, so their public profile
+  // goes live without a separate moderation step. Actors still need approval.
+  const { data: current } = await db.from("profiles").select("role").eq("id", user.id).single();
+  if (current && (STAFF_ROLES as readonly string[]).includes(current.role)) {
+    update.is_approved = true;
+  }
+
   const { data, error } = await db
     .from("profiles")
     .update(update)
