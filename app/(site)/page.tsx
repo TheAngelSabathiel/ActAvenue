@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { listPublishedProductions } from "@/lib/data/homepage";
 import { IMAGES } from "@/lib/images";
+import { ProductionCarousel } from "@/components/production-carousel";
 import { CONTACT_EMAIL, SocialLinks } from "@/components/site-footer";
 
 const STEPS = [
@@ -33,23 +33,16 @@ export default async function HomePage() {
             <p className="text-muted mb-0">New productions are announced on our socials.</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            {productions.map((p) => (
-              <Link key={p.id} href={`/productions/${p.slug}`} className="aa-featured block">
-                <Image
-                  src={p.banner_url ?? p.poster_url ?? IMAGES.bannerPlaceholder}
-                  alt=""
-                  fill
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                  className="aa-featured-img"
-                />
-                <div className="aa-featured-overlay">
-                  <h3 className="text-2xl text-white mb-1">{p.title}</h3>
-                  {p.description && <p className="text-sm text-white line-clamp-2">{p.description}</p>}
-                  <span className="aa-btn aa-btn-accent aa-btn-sm mt-2">Get Tickets</span>
-                </div>
-              </Link>
-            ))}
+          <div className="pb-8">
+            <ProductionCarousel
+              productions={productions.map((p) => ({
+                id: p.id,
+                slug: p.slug,
+                title: p.title,
+                description: p.description,
+                image: p.banner_url ?? p.poster_url ?? IMAGES.bannerPlaceholder,
+              }))}
+            />
           </div>
         )}
       </section>

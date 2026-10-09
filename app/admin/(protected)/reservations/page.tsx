@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Spinner } from "@/components/spinner";
 
 type Row = {
   id: string;
@@ -101,7 +102,7 @@ export default function AdminReservationsPage() {
         ))}
       </div>
 
-      {loading && <p className="text-muted">Loading...</p>}
+      {loading && <Spinner className="!py-12" />}
 
       <div className="space-y-3">
         {rows.map((r) => (

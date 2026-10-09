@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Spinner } from "@/components/spinner";
 import { toManilaInput, fromManilaInput } from "@/lib/datetime";
 import { useParams } from "next/navigation";
 import Image from "next/image";
@@ -174,7 +175,7 @@ export default function ProductionEditorPage() {
     load();
   }
 
-  if (!production) return <p className="text-muted">Loading...</p>;
+  if (!production) return <Spinner className="!py-12" />;
 
   return (
     <div className="max-w-3xl space-y-10">

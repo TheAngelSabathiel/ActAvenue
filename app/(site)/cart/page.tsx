@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Spinner } from "@/components/spinner";
 import Link from "next/link";
 import { useCart } from "@/lib/hooks/use-cart";
 
@@ -34,7 +35,7 @@ export default function CartPage() {
       <h1 className="text-3xl mb-2">Your Cart</h1>
       <hr className="aa-divider" />
 
-      {loading && <p className="text-muted">Loading...</p>}
+      {loading && <Spinner label="Loading cart" className="!py-12" />}
 
       {!loading && items.length === 0 && (
         <div className="aa-card p-10 text-center">

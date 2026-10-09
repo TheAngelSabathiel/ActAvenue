@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import { Spinner } from "@/components/spinner";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCart } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
@@ -21,7 +22,7 @@ export default function CheckoutPage() {
 function CheckoutFallback() {
   return (
     <div className="aa-container max-w-2xl py-12">
-      <p className="text-muted">Loading...</p>
+      <Spinner label="Loading checkout" className="!py-12" />
     </div>
   );
 }

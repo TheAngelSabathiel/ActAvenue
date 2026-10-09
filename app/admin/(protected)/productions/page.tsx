@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Spinner } from "@/components/spinner";
 import Link from "next/link";
 
 type Production = {
@@ -110,7 +111,7 @@ export default function AdminProductionsPage() {
         {error && <p className="text-sm text-danger w-full">{error}</p>}
       </form>
 
-      {loading && <p className="text-muted">Loading...</p>}
+      {loading && <Spinner className="!py-12" />}
 
       <div className="grid sm:grid-cols-2 gap-4">
         {productions.map((p) => (

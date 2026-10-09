@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Spinner } from "@/components/spinner";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { IMAGES } from "@/lib/images";
@@ -56,7 +57,7 @@ export default function AccountSettingsPage() {
     return (
       <>
         <main className="flex-1 mx-auto max-w-xl w-full px-6 py-12">
-          <p className="text-muted">Loading...</p>
+          <Spinner label="Loading settings" />
         </main>
       </>
     );

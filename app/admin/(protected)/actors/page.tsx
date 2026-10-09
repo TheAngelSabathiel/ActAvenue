@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Spinner } from "@/components/spinner";
 import Image from "next/image";
 
 type Actor = {
@@ -130,7 +131,7 @@ export default function AdminActorsPage() {
         )}
       </div>
 
-      {loading && <p className="text-muted">Loading...</p>}
+      {loading && <Spinner className="!py-12" />}
 
       {!loading && selectableIds.length > 0 && (
         <label className="flex items-center gap-2 text-xs font-bold uppercase text-muted mb-3">

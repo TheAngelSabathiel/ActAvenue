@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Spinner } from "@/components/spinner";
 import { manilaToday } from "@/lib/datetime";
 
 type Totals = {
@@ -144,7 +145,7 @@ export default function SalesSummaryPage() {
         {(fromDate || toDate) && "Filtered by when the booking was made (not the show date)."}
       </p>
 
-      {loading && <p className="text-muted">Loading...</p>}
+      {loading && <Spinner className="!py-12" />}
 
       {totals && (
         <>
