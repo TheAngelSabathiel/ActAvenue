@@ -40,7 +40,7 @@ export function SiteFooter() {
         </nav>
         <SocialLinks className="justify-center mb-4" />
         <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm opacity-75 hover:opacity-100">{CONTACT_EMAIL}</a>
-        <p className="text-xs opacity-50 mt-6 mb-0">© 2026 Act Avenue</p>
+        <p className="text-xs opacity-50 mt-6 mb-0">© 2026 Act Avenue | Developed by TheAngelSabathiel</p>
       </div>
     </footer>
   );
