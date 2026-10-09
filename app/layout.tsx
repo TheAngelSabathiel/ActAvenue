@@ -9,7 +9,11 @@ import { IMAGES } from "@/lib/images";
 export const metadata: Metadata = {
   title: "Act Avenue | Tickets",
   description: "Reserve tickets for upcoming Act Avenue productions.",
-  icons: { icon: IMAGES.logo },
+  icons: {
+    icon: [{ url: IMAGES.logo, type: "image/png" }],
+    shortcut: IMAGES.logo,
+    apple: IMAGES.logo,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

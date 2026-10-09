@@ -25,11 +25,11 @@ export default async function HomePage() {
       </section>
 
       <section id="now-showing" className="aa-container py-16">
-        <h2 className="text-3xl mb-2">Now Showing</h2>
+        <h2 className="text-3xl mb-2">Current Productions</h2>
         <hr className="aa-divider" />
         {productions.length === 0 ? (
           <div className="aa-card p-10 text-center">
-            <p className="font-bold uppercase tracking-[0.08em] mb-1">No shows open right now</p>
+            <p className="font-bold uppercase tracking-[0.08em] mb-1">No current productions</p>
             <p className="text-muted mb-0">New productions are announced on our socials.</p>
           </div>
         ) : (
@@ -54,8 +54,8 @@ export default async function HomePage() {
         )}
       </section>
 
-      <section className="aa-texture py-16">
-        <div className="aa-container" style={{ ["--aa-bg-img" as string]: `url(${IMAGES.background})` }}>
+      <section className="aa-texture py-16" style={{ ["--aa-bg-img" as string]: `url(${IMAGES.background})` }}>
+        <div className="aa-container">
           <h2 className="text-3xl mb-2">How Booking Works</h2>
           <hr className="aa-divider" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
