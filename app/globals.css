@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: #000;
+  --color-paper: #fff;
+  --color-muted: #6c757d;
+  --color-soft: #f8f9fa;
+  --color-accent: #ffc107;
+  --color-danger: #dc3545;
+  --color-success: #198754;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-sans); color: #000; background: #fff; }
+  h1, h2 { font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; }
+  h3 { font-weight: 900; }
+  input, select, textarea, button { border-radius: 0; }
+  :focus-visible { outline: 2px solid #000; outline-offset: 2px; }
+}
+
+@layer components {
+  .aa-container { width: 100%; max-width: 72rem; margin-inline: auto; padding-inline: 1.5rem; }
+  .aa-navbar {
+    background-color: #fff;
+    background-image: var(--aa-navbar-img);
+    background-size: cover;
+    border-bottom: 1px solid #dee2e6;
+  }
+  .aa-texture {
+    background-color: var(--color-soft);
+    background-image: var(--aa-bg-img);
+    background-size: cover;
+    background-attachment: fixed;
+  }
+  @media (max-width: 767px) { .aa-texture { background-attachment: scroll; } }
+  .aa-divider { border: 0; height: 4px; background: #000; opacity: 1; margin: 0.5rem 0 2rem; }
+  .aa-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+  .aa-nav-link {
+    font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 0.5rem 0.75rem; display: inline-block; transition: transform .2s ease;
+  }
+  .aa-nav-link:hover { transform: translateY(-2px); }
+
+  .aa-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    padding: 0.6rem 1.25rem; font-weight: 700; font-size: 0.8rem;
+    text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer;
+    border: 2px solid #000; background: #000; color: #fff;
+    transition: transform .2s ease, background-color .2s ease, color .2s ease;
+  }
+  .aa-btn:hover { transform: translateY(-2px); }
+  .aa-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .aa-btn-lg { padding: 0.9rem 2.5rem; font-size: 0.95rem; }
+  .aa-btn-sm { padding: 0.35rem 0.8rem; font-size: 0.7rem; }
+  .aa-btn-black { background: #000; color: #fff; border-color: #000; }
+  .aa-btn-light { background: #fff; color: #000; border-color: #fff; }
+  .aa-btn-accent { background: var(--color-accent); color: #000; border-color: var(--color-accent); }
+  .aa-btn-outline { background: transparent; color: #000; border-color: #000; }
+  .aa-btn-outline:hover { background: #000; color: #fff; }
+  .aa-btn-danger { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
+
+  .aa-input {
+    width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #000; background: #fff; color: #000;
+  }
+  .aa-card { background: #fff; border: 1px solid #dee2e6; box-shadow: 0 .125rem .25rem rgba(0,0,0,.075); }
+  .aa-lift { transition: transform .3s ease, box-shadow .3s ease; }
+  .aa-lift:hover { transform: translateY(-8px); box-shadow: 0 1rem 2rem rgba(0,0,0,.18); }
+  .aa-box { background: #fff; transition: background-color .25s ease, color .25s ease; }
+  .aa-box:hover { background: #000; color: #fff; }
+
+  .aa-featured { position: relative; overflow: hidden; height: 380px; background: #000; box-shadow: 0 1rem 3rem rgba(0,0,0,.175); }
+  @media (max-width: 767px) { .aa-featured { height: 300px; } }
+  .aa-featured-img { width: 100%; height: 100%; object-fit: cover; filter: brightness(.6); transition: filter .4s ease, transform .4s ease; }
+  .aa-featured:hover .aa-featured-img { filter: brightness(.8); transform: scale(1.03); }
+  .aa-featured-overlay {
+    position: absolute; inset: auto 0 0 0; padding: 1.5rem; color: #fff;
+    background: linear-gradient(to top, rgba(0,0,0,.9), transparent);
+  }
+
+  .aa-perforation { border-top: 2px dashed #000; }
+  @media (min-width: 640px) {
+    .aa-perforation { border-top: 0; border-left: 2px dashed #000; }
+  }
+}
