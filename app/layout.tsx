@@ -7,7 +7,7 @@ import "./globals.css";
 import { IMAGES } from "@/lib/images";
 
 export const metadata: Metadata = {
-  title: "Act Avenue | Tickets",
+  title: "Act Avenue",
   description: "Reserve tickets for upcoming Act Avenue productions.",
   icons: {
     icon: [{ url: IMAGES.logo, type: "image/png" }],
