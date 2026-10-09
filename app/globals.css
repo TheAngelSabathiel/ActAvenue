@@ -29,6 +29,13 @@
 }
 
 @layer components {
+  .aa-page {
+    background-color: var(--color-soft);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  @media (max-width: 767px) { .aa-page { background-attachment: scroll; } }
   .aa-container { width: 100%; max-width: 72rem; margin-inline: auto; padding-inline: 1.5rem; }
   .aa-navbar {
     background-color: #fff;

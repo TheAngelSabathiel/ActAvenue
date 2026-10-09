@@ -19,7 +19,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-screen flex flex-col bg-white text-black">{children}</body>
+      <body
+        className="aa-page min-h-screen flex flex-col text-black"
+        style={{ backgroundImage: `url(${IMAGES.background})` }}
+      >
+        {children}
+      </body>
     </html>
   );
 }

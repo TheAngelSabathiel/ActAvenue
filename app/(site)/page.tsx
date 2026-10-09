@@ -54,7 +54,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      <section className="aa-texture py-16" style={{ ["--aa-bg-img" as string]: `url(${IMAGES.background})` }}>
+      <section className="py-16">
         <div className="aa-container">
           <h2 className="text-3xl mb-2">How Booking Works</h2>
           <hr className="aa-divider" />
@@ -74,7 +74,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="about" className="py-16 bg-white">
+      <section id="about" className="py-16">
         <div className="aa-container grid gap-10 md:grid-cols-2">
           <div className="border-l-[5px] border-black pl-6">
             <h2 className="text-2xl mb-3">About</h2>
