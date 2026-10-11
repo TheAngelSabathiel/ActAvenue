@@ -153,70 +153,21 @@ export function CreditsManager({ productionId }: { productionId: string }) {
   const crew = credits.filter((c) => c.section === "production").sort((a, b) => a.sort_order - b.sort_order);
   const unlisted = (p: Person) => !p.is_public || !p.is_approved;
 
-  function Row({ c }: { c: Credit }) {
-    const [text, setText] = useState(c.role_played);
-    const peers = credits.filter((x) => sameGroup(x, c)).sort((a, b) => a.sort_order - b.sort_order);
-    const idx = peers.findIndex((x) => x.id === c.id);
+  const row = (c: Credit, key: string) => {
+    const peers = credits.filter((x) => sameGroup(x, c)).sort((x, y) => x.sort_order - y.sort_order);
     return (
-      <div className={`aa-card p-3 flex flex-wrap items-center gap-3 ${c.is_discredited ? "opacity-50" : ""}`}>
-        <div className="flex flex-col">
-          <button className={mini} disabled={idx === 0} onClick={() => move(c, -1)} aria-label="Move up">▲</button>
-          <button className={mini} disabled={idx === peers.length - 1} onClick={() => move(c, 1)} aria-label="Move down">▼</button>
-        </div>
-        <div className="min-w-40 flex-1">
-          <p className="font-extrabold">
-            {c.profile.display_name ?? "Untitled profile"}
-            {c.is_discredited && <span className="ml-2 text-xs uppercase text-danger">Discredited</span>}
-          </p>
-          {unlisted(c.profile) && (
-            <p className="text-xs text-danger">Profile is not public and approved, so this credit is hidden on the site.</p>
-          )}
-        </div>
-        {c.section === "artistic" && (
-          <>
-            <select
-              value={c.credit_type ?? "actor"}
-              onChange={(e) => send(`/api/admin/credits/${c.id}`, "PATCH", { credit_type: e.target.value })}
-              className={field}
-            >
-              {CREDIT_TYPES.map((t) => (
-                <option key={t} value={t}>{CREDIT_TYPE_LABEL[t]}</option>
-              ))}
-            </select>
-            {!isDanceType(c.credit_type) && (
-            <select
-              value={c.play_id ?? ""}
-              onChange={(e) => send(`/api/admin/credits/${c.id}`, "PATCH", { play_id: e.target.value || null })}
-              className={field}
-            >
-              <option value="">No specific play</option>
-              {plays.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
-            </select>
-            )}
-          </>
-        )}
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => text !== c.role_played && send(`/api/admin/credits/${c.id}`, "PATCH", { role_played: text })}
-          className={`${field} w-48`}
-          aria-label={c.section === "artistic" ? "Character" : "Involvement"}
-        />
-        <button
-          className={mini}
-          onClick={() => send(`/api/admin/credits/${c.id}`, "PATCH", { is_discredited: !c.is_discredited })}
-        >
-          {c.is_discredited ? "Restore" : "Discredit"}
-        </button>
-        <button
-          className="text-xs font-bold uppercase text-danger/70 hover:text-danger"
-          onClick={() => confirm("Remove this credit?") && send(`/api/admin/credits/${c.id}`, "DELETE")}
-        >
-          Delete
-        </button>
-      </div>
+      <CreditRow
+        key={key}
+        c={c}
+        index={peers.findIndex((x) => x.id === c.id)}
+        count={peers.length}
+        plays={plays}
+        unlisted={unlisted(c.profile)}
+        onMove={(dir) => move(c, dir)}
+        onSend={send}
+      />
     );
-  }
+  };
 
   const groups: { key: string; title: string; items: Credit[] }[] = [
     { key: "none", title: "No specific play", items: artistic.filter((c) => !c.play_id && !isDanceType(c.credit_type)) },
@@ -321,7 +272,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
               <p className="text-xs font-bold uppercase text-muted">{g.title}</p>
               {[...g.items]
                 .sort((a, b) => CREDIT_TYPE_RANK[a.credit_type ?? "actor"] - CREDIT_TYPE_RANK[b.credit_type ?? "actor"] || a.sort_order - b.sort_order)
-                .map((c) => <Row key={c.id + c.role_played + c.credit_type + c.play_id + c.is_discredited} c={c} />)}
+                .map((c) => row(c, c.id + c.role_played + c.credit_type + c.play_id + c.is_discredited))}
             </div>
           ),
         )}
@@ -331,7 +282,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
       <div className="space-y-2">
         <h3 className="font-extrabold">Production &amp; Crew</h3>
         <p className="text-xs text-muted">Top of the list shows first on the production page.</p>
-        {crew.map((c) => <Row key={c.id + c.role_played + c.is_discredited} c={c} />)}
+        {crew.map((c) => row(c, c.id + c.role_played + c.is_discredited))}
         {crew.length === 0 && <p className="text-sm text-muted">No crew credits yet.</p>}
       </div>
     </section>
@@ -351,6 +302,99 @@ function PlayRow({ p, i, n, onMove, onDelete }: {
       </div>
       <p className="flex-1 font-bold mb-0">{p.title}</p>
       <button className="text-xs font-bold uppercase text-danger/70 hover:text-danger" onClick={() => onDelete(p)}>Remove</button>
+    </div>
+  );
+}
+
+/**
+ * One credit. Character/involvement, type and play are staged and saved with
+ * the row's Save button; move, discredit and delete act immediately.
+ */
+function CreditRow({
+  c,
+  index,
+  count,
+  plays,
+  unlisted,
+  onMove,
+  onSend,
+}: {
+  c: Credit;
+  index: number;
+  count: number;
+  plays: Play[];
+  unlisted: boolean;
+  onMove: (dir: -1 | 1) => void;
+  onSend: (url: string, method: string, body?: unknown) => Promise<boolean>;
+}) {
+  const [text, setText] = useState(c.role_played);
+  const [type, setType] = useState<CreditType>(c.credit_type ?? "actor");
+  const [playId, setPlayId] = useState(c.play_id ?? "");
+  const artistic = c.section === "artistic";
+
+  const dirty =
+    text !== c.role_played || (artistic && (type !== (c.credit_type ?? "actor") || (!isDanceType(type) && playId !== (c.play_id ?? ""))));
+
+  function save() {
+    const body: Record<string, unknown> = {};
+    if (text !== c.role_played) body.role_played = text;
+    if (artistic) {
+      if (type !== (c.credit_type ?? "actor")) body.credit_type = type;
+      if (!isDanceType(type) && playId !== (c.play_id ?? "")) body.play_id = playId || null;
+    }
+    onSend(`/api/admin/credits/${c.id}`, "PATCH", body);
+  }
+
+  return (
+    <div className={`aa-card p-3 flex flex-wrap items-center gap-3 ${c.is_discredited ? "opacity-50" : ""}`}>
+      <div className="flex flex-col">
+        <button className={mini} disabled={index === 0} onClick={() => onMove(-1)} aria-label="Move up">▲</button>
+        <button className={mini} disabled={index === count - 1} onClick={() => onMove(1)} aria-label="Move down">▼</button>
+      </div>
+      <div className="min-w-40 flex-1">
+        <p className="font-extrabold">
+          {c.profile.display_name ?? "Untitled profile"}
+          {c.is_discredited && <span className="ml-2 text-xs uppercase text-danger">Discredited</span>}
+        </p>
+        {unlisted && (
+          <p className="text-xs text-danger">Profile is not public and approved, so this credit is hidden on the site.</p>
+        )}
+      </div>
+      {artistic && (
+        <>
+          <select value={type} onChange={(e) => setType(e.target.value as CreditType)} className={field}>
+            {CREDIT_TYPES.map((t) => (
+              <option key={t} value={t}>{CREDIT_TYPE_LABEL[t]}</option>
+            ))}
+          </select>
+          {!isDanceType(type) && (
+            <select value={playId} onChange={(e) => setPlayId(e.target.value)} className={field}>
+              <option value="">No specific play</option>
+              {plays.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+            </select>
+          )}
+        </>
+      )}
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        className={`${field} w-48`}
+        aria-label={artistic ? "Character" : "Involvement"}
+      />
+      {dirty && (
+        <button className="px-3 py-1.5 bg-black text-paper text-xs font-bold uppercase" onClick={save}>
+          Save
+        </button>
+      )}
+      <button className={mini} onClick={() => onSend(`/api/admin/credits/${c.id}`, "PATCH", { is_discredited: !c.is_discredited })}>
+        {c.is_discredited ? "Restore" : "Discredit"}
+      </button>
+      <button
+        className="text-xs font-bold uppercase text-danger/70 hover:text-danger"
+        onClick={() => confirm("Remove this credit?") && onSend(`/api/admin/credits/${c.id}`, "DELETE")}
+      >
+        Delete
+      </button>
     </div>
   );
 }

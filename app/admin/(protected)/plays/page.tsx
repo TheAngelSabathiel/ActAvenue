@@ -3,11 +3,12 @@
 import { toast } from "@/lib/toast";
 import { useToastOn } from "@/lib/use-toast-on";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { IMAGES } from "@/lib/images";
-import { validateImageFile } from "@/lib/upload";
+import { StagedImage, EMPTY_IMAGE, imageDirty, type ImageDraft } from "@/components/staged-image";
+import { SaveBar } from "@/components/save-bar";
+import { api, fileInit, jsonInit } from "@/lib/api-call";
 import type { Play } from "@/types/database";
 
 const field = "border border-ink/20 px-3 py-2 text-sm";
@@ -80,45 +81,38 @@ export default function AdminPlaysPage() {
 }
 
 function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => void; onError: (m: string | null) => void }) {
-  const input = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(play.title);
   const [description, setDescription] = useState(play.description ?? "");
-  const [busy, setBusy] = useState(false);
+  const [photo, setPhoto] = useState<ImageDraft>(EMPTY_IMAGE);
+  const [saving, setSaving] = useState(false);
 
-  async function save(body: Record<string, string>) {
-    const res = await fetch(`/api/admin/plays/${play.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    onError(res.ok ? null : data.error);
-    if (res.ok) toast.success("Saved.");
-    onChange();
+  const dirty = title !== play.title || description !== (play.description ?? "") || imageDirty(photo);
+
+  function discard() {
+    setTitle(play.title);
+    setDescription(play.description ?? "");
+    setPhoto(EMPTY_IMAGE);
   }
 
-  async function upload(file: File) {
-    const err = validateImageFile(file);
-    if (err) return onError(err);
-    const form = new FormData();
-    form.append("file", file);
-    setBusy(true);
-    const res = await fetch(`/api/admin/plays/${play.id}/media`, { method: "POST", body: form });
-    const data = await res.json();
-    setBusy(false);
-    onError(res.ok ? null : data.error);
-    if (res.ok) toast.success("Photo updated.");
-    if (input.current) input.current.value = "";
-    onChange();
-  }
-
-  async function removePhoto() {
-    if (!confirm("Remove the display photo?")) return;
-    setBusy(true);
-    await fetch(`/api/admin/plays/${play.id}/media`, { method: "DELETE" });
-    setBusy(false);
-    toast.success("Photo removed.");
-    onChange();
+  async function save() {
+    if (!title.trim()) return toast.error("A play needs a title.");
+    setSaving(true);
+    onError(null);
+    try {
+      if (photo.file) await api(`/api/admin/plays/${play.id}/media`, fileInit(photo.file));
+      else if (photo.removed) await api(`/api/admin/plays/${play.id}/media`, { method: "DELETE" });
+      const patch: Record<string, string> = {};
+      if (title !== play.title) patch.title = title;
+      if (description !== (play.description ?? "")) patch.description = description;
+      if (Object.keys(patch).length) await api(`/api/admin/plays/${play.id}`, jsonInit("PATCH", patch));
+      toast.success("Play saved.");
+      setPhoto(EMPTY_IMAGE);
+      onChange();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function remove() {
@@ -129,49 +123,27 @@ function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => voi
   }
 
   return (
-    <div className="aa-card p-4 flex flex-wrap gap-4">
-      <div className="space-y-2">
-        <div className="relative h-24 w-32 bg-black/5">
-          <Image src={play.photo_url ?? IMAGES.posterPlaceholder} alt="" fill sizes="128px" className="object-cover" />
+    <div className="aa-card p-4 space-y-4">
+      <div className="flex flex-wrap gap-4">
+        <div className="w-40">
+          <StagedImage
+            label="Display photo"
+            url={play.photo_url}
+            fallback={IMAGES.posterPlaceholder}
+            aspect="aspect-[4/3]"
+            draft={photo}
+            onChange={setPhoto}
+          />
         </div>
-        <input
-          ref={input}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-        />
-        <div className="flex gap-3">
-          <button disabled={busy} onClick={() => input.current?.click()} className="text-xs font-bold uppercase text-muted hover:text-ink">
-            {busy ? "Working..." : play.photo_url ? "Replace" : "Upload"}
-          </button>
-          {play.photo_url && (
-            <button disabled={busy} onClick={removePhoto} className="text-xs font-bold uppercase text-danger/70 hover:text-danger">
-              Remove
-            </button>
-          )}
+        <div className="flex-1 min-w-56 space-y-2">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${field} w-full font-bold`} aria-label="Title" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Description" className={`${field} w-full`} />
         </div>
+        <button onClick={remove} className="text-xs font-bold uppercase text-danger/70 hover:text-danger self-start">
+          Delete
+        </button>
       </div>
-      <div className="flex-1 min-w-56 space-y-2">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => title.trim() && title !== play.title && save({ title })}
-          className={`${field} w-full font-bold`}
-          aria-label="Title"
-        />
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onBlur={() => description !== (play.description ?? "") && save({ description })}
-          rows={3}
-          placeholder="Description"
-          className={`${field} w-full`}
-        />
-      </div>
-      <button onClick={remove} className="text-xs font-bold uppercase text-danger/70 hover:text-danger self-start">
-        Delete
-      </button>
+      <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={discard} />
     </div>
   );
 }

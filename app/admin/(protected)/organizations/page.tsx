@@ -4,7 +4,9 @@ import { toast } from "@/lib/toast";
 import { useToastOn } from "@/lib/use-toast-on";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { StagedImage, EMPTY_IMAGE, imageDirty, type ImageDraft } from "@/components/staged-image";
+import { SaveBar } from "@/components/save-bar";
+import { api, fileInit, jsonInit } from "@/lib/api-call";
 
 type Organization = {
   id: string;
@@ -51,26 +53,6 @@ export default function OrganizationsPage() {
     load();
   }
 
-  async function renameOrg(id: string, name: string) {
-    const res = await fetch(`/api/admin/organizations/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (res.ok) toast.success("Organization renamed.");
-    else toast.error("Could not rename the organization.");
-    load();
-  }
-
-  async function uploadLogo(id: string, file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch(`/api/admin/organizations/${id}/logo`, { method: "POST", body: formData });
-    if (res.ok) toast.success("Logo updated.");
-    else toast.error("Logo upload failed.");
-    load();
-  }
-
   function copyId(id: string) {
     navigator.clipboard.writeText(id);
     setCopiedId(id);
@@ -104,42 +86,68 @@ export default function OrganizationsPage() {
 
       <div className="space-y-3">
         {orgs.map((org) => (
-          <div key={org.id} className="aa-card p-5 flex flex-wrap items-center gap-4">
-            {org.logo_url ? (
-              <Image src={org.logo_url} alt="" width={48} height={48} className="rounded object-cover shrink-0" />
-            ) : (
-              <div className="w-12 h-12  bg-ink/10 shrink-0" />
-            )}
-            <div className="flex-1 min-w-[180px]">
-              <input
-                defaultValue={org.name}
-                onBlur={(e) => e.target.value !== org.name && renameOrg(org.id, e.target.value)}
-                className="font-extrabold text-lg border-b border-transparent hover:border-ink/20 focus:border-danger outline-none bg-transparent w-full"
-              />
-              <div className="flex flex-wrap items-center gap-3 mt-1">
-                <button
-                  onClick={() => copyId(org.id)}
-                  className="text-xs tabular-nums text-muted hover:text-danger"
-                  title="Copy organization ID for use in Productions / Promo codes forms"
-                >
-                  {copiedId === org.id ? "Copied!" : `${org.id.slice(0, 8)}... (copy ID)`}
-                </button>
-                <label className="text-xs font-bold uppercase text-danger cursor-pointer">
-                  Upload logo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => e.target.files?.[0] && uploadLogo(org.id, e.target.files[0])}
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
+          <OrgCard key={org.id} org={org} onSaved={load} onCopy={copyId} copied={copiedId === org.id} />
         ))}
 
         {orgs.length === 0 && <p className="text-sm text-muted">No organizations yet - create one above.</p>}
       </div>
+    </div>
+  );
+}
+
+function OrgCard({ org, onSaved, onCopy, copied }: { org: Organization; onSaved: () => void; onCopy: (id: string) => void; copied: boolean }) {
+  const [name, setName] = useState(org.name);
+  const [logo, setLogo] = useState<ImageDraft>(EMPTY_IMAGE);
+  const [saving, setSaving] = useState(false);
+  const dirty = name !== org.name || imageDirty(logo);
+
+  async function save() {
+    if (!name.trim()) return toast.error("An organization needs a name.");
+    setSaving(true);
+    try {
+      if (logo.file) await api(`/api/admin/organizations/${org.id}/logo`, fileInit(logo.file));
+      if (name !== org.name) await api(`/api/admin/organizations/${org.id}`, jsonInit("PATCH", { name }));
+      toast.success("Organization saved.");
+      setLogo(EMPTY_IMAGE);
+      onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="aa-card p-5 space-y-4">
+      <div className="flex flex-wrap gap-4">
+        <div className="w-32">
+          <StagedImage
+            label="Logo"
+            url={org.logo_url}
+            fallback="/images/AA_logo.png"
+            aspect="aspect-square"
+            draft={logo}
+            onChange={setLogo}
+            allowRemove={false}
+          />
+        </div>
+        <div className="flex-1 min-w-[180px] space-y-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full border border-ink/20 px-3 py-2 font-extrabold text-lg"
+            aria-label="Organization name"
+          />
+          <button
+            onClick={() => onCopy(org.id)}
+            className="text-xs tabular-nums text-muted hover:text-danger"
+            title="Copy organization ID for use in Productions / Promo codes forms"
+          >
+            {copied ? "Copied!" : `${org.id.slice(0, 8)}... (copy ID)`}
+          </button>
+        </div>
+      </div>
+      <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={() => { setName(org.name); setLogo(EMPTY_IMAGE); }} />
     </div>
   );
 }

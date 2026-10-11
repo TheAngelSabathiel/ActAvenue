@@ -28,7 +28,7 @@ export function Toaster() {
 
   return (
     <div
-      className="fixed z-[60] top-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-96 flex flex-col gap-2 pointer-events-none"
+      className="fixed z-[60] bottom-4 inset-x-4 sm:inset-x-auto sm:left-4 sm:w-96 flex flex-col gap-2 pointer-events-none"
       aria-live="polite"
     >
       {items.map((t) => (
