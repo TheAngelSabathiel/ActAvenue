@@ -80,7 +80,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
     load();
   }, [load]);
 
-  async function send(url: string, method: string, body?: unknown) {
+  async function send(url: string, method: string, body?: unknown, success = "Success.") {
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
@@ -92,7 +92,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
       toast.error(data.error ?? "Something went wrong.");
     } else {
       setMessage(null);
-      toast.success(method === "DELETE" ? "Removed." : method === "POST" ? "Added." : "Saved.");
+      toast.success(success);
     }
     await load();
     return res.ok;
@@ -102,7 +102,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
     e.preventDefault();
     const body = pick ? { play_id: pick } : { title: newPlay.trim() };
     if (!pick && !newPlay.trim()) return;
-    if (await send(`/api/admin/productions/${productionId}/plays`, "POST", body)) {
+    if (await send(`/api/admin/productions/${productionId}/plays`, "POST", body, "Play added to this production.")) {
       setPick("");
       setNewPlay("");
     }
@@ -113,12 +113,12 @@ export function CreditsManager({ productionId }: { productionId: string }) {
     const j = index + dir;
     if (j < 0 || j >= ids.length) return;
     [ids[index], ids[j]] = [ids[j], ids[index]];
-    await send(`/api/admin/productions/${productionId}/reorder`, "POST", { table: "plays", ids });
+    await send(`/api/admin/productions/${productionId}/reorder`, "POST", { table: "plays", ids }, "Play order updated.");
   }
 
   async function removePlay(p: Play) {
     if (!confirm(`Remove "${p.title}" from this production? Its credits here move to "no specific play".`)) return;
-    await send(`/api/admin/productions/${productionId}/plays?play_id=${p.id}`, "DELETE");
+    await send(`/api/admin/productions/${productionId}/plays?play_id=${p.id}`, "DELETE", undefined, "Play removed from this production.");
   }
 
   async function addCredit(e: React.FormEvent) {
@@ -130,7 +130,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
       credit_type: section === "artistic" ? type : null,
       play_id: section === "artistic" && playId && !isDanceType(type) ? playId : null,
       role_played: role,
-    });
+    }, "Credit added.");
     setBusy(false);
     setRole("");
   }
@@ -146,7 +146,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
     if (j < 0 || j >= peers.length) return;
     const ids = peers.map((x) => x.id);
     [ids[i], ids[j]] = [ids[j], ids[i]];
-    await send(`/api/admin/productions/${productionId}/reorder`, "POST", { table: "credits", ids });
+    await send(`/api/admin/productions/${productionId}/reorder`, "POST", { table: "credits", ids }, "Order updated.");
   }
 
   const artistic = credits.filter((c) => c.section === "artistic");
@@ -325,7 +325,7 @@ function CreditRow({
   plays: Play[];
   unlisted: boolean;
   onMove: (dir: -1 | 1) => void;
-  onSend: (url: string, method: string, body?: unknown) => Promise<boolean>;
+  onSend: (url: string, method: string, body?: unknown, success?: string) => Promise<boolean>;
 }) {
   const [text, setText] = useState(c.role_played);
   const [type, setType] = useState<CreditType>(c.credit_type ?? "actor");
@@ -342,7 +342,7 @@ function CreditRow({
       if (type !== (c.credit_type ?? "actor")) body.credit_type = type;
       if (!isDanceType(type) && playId !== (c.play_id ?? "")) body.play_id = playId || null;
     }
-    onSend(`/api/admin/credits/${c.id}`, "PATCH", body);
+    onSend(`/api/admin/credits/${c.id}`, "PATCH", body, "Credit saved.");
   }
 
   return (
@@ -386,12 +386,12 @@ function CreditRow({
           Save
         </button>
       )}
-      <button className={mini} onClick={() => onSend(`/api/admin/credits/${c.id}`, "PATCH", { is_discredited: !c.is_discredited })}>
+      <button className={mini} onClick={() => onSend(`/api/admin/credits/${c.id}`, "PATCH", { is_discredited: !c.is_discredited }, c.is_discredited ? "Credit restored." : "Credit discredited.")}>
         {c.is_discredited ? "Restore" : "Discredit"}
       </button>
       <button
         className="text-xs font-bold uppercase text-danger/70 hover:text-danger"
-        onClick={() => confirm("Remove this credit?") && onSend(`/api/admin/credits/${c.id}`, "DELETE")}
+        onClick={() => confirm("Remove this credit?") && onSend(`/api/admin/credits/${c.id}`, "DELETE", undefined, "Credit removed.")}
       >
         Delete
       </button>
