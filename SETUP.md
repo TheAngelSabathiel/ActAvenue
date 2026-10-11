@@ -129,6 +129,10 @@ Then in Admin > Productions > edit, use Cast & crew to:
 - Edit the involvement text, or Discredit a credit to hide it without deleting.
 A person can hold several credits, in both sections.
 
+**Multi-show checkout.** Run `supabase/migration-orders.sql` once. A cart can now hold tickets for different shows and tiers. Checkout makes one booking per show (own QR), sharing one payment proof and an order code. Admin > Reservations has Approve order, Reject order and Reopen order for bookings from the same payment.
+
+**Payment instructions.** Edit your GCash number, account name and bank details in `lib/payment.ts`. Replace `public/images/payment-gcash-qr.png` and `public/images/payment-bank-qr.png` with your real QR codes (same file names, square).
+
 All times are shown and entered in Philippine time (Asia/Manila).
 
 ## 8. Test the full flow

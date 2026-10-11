@@ -9,6 +9,8 @@ background.png              Section background texture                 1600x900
 placeholder-poster.png      Shown when a production has no poster      600x900 (2:3)
 placeholder-banner.png      Shown when a production has no banner      1600x600
 placeholder-headshot.png    Shown when an actor has no photo           400x400 (square)
+payment-gcash-qr.png        GCash QR on the checkout page              600x600 (square)
+payment-bank-qr.png         Bank transfer QR on the checkout page      600x600 (square)
 
 Posters, banners and headshots for real productions and actors are uploaded
 from the admin pages, not from this folder.

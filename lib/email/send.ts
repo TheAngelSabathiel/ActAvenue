@@ -43,30 +43,47 @@ function showDetails(production: Production, performance: Performance) {
   return `${production.title}\n${performance.label} - ${when}\n${performance.venue}`;
 }
 
-/** Email 1 - sent immediately on booking. No QR yet, status is pending review. */
-export async function sendBookingReceivedEmail(ctx: ReservationEmailContext) {
-  const { reservation, production, performance, items } = ctx;
-  if (!reservation.buyer_email) return null; // admin_manual walk-ins may have no email
+/**
+ * Email 1 - sent immediately on booking. No QR yet, status is pending review.
+ * One checkout can hold several shows, so it takes one context per show and
+ * sends a single email covering all of them.
+ */
+export async function sendBookingReceivedEmail(input: ReservationEmailContext | ReservationEmailContext[]) {
+  const ctxs = Array.isArray(input) ? input : [input];
+  const first = ctxs[0];
+  const to = first?.reservation.buyer_email;
+  if (!first || !to) return null; // admin_manual walk-ins may have no email
 
+  const { reservation, production } = first;
+  const grandTotal = ctxs.reduce((sum, c) => sum + c.reservation.total, 0);
+  const blocks = ctxs
+    .map(
+      (c) => `Reference code: ${c.reservation.reference_code}
+
+${showDetails(c.production, c.performance)}
+
+${itemsList(c.items)}
+
+Subtotal for this show: ${money(c.reservation.total)}`
+    )
+    .join("\n\n----------\n\n");
+
+  const multi = ctxs.length > 1;
   return getResend().emails.send({
     from: FROM,
-    to: reservation.buyer_email,
-    subject: `Booking received - ${production.title} (pending confirmation)`,
+    to,
+    subject: multi
+      ? `Booking received - ${ctxs.length} shows (pending confirmation)`
+      : `Booking received - ${production.title} (pending confirmation)`,
     text: `Hi ${reservation.buyer_name},
 
-We've received your booking. It's currently pending confirmation while we verify your payment - you'll get a second email with your e-ticket and QR code once it's approved.
+We've received your booking and your payment proof. We confirm payment first. Your e-tickets are sent only after that, in a second email with your QR code${multi ? "s, one per show" : ""}.
 
-Reference code: ${reservation.reference_code}
+${blocks}
 
-${showDetails(production, performance)}
+${multi ? `Order total: ${money(grandTotal)}\n\n` : ""}${multi ? "Each show gets its own QR code. " : ""}If we can't verify payment within 24 hours, the hold is released automatically.
 
-${itemsList(items)}
-
-Total: ${money(reservation.total)}
-
-If we don't receive/verify payment within 24 hours, this hold is released automatically.
-
-- ${production.title} team`,
+- Act Avenue`,
   });
 }
 

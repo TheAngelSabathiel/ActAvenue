@@ -133,6 +133,7 @@ export interface Reservation {
   production_id: string;
   performance_id: string;
   reference_code: string;
+  order_code: string | null;
   profile_id: string | null;
   buyer_name: string;
   buyer_email: string | null;
@@ -183,7 +184,7 @@ export interface ProductionWithPerformances extends Production {
 
 export interface CartItemWithDetails extends CartItem {
   ticket_tier: TicketTier;
-  performance: Performance;
+  performance: Performance & { production?: { id: string; title: string } | null };
 }
 
 export interface ReservationWithItems extends Reservation {

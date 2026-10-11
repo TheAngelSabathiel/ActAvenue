@@ -52,7 +52,7 @@ export default async function ProductionPage({
         <section>
           <h2 className="text-2xl mb-2">Performances &amp; Tickets</h2>
           <hr className="aa-divider" />
-          <PerformancePicker performances={production.performances} />
+          <PerformancePicker performances={production.performances} productionTitle={production.title} />
         </section>
 
         <CreditsDisplay plays={production.plays} credits={production.credits} />

@@ -1,7 +1,15 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDateTime } from "@/lib/datetime";
 import { createServiceClient } from "@/lib/supabase/service";
+
+async function getSiblingCount(orderCode: string | null) {
+  if (!orderCode) return 0;
+  const db = createServiceClient();
+  const { count } = await db.from("reservations").select("id", { count: "exact", head: true }).eq("order_code", orderCode);
+  return count ?? 0;
+}
 
 async function getReservation(code: string) {
   const db = createServiceClient();
@@ -46,6 +54,7 @@ export default async function ReservationStatusPage({
 
   if (!reservation) notFound();
 
+  const siblings = await getSiblingCount(reservation.order_code);
   const status = STATUS_COPY[reservation.payment_status];
 
   return (
@@ -62,6 +71,12 @@ export default async function ReservationStatusPage({
             <i className="bi bi-geo-alt" /> {reservation.performance.venue}
           </p>
           <p className="aa-label text-muted mb-0">Reference code: {reservation.reference_code}</p>
+          {siblings > 1 && (
+            <p className="text-sm mt-2 mb-0">
+              Part of an order with {siblings} shows.{" "}
+              <Link href={`/order/${reservation.order_code}`} className="font-bold underline">View whole order</Link>
+            </p>
+          )}
         </div>
 
         <p className="mb-0">{status.body}</p>

@@ -29,14 +29,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
     );
   }
 
-  // Rejection released this reservation's inventory hold, so re-uploading
-  // needs to re-check and re-apply it - the atomic hold RPC (check +
-  // increment in one DB statement) prevents this from racing against a
-  // concurrent booking for the same tier in the meantime.
+  // One payment proof covers the whole order, so re-uploading reopens every
+  // rejected booking that shares this order. Rejection released their holds,
+  // so each needs to be re-checked and re-applied - the atomic hold RPC
+  // (check + increment in one DB statement) prevents racing a concurrent buyer.
+  let targets = [reservation];
+  if (reservation.order_code) {
+    const { data: siblings } = await db
+      .from("reservations")
+      .select("*")
+      .eq("order_code", reservation.order_code)
+      .eq("payment_status", "rejected");
+    if (siblings?.length) targets = siblings;
+  }
+
   const { data: items } = await db
     .from("reservation_items")
     .select("*, ticket_tier:ticket_tiers(*)")
-    .eq("reservation_id", reservation.id);
+    .in("reservation_id", targets.map((t) => t.id));
 
   const heldSoFar: { tierId: string; quantity: number }[] = [];
   for (const item of items ?? []) {
@@ -52,7 +62,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
   }
 
   const proofBytes = new Uint8Array(await proofFile.arrayBuffer());
-  const proofPath = `payment-proofs/${reservation.id}-${Date.now()}-${proofFile.name}`;
+  const safeName = proofFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const proofPath = `payment-proofs/${reservation.id}-${Date.now()}-${safeName}`;
   const { error: uploadError } = await db.storage
     .from("payment-proofs")
     .upload(proofPath, proofBytes, { contentType: proofFile.type });
@@ -66,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
 
   // Buyer re-submitting proof reopens it for admin review - same state as
   // the admin-initiated "Reopen" action, just triggered from the buyer side.
-  const { data: updated, error } = await db
+  const { data: updatedRows, error } = await db
     .from("reservations")
     .update({
       payment_proof_url: proofUrlData.publicUrl,
@@ -74,13 +85,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
       reopened_at: new Date().toISOString(),
       hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })
-    .eq("id", reservation.id)
-    .select()
-    .single();
+    .in("id", targets.map((t) => t.id))
+    .select();
 
   if (error) {
     await releaseTicketTierHolds(db, heldSoFar);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ reservation: updated });
+  return NextResponse.json({ reservation: updatedRows?.find((r) => r.id === reservation.id) ?? updatedRows?.[0] });
 }

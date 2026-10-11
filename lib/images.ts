@@ -15,4 +15,8 @@ export const IMAGES = {
   bannerPlaceholder: "/images/placeholder-banner.png",
   /** Fallback when an actor has no photo. 400x400 */
   headshotPlaceholder: "/images/placeholder-headshot.png",
+  /** GCash payment QR shown at checkout. 600x600 (square) */
+  paymentGcash: "/images/payment-gcash-qr.png",
+  /** Bank transfer QR shown at checkout. 600x600 (square) */
+  paymentBank: "/images/payment-bank-qr.png",
 } as const;

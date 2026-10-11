@@ -9,26 +9,52 @@ export default function CartPage() {
   const { items, loading, updateQuantity, removeItem, total } = useCart();
   const [promoCode, setPromoCode] = useState("");
   const [promoResult, setPromoResult] = useState<
-    { valid: boolean; reason?: string; pricing?: { discountAmount: number; total: number } } | null
+    { valid: boolean; reason?: string; discount: number } | null
   >(null);
   const [checkingPromo, setCheckingPromo] = useState(false);
 
+  // Promo codes are per production, so check each production in the cart
+  // separately and add up what the code saves.
   async function checkPromo() {
     if (!promoCode.trim() || !items.length) return;
     setCheckingPromo(true);
-    const res = await fetch("/api/promo/validate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        code: promoCode,
-        production_id: items[0]?.performance.production_id,
-        lines: items.map((i) => ({ ticket_tier_id: i.ticket_tier_id, quantity: i.quantity })),
-      }),
-    });
-    const data = await res.json();
-    setPromoResult(data);
+    const byProduction = new Map<string, typeof items>();
+    for (const i of items) {
+      const key = i.performance.production_id;
+      byProduction.set(key, [...(byProduction.get(key) ?? []), i]);
+    }
+    let discount = 0;
+    let reason: string | undefined;
+    for (const [production_id, group] of byProduction) {
+      const res = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: promoCode,
+          production_id,
+          lines: group.map((i) => ({ ticket_tier_id: i.ticket_tier_id, quantity: i.quantity })),
+        }),
+      });
+      const data = await res.json();
+      if (data.valid && data.pricing) discount += data.pricing.discountAmount;
+      else reason = reason ?? data.reason ?? data.error;
+    }
+    setPromoResult(discount > 0 ? { valid: true, discount } : { valid: false, reason, discount: 0 });
     setCheckingPromo(false);
   }
+
+  // Group lines by show so a mixed cart reads clearly.
+  const shows = new Map<string, { title: string; performance: string; lines: typeof items }>();
+  for (const i of items) {
+    const entry = shows.get(i.performance_id) ?? {
+      title: i.performance.production?.title ?? "",
+      performance: i.performance.label,
+      lines: [],
+    };
+    entry.lines.push(i);
+    shows.set(i.performance_id, entry);
+  }
+  const discount = promoResult?.valid ? promoResult.discount : 0;
 
   return (
     <div className="aa-container max-w-3xl py-12">
@@ -46,27 +72,32 @@ export default function CartPage() {
 
       {items.length > 0 && (
         <div className="space-y-4">
-          {items.map((item) => (
-            <div key={item.id} className="aa-card px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-black mb-0">{item.ticket_tier.label}</p>
-                <p className="text-sm text-muted mb-0">
-                  {item.performance.label} - ₱{item.ticket_tier.price.toFixed(2)} each
-                </p>
-              </div>
-              <div className="flex items-center gap-3 ml-auto">
-                <input
-                  type="number"
-                  min={1}
-                  value={item.quantity}
-                  onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
-                  className="aa-input !w-20"
-                  aria-label="Quantity"
-                />
-                <button onClick={() => removeItem(item.id)} className="aa-btn aa-btn-outline aa-btn-sm">
-                  Remove
-                </button>
-              </div>
+          {[...shows.entries()].map(([performanceId, show]) => (
+            <div key={performanceId} className="space-y-2">
+              <p className="aa-label text-muted mb-0">
+                {show.title ? `${show.title} - ` : ""}{show.performance}
+              </p>
+              {show.lines.map((item) => (
+                <div key={item.id} className="aa-card px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="font-black mb-0">{item.ticket_tier.label}</p>
+                    <p className="text-sm text-muted mb-0">₱{item.ticket_tier.price.toFixed(2)} each</p>
+                  </div>
+                  <div className="flex items-center gap-3 ml-auto">
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
+                      className="aa-input !w-20"
+                      aria-label="Quantity"
+                    />
+                    <button onClick={() => removeItem(item.id)} className="aa-btn aa-btn-outline aa-btn-sm">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
 
@@ -85,16 +116,22 @@ export default function CartPage() {
             {promoResult && !promoResult.valid && (
               <p className="text-sm text-danger font-bold mb-0">{promoResult.reason}</p>
             )}
-            {promoResult?.valid && promoResult.pricing && (
+            {promoResult?.valid && (
               <p className="text-sm text-success font-bold mb-0">
-                Code applied. You save ₱{promoResult.pricing.discountAmount.toFixed(2)}
+                Code applied. You save ₱{promoResult.discount.toFixed(2)}
               </p>
             )}
 
             <div className="flex items-center justify-between text-2xl font-black">
               <span className="uppercase tracking-[0.08em]">Total</span>
-              <span>₱{(promoResult?.valid ? promoResult.pricing?.total ?? total : total).toFixed(2)}</span>
+              <span>₱{Math.max(0, total - discount).toFixed(2)}</span>
             </div>
+
+            {shows.size > 1 && (
+              <p className="text-xs text-muted mb-0">
+                You are booking {shows.size} shows. Each show gets its own booking and QR code, and you pay once.
+              </p>
+            )}
 
             <Link
               href={`/checkout?promo=${encodeURIComponent(promoResult?.valid ? promoCode : "")}`}

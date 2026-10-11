@@ -5,16 +5,20 @@ import { useCart } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/datetime";
 import { isTierDiscountActive } from "@/lib/pricing";
+import { AddedToCartModal, type AddedItem } from "@/components/added-to-cart-modal";
 import type { PerformanceWithTiers, TicketTier } from "@/types/database";
 
 export function PerformancePicker({
   performances: initialPerformances,
+  productionTitle,
 }: {
   performances: PerformanceWithTiers[];
+  productionTitle: string;
 }) {
   const { addItem } = useCart();
   const [performances, setPerformances] = useState(initialPerformances);
   const [activeId, setActiveId] = useState(initialPerformances[0]?.id);
+  const [added, setAdded] = useState<AddedItem | null>(null);
   const [status, setStatus] = useState<Record<string, "idle" | "adding" | "added" | "error">>({});
 
   // Live remaining-quantity counts: subscribe to ticket_tiers changes so
@@ -68,8 +72,10 @@ export function PerformancePicker({
     setStatus((s) => ({ ...s, [tierId]: "adding" }));
     try {
       await addItem(tierId, performanceId, 1);
-      setStatus((s) => ({ ...s, [tierId]: "added" }));
-      setTimeout(() => setStatus((s) => ({ ...s, [tierId]: "idle" })), 1500);
+      setStatus((s) => ({ ...s, [tierId]: "idle" }));
+      const perf = performances.find((p) => p.id === performanceId);
+      const tier = perf?.ticket_tiers.find((t) => t.id === tierId);
+      setAdded({ tier: tier?.label ?? "Ticket", show: productionTitle, performance: perf?.label ?? "" });
     } catch {
       setStatus((s) => ({ ...s, [tierId]: "error" }));
     }
@@ -85,6 +91,7 @@ export function PerformancePicker({
 
   return (
     <div className="space-y-6">
+      {added && <AddedToCartModal item={added} onClose={() => setAdded(null)} />}
       <div className="flex flex-wrap gap-2">
         {performances.map((p) => (
           <button
@@ -126,7 +133,7 @@ export function PerformancePicker({
                       onClick={() => handleAdd(tier.id, active.id)}
                       className="aa-btn aa-btn-sm w-full"
                     >
-                      {soldOut ? "Sold out" : s === "added" ? "Added" : s === "adding" ? "Adding..." : "Add to cart"}
+                      {soldOut ? "Sold out" : s === "adding" ? "Adding..." : "Add to cart"}
                     </button>
                     {s === "error" && (
                       <p className="text-danger text-xs font-bold mb-0">Could not add. Try again.</p>

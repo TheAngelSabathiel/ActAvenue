@@ -6,6 +6,8 @@ import { Spinner } from "@/components/spinner";
 type Row = {
   id: string;
   reference_code: string;
+  order_code: string | null;
+  order_count: number;
   buyer_name: string;
   buyer_email: string | null;
   payment_status: "pending_review" | "confirmed" | "rejected" | "expired";
@@ -84,6 +86,22 @@ export default function AdminReservationsPage() {
     }
   }
 
+  async function actOrder(r: Row, action: "approve" | "reject" | "reopen") {
+    if (!r.order_code) return;
+    const reason = action === "reject" ? window.prompt("Rejection reason (optional):") ?? undefined : undefined;
+    if (!confirm(`${action[0].toUpperCase() + action.slice(1)} all bookings in order ${r.order_code}?`)) return;
+    setBusyId(r.id);
+    const res = await fetch(`/api/admin/orders/${r.order_code}/${action}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: action === "reject" ? JSON.stringify({ reason }) : undefined,
+    });
+    const data = await res.json();
+    setBusyId(null);
+    if (!res.ok) alert(data.error ?? "Action failed");
+    load();
+  }
+
   return (
     <div>
       <h1 className="font-extrabold text-3xl mb-6">Reservations</h1>
@@ -118,6 +136,11 @@ export default function AdminReservationsPage() {
                 <p className="text-xs text-muted tabular-nums">
                   {r.reference_code} · {r.buyer_email ?? "no email (walk-in)"} · {r.booking_source}
                 </p>
+                {r.order_count > 1 && (
+                  <p className="text-xs font-bold text-danger">
+                    Order {r.order_code} · {r.order_count} shows, one payment
+                  </p>
+                )}
                 <p className="text-sm mt-1">
                   {r.production.title} - {r.performance.label}
                 </p>
@@ -165,6 +188,33 @@ export default function AdminReservationsPage() {
                       className="px-3 py-1.5  bg-ink/10 text-xs font-bold uppercase disabled:opacity-50"
                     >
                       Reopen
+                    </button>
+                  )}
+                  {r.order_count > 1 && r.payment_status === "pending_review" && (
+                    <>
+                      <button
+                        disabled={busyId === r.id}
+                        onClick={() => actOrder(r, "approve")}
+                        className="px-3 py-1.5 border border-green-700 text-green-700 text-xs font-bold uppercase disabled:opacity-50"
+                      >
+                        Approve order
+                      </button>
+                      <button
+                        disabled={busyId === r.id}
+                        onClick={() => actOrder(r, "reject")}
+                        className="px-3 py-1.5 border border-danger text-danger text-xs font-bold uppercase disabled:opacity-50"
+                      >
+                        Reject order
+                      </button>
+                    </>
+                  )}
+                  {r.order_count > 1 && ["rejected", "expired"].includes(r.payment_status) && (
+                    <button
+                      disabled={busyId === r.id}
+                      onClick={() => actOrder(r, "reopen")}
+                      className="px-3 py-1.5 border border-ink/20 text-xs font-bold uppercase disabled:opacity-50"
+                    >
+                      Reopen order
                     </button>
                   )}
                   <button

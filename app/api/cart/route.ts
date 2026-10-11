@@ -8,8 +8,9 @@ export async function GET() {
 
   const { data: items, error } = await db
     .from("cart_items")
-    .select("*, ticket_tier:ticket_tiers(*), performance:performances(*)")
-    .eq("cart_id", cart.id);
+    .select("*, ticket_tier:ticket_tiers(*), performance:performances(*, production:productions(id, title))")
+    .eq("cart_id", cart.id)
+    .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

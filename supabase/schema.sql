@@ -139,6 +139,8 @@ create table reservations (
   production_id uuid not null references productions (id) on delete restrict,
   performance_id uuid not null references performances (id) on delete restrict,
   reference_code text not null unique,
+  -- Ties together the reservations created by one checkout (one per show).
+  order_code text,
 
   -- nullable fk for future buyer-account linking (Phase 2) -- see MVP doc
   -- on delete set null: deleting an account must never delete or block on
@@ -184,6 +186,7 @@ create index reservations_status_idx on reservations (payment_status);
 create index reservations_buyer_email_idx on reservations (buyer_email);
 create index reservations_profile_idx on reservations (profile_id);
 create index reservations_reference_idx on reservations (reference_code);
+create index reservations_order_idx on reservations (order_code);
 
 create table reservation_items (
   id uuid primary key default gen_random_uuid(),

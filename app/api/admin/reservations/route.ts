@@ -35,8 +35,17 @@ export async function GET(req: NextRequest) {
   const { data, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // How many bookings share each row's order (for the "whole order" buttons).
+  const codes = [...new Set((data ?? []).map((r) => r.order_code).filter(Boolean))] as string[];
+  const counts = new Map<string, number>();
+  if (codes.length) {
+    const { data: siblings } = await db.from("reservations").select("order_code").in("order_code", codes);
+    for (const s of siblings ?? []) counts.set(s.order_code, (counts.get(s.order_code) ?? 0) + 1);
+  }
+  const reservations = (data ?? []).map((r) => ({ ...r, order_count: r.order_code ? counts.get(r.order_code) ?? 1 : 1 }));
+
   return NextResponse.json({
-    reservations: data,
+    reservations,
     pagination: {
       page,
       pageSize,

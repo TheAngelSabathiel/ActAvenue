@@ -5,6 +5,7 @@ import { Spinner } from "@/components/spinner";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCart } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
+import { PaymentInstructions } from "@/components/payment-instructions";
 
 // useSearchParams() requires a Suspense boundary in the App Router - without
 // it, `next build` fails prerendering this route entirely (not just a
@@ -28,13 +29,25 @@ function CheckoutFallback() {
 }
 
 function CheckoutForm() {
-  const { items, total } = useCart();
+  const { items, total: listTotal } = useCart();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>("");
+  const [quote, setQuote] = useState<{ discount: number; total: number } | null>(null);
+  const promoParam = searchParams.get("promo") ?? "";
+
+  // What the buyer actually owes (promo applied), from the same pricing as checkout.
+  useEffect(() => {
+    fetch(`/api/cart/quote?promo=${encodeURIComponent(promoParam)}`)
+      .then((r) => r.json())
+      .then((q) => setQuote({ discount: q.discount ?? 0, total: q.total ?? 0 }))
+      .catch(() => setQuote(null));
+  }, [promoParam, items.length, listTotal]);
+  const discount = quote?.discount ?? 0;
+  const total = quote?.total ?? listTotal;
 
   // If the buyer is signed in, prefill their details - still editable, and
   // still not required to be signed in at all (guest checkout always works,
@@ -67,7 +80,20 @@ function CheckoutForm() {
       return;
     }
 
-    router.push(`/reservation/${data.reservation.reference_code}`);
+    router.push(
+      data.count > 1 ? `/order/${data.order_code}` : `/reservation/${data.reservation.reference_code}`
+    );
+  }
+
+  const shows = new Map<string, { title: string; performance: string; lines: typeof items }>();
+  for (const i of items) {
+    const entry = shows.get(i.performance_id) ?? {
+      title: i.performance.production?.title ?? "",
+      performance: i.performance.label,
+      lines: [],
+    };
+    entry.lines.push(i);
+    shows.set(i.performance_id, entry);
   }
 
   const label = "aa-label block mb-1";
@@ -81,17 +107,35 @@ function CheckoutForm() {
           : "Add your details and payment proof in one step. No account needed."}
       </p>
 
-      <div className="aa-card p-6 mb-8">
-        {items.map((item) => (
-          <div key={item.id} className="flex justify-between text-sm py-1">
-            <span>{item.quantity} × {item.ticket_tier.label}</span>
-            <span className="font-bold">₱{(item.ticket_tier.price * item.quantity).toFixed(2)}</span>
+      <div className="aa-card p-6 mb-8 space-y-4">
+        {[...shows.entries()].map(([id, show]) => (
+          <div key={id}>
+            <p className="aa-label text-muted mb-1">
+              {show.title ? `${show.title} - ` : ""}{show.performance}
+            </p>
+            {show.lines.map((item) => (
+              <div key={item.id} className="flex justify-between text-sm py-1">
+                <span>{item.quantity} × {item.ticket_tier.label}</span>
+                <span className="font-bold">₱{(item.ticket_tier.price * item.quantity).toFixed(2)}</span>
+              </div>
+            ))}
           </div>
         ))}
-        <div className="flex justify-between text-xl font-black pt-3 mt-3 border-t-4 border-black">
+        {discount > 0 && (
+          <div className="flex justify-between text-sm text-success font-bold">
+            <span>Promo code</span>
+            <span>-₱{discount.toFixed(2)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-xl font-black pt-3 border-t-4 border-black">
           <span className="uppercase tracking-[0.08em]">Total</span>
           <span>₱{total.toFixed(2)}</span>
         </div>
+        {shows.size > 1 && (
+          <p className="text-xs text-muted mb-0">
+            {shows.size} shows, one payment. Each show gets its own booking and QR code.
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5" encType="multipart/form-data">
@@ -108,11 +152,12 @@ function CheckoutForm() {
           <label className={label}>Phone</label>
           <input name="buyer_phone" className="aa-input" />
         </div>
+        <PaymentInstructions total={total} />
         <div>
           <label className={label}>Payment proof</label>
           <input type="file" name="payment_proof" accept="image/*,application/pdf" required className="aa-input" />
           <p className="text-xs text-muted mt-1 mb-0">
-            Screenshot of your GCash or bank transfer. We review it, then email you either way.
+            Screenshot of your GCash or bank transfer receipt. We review it, then email you either way.
           </p>
         </div>
 
