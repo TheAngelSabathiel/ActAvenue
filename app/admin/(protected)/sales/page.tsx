@@ -1,5 +1,6 @@
 "use client";
 
+import { sortByName } from "@/lib/sort";
 import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { manilaToday } from "@/lib/datetime";
@@ -96,7 +97,7 @@ export default function SalesSummaryPage() {
             className="border border-ink/20  px-3 py-2 text-sm"
           >
             <option value="">All productions</option>
-            {productions.map((p) => (
+            {sortByName(productions, (p) => p.title).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.title}
               </option>

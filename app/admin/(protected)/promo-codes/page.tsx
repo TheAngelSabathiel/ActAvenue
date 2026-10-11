@@ -1,5 +1,6 @@
 "use client";
 
+import { sortByName } from "@/lib/sort";
 import { toast } from "@/lib/toast";
 import { useToastOn } from "@/lib/use-toast-on";
 
@@ -109,7 +110,7 @@ export default function PromoCodesPage() {
           className="border border-ink/20  px-3 py-2 text-sm sm:col-span-2"
         >
           <option value="">Select organization...</option>
-          {organizations.map((o) => (
+          {sortByName(organizations, (o) => o.name).map((o) => (
             <option key={o.id} value={o.id}>
               {o.name}
             </option>
@@ -123,7 +124,7 @@ export default function PromoCodesPage() {
         <input name="discount_value" type="number" step="0.01" placeholder="Value" required className="border border-ink/20  px-3 py-2 text-sm" />
         <select name="applies_to_production_id" className="border border-ink/20  px-3 py-2 text-sm">
           <option value="">Applies org-wide</option>
-          {productions.map((p) => (
+          {sortByName(productions, (p) => p.title).map((p) => (
             <option key={p.id} value={p.id}>
               Only for: {p.title}
             </option>

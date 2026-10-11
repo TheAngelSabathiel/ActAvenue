@@ -1,5 +1,6 @@
 "use client";
 
+import { sortByName } from "@/lib/sort";
 import { toast } from "@/lib/toast";
 import { useToastOn } from "@/lib/use-toast-on";
 
@@ -90,7 +91,7 @@ export default function AdminProductionsPage() {
             className="border border-ink/20  px-3 py-2 text-sm w-64"
           >
             <option value="">Select...</option>
-            {organizations.map((o) => (
+            {sortByName(organizations, (o) => o.name).map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
               </option>

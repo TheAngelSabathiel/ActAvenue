@@ -41,6 +41,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const db = createServiceClient();
 
+  // Crediting an audience account makes it part of Cast and Crew, so the
+  // admin can pick anyone without a listing request first.
+  const { data: person } = await db.from("profiles").select("role").eq("id", profile_id).maybeSingle();
+  if (!person) return NextResponse.json({ error: "Account not found." }, { status: 404 });
+  if (person.role === "public") {
+    await db.from("profiles").update({ role: "actor" }).eq("id", profile_id);
+  }
+
   // New credits go to the end of their list.
   let last = db
     .from("production_credits")

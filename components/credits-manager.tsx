@@ -3,6 +3,7 @@
 import { toast } from "@/lib/toast";
 
 import { useEffect, useState, useCallback } from "react";
+import { sortByName } from "@/lib/sort";
 import { CREDIT_TYPES, CREDIT_TYPE_LABEL, CREDIT_TYPE_RANK, isDanceType, type CreditSection, type CreditType } from "@/lib/credits";
 
 type Person = {
@@ -10,6 +11,8 @@ type Person = {
   display_name: string | null;
   is_public: boolean;
   is_approved: boolean;
+  role?: string;
+  email?: string | null;
 };
 
 type Credit = {
@@ -58,7 +61,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
     const [c, p, a, cat] = await Promise.all([
       get(`/api/admin/productions/${productionId}/credits`),
       get(`/api/admin/productions/${productionId}/plays`),
-      get(`/api/admin/actors`),
+      get(`/api/admin/actors?group=all`),
       get(`/api/admin/plays`),
     ]);
     setCredits(c.data.credits ?? []);
@@ -151,6 +154,10 @@ export function CreditsManager({ productionId }: { productionId: string }) {
 
   const artistic = credits.filter((c) => c.section === "artistic");
   const crew = credits.filter((c) => c.section === "production").sort((a, b) => a.sort_order - b.sort_order);
+  const personLabel = (a: Person) => a.display_name || a.email || a.id.slice(0, 8);
+  const isAudience = (a: Person) => a.role !== undefined && !["actor", "admin", "organizer"].includes(a.role);
+  const members = people.filter((a) => !isAudience(a));
+  const audience = people.filter(isAudience);
   const unlisted = (p: Person) => !p.is_public || !p.is_approved;
 
   const row = (c: Credit, key: string) => {
@@ -196,7 +203,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
         <form onSubmit={addPlay} className="flex flex-wrap gap-2">
           <select value={pick} onChange={(e) => setPick(e.target.value)} className={`${field} w-56`}>
             <option value="">Pick from Act Avenue plays...</option>
-            {catalog.filter((c) => !plays.some((p) => p.id === c.id)).map((c) => (
+            {sortByName(catalog.filter((c) => !plays.some((p) => p.id === c.id)), (c) => c.title).map((c) => (
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
           </select>
@@ -217,11 +224,18 @@ export function CreditsManager({ productionId }: { productionId: string }) {
           <label className="block text-xs font-bold uppercase text-muted mb-1">Person</label>
           <select value={personId} onChange={(e) => setPersonId(e.target.value)} required className={`${field} w-56`}>
             <option value="">Select person...</option>
-            {people.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.display_name ?? a.id.slice(0, 8)}{unlisted(a) ? " (not public)" : ""}
-              </option>
-            ))}
+            <optgroup label="Cast and Crew">
+              {sortByName(members, personLabel).map((a) => (
+                <option key={a.id} value={a.id}>{personLabel(a)}{unlisted(a) ? " (not public)" : ""}</option>
+              ))}
+            </optgroup>
+            {audience.length > 0 && (
+              <optgroup label="Audience accounts (added to Cast and Crew when credited)">
+                {sortByName(audience, personLabel).map((a) => (
+                  <option key={a.id} value={a.id}>{personLabel(a)}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
         <div>
@@ -246,7 +260,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
               <label className="block text-xs font-bold uppercase text-muted mb-1">Play</label>
               <select value={playId} onChange={(e) => setPlayId(e.target.value)} className={field}>
                 <option value="">No specific play</option>
-                {plays.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+                {sortByName(plays, (p) => p.title).map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
               </select>
             </div>
             )}
@@ -370,7 +384,7 @@ function CreditRow({
           {!isDanceType(type) && (
             <select value={playId} onChange={(e) => setPlayId(e.target.value)} className={field}>
               <option value="">No specific play</option>
-              {plays.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              {sortByName(plays, (p) => p.title).map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
             </select>
           )}
         </>

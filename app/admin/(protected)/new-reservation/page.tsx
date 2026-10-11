@@ -1,5 +1,6 @@
 "use client";
 
+import { sortByName } from "@/lib/sort";
 import { toast } from "@/lib/toast";
 
 import { useEffect, useState } from "react";
@@ -92,7 +93,7 @@ export default function NewReservationPage() {
           className="w-full border border-ink/20  px-3 py-2"
         >
           <option value="">Select production...</option>
-          {productions.map((p) => (
+          {sortByName(productions, (p) => p.title).map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
             </option>

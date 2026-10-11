@@ -7,7 +7,7 @@ const NAV = [
   { href: "/admin/organizations", label: "Organizations" },
   { href: "/admin/productions", label: "Productions" },
   { href: "/admin/plays", label: "Plays" },
-  { href: "/admin/actors", label: "Actors" },
+  { href: "/admin/actors", label: "Cast and Crew" },
   { href: "/admin/promo-codes", label: "Promo codes" },
   { href: "/admin/sales", label: "Sales" },
   { href: "/admin/new-reservation", label: "New reservation" },
