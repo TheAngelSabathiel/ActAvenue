@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { toast } from "@/lib/toast";
 import { validateImageFile } from "@/lib/upload";
+import { TitleTile } from "@/components/play-cover";
 
 /** A picture change waiting for "Save changes": a newly chosen file, or a removal. */
 export type ImageDraft = { file: File | null; removed: boolean };
@@ -20,13 +21,15 @@ type Props = {
   onChange: (draft: ImageDraft) => void;
   /** Hide the Remove button when the server has no way to clear this image. */
   allowRemove?: boolean;
+  /** When there is no picture, show this text on a tile instead of the fallback image. */
+  fallbackText?: string;
 };
 
 /**
  * Image picker that only stages the change. Nothing is uploaded until the
  * parent form's "Save changes" runs, so there is no request per click.
  */
-export function StagedImage({ label, hint, url, fallback, aspect, draft, onChange, allowRemove = true }: Props) {
+export function StagedImage({ label, hint, url, fallback, aspect, draft, onChange, allowRemove = true, fallbackText }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const preview = useMemo(() => (draft.file ? URL.createObjectURL(draft.file) : null), [draft.file]);
   useEffect(() => () => {
@@ -46,6 +49,9 @@ export function StagedImage({ label, hint, url, fallback, aspect, draft, onChang
     <div>
       <p className="aa-label mb-1">{label}</p>
       <div className={`relative w-full ${aspect} bg-soft border border-[#dee2e6] overflow-hidden`}>
+        {!shown && fallbackText ? (
+          <TitleTile title={fallbackText} />
+        ) : (
         <Image
           key={shown ?? "fallback"}
           src={shown ?? fallback}
@@ -55,6 +61,7 @@ export function StagedImage({ label, hint, url, fallback, aspect, draft, onChang
           sizes="400px"
           className={`object-cover ${shown ? "" : "opacity-50"}`}
         />
+        )}
       </div>
       <p className="text-xs text-muted mt-1 mb-2">
         {draft.file

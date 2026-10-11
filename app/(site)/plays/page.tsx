@@ -1,7 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
+import { PlayCover } from "@/components/play-cover";
 import { listPlays } from "@/lib/data/plays";
-import { IMAGES } from "@/lib/images";
 
 export const metadata = { title: "Plays" };
 
@@ -23,13 +22,7 @@ export default async function PlaysPage() {
         {plays.map((play) => (
           <Link key={play.id} href={`/plays/${play.id}`} className="aa-card aa-lift overflow-hidden flex flex-col">
             <div className="relative aspect-[4/3] bg-black/5">
-              <Image
-                src={play.photo_url ?? IMAGES.posterPlaceholder}
-                alt=""
-                fill
-                sizes="(min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
-                className="object-cover"
-              />
+              <PlayCover title={play.title} photoUrl={play.photo_url} sizes="(min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw" />
             </div>
             <div className="p-5">
               <p className="font-black text-lg mb-0">{play.title}</p>

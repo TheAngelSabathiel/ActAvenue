@@ -130,6 +130,7 @@ function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => voi
             label="Display photo"
             url={play.photo_url}
             fallback={IMAGES.posterPlaceholder}
+            fallbackText={title || play.title}
             aspect="aspect-[4/3]"
             draft={photo}
             onChange={setPhoto}
