@@ -91,6 +91,25 @@ export default function AdminReservationsPage() {
     }
   }
 
+  async function remove(r: Row) {
+    const warning =
+      r.payment_status === "confirmed"
+        ? "This booking is CONFIRMED and its QR will stop working. "
+        : "";
+    if (!confirm(`${warning}Permanently delete ${r.reference_code} (${r.buyer_name})? This cannot be undone.`)) return;
+    setBusyId(r.id);
+    const res = await fetch(`/api/admin/reservations/${r.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    setBusyId(null);
+    if (!res.ok) {
+      toast.error(data.error ?? "Could not delete.");
+      return;
+    }
+    toast.success(`Reservation ${r.reference_code} deleted.`);
+    if (rows.length === 1 && page > 1) setPage((p) => p - 1);
+    else load();
+  }
+
   async function actOrder(r: Row, action: "approve" | "reject" | "reopen") {
     if (!r.order_code) return;
     const reason = action === "reject" ? window.prompt("Rejection reason (optional):") ?? undefined : undefined;
@@ -229,6 +248,13 @@ export default function AdminReservationsPage() {
                     className="px-3 py-1.5  border border-ink/20 text-xs font-bold uppercase disabled:opacity-50"
                   >
                     Resend email
+                  </button>
+                  <button
+                    disabled={busyId === r.id}
+                    onClick={() => remove(r)}
+                    className="px-3 py-1.5 border border-danger text-danger text-xs font-bold uppercase disabled:opacity-50"
+                  >
+                    Delete
                   </button>
                 </div>
               </div>
