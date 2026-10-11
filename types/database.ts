@@ -44,7 +44,7 @@ export interface ProductionCredit {
   production_id: string;
   role_played: string;
   section: "artistic" | "production";
-  credit_type: "writer" | "director" | "actor" | null;
+  credit_type: "writer" | "director" | "actor" | "choreographer" | "dancer" | null;
   play_id: string | null;
   sort_order: number;
   is_discredited: boolean;

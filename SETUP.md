@@ -124,7 +124,7 @@ Cast & Crew shows only approved, public actor profiles, so it starts empty.
 
 Then in Admin > Productions > edit, use Cast & crew to:
 - Pick the plays this production stages from the catalog (or add a new one), and reorder them.
-- Add artistic credits (Writer, Director, Actor) per play. The page lists Writer and Director under each play, then the actors.
+- Add artistic credits (Writer, Director, Actor) per play. Run `supabase/migration-dancers.sql` once to also use Choreographer and Dancer. Those show in a Dancers group after all plays. The page lists Writer and Director under each play, then the actors.
 - Add Production & Crew credits and reorder them with the arrows. Top shows first.
 - Edit the involvement text, or Discredit a credit to hide it without deleting.
 A person can hold several credits, in both sections.

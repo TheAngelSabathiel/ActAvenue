@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { CREDIT_TYPE_LABEL, type CreditSection, type CreditType } from "@/lib/credits";
+import { CREDIT_TYPES, CREDIT_TYPE_LABEL, CREDIT_TYPE_RANK, isDanceType, type CreditSection, type CreditType } from "@/lib/credits";
 
 type Person = {
   id: string;
@@ -121,7 +121,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
       profile_id: personId,
       section,
       credit_type: section === "artistic" ? type : null,
-      play_id: section === "artistic" && playId ? playId : null,
+      play_id: section === "artistic" && playId && !isDanceType(type) ? playId : null,
       role_played: role,
     });
     setBusy(false);
@@ -172,10 +172,11 @@ export function CreditsManager({ productionId }: { productionId: string }) {
               onChange={(e) => send(`/api/admin/credits/${c.id}`, "PATCH", { credit_type: e.target.value })}
               className={field}
             >
-              {(Object.keys(CREDIT_TYPE_LABEL) as CreditType[]).map((t) => (
+              {CREDIT_TYPES.map((t) => (
                 <option key={t} value={t}>{CREDIT_TYPE_LABEL[t]}</option>
               ))}
             </select>
+            {!isDanceType(c.credit_type) && (
             <select
               value={c.play_id ?? ""}
               onChange={(e) => send(`/api/admin/credits/${c.id}`, "PATCH", { play_id: e.target.value || null })}
@@ -184,6 +185,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
               <option value="">No specific play</option>
               {plays.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
             </select>
+            )}
           </>
         )}
         <input
@@ -210,10 +212,10 @@ export function CreditsManager({ productionId }: { productionId: string }) {
   }
 
   const groups: { key: string; title: string; items: Credit[] }[] = [
-    { key: "none", title: "No specific play", items: artistic.filter((c) => !c.play_id) },
-    ...plays.map((p) => ({ key: p.id, title: p.title, items: artistic.filter((c) => c.play_id === p.id) })),
+    { key: "none", title: "No specific play", items: artistic.filter((c) => !c.play_id && !isDanceType(c.credit_type)) },
+    ...plays.map((p) => ({ key: p.id, title: p.title, items: artistic.filter((c) => c.play_id === p.id && !isDanceType(c.credit_type)) })),
+    { key: "dancers", title: "Dancers", items: artistic.filter((c) => isDanceType(c.credit_type)) },
   ];
-  const rank = { writer: 0, director: 1, actor: 2 } as const;
 
   return (
     <section className="space-y-6">
@@ -276,11 +278,12 @@ export function CreditsManager({ productionId }: { productionId: string }) {
             <div>
               <label className="block text-xs font-bold uppercase text-muted mb-1">Type</label>
               <select value={type} onChange={(e) => setType(e.target.value as CreditType)} className={field}>
-                {(Object.keys(CREDIT_TYPE_LABEL) as CreditType[]).map((t) => (
+                {CREDIT_TYPES.map((t) => (
                   <option key={t} value={t}>{CREDIT_TYPE_LABEL[t]}</option>
                 ))}
               </select>
             </div>
+            {!isDanceType(type) && (
             <div>
               <label className="block text-xs font-bold uppercase text-muted mb-1">Play</label>
               <select value={playId} onChange={(e) => setPlayId(e.target.value)} className={field}>
@@ -288,6 +291,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
                 {plays.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
               </select>
             </div>
+            )}
           </>
         )}
         <div>
@@ -309,7 +313,7 @@ export function CreditsManager({ productionId }: { productionId: string }) {
             <div key={g.key} className="space-y-2">
               <p className="text-xs font-bold uppercase text-muted">{g.title}</p>
               {[...g.items]
-                .sort((a, b) => rank[a.credit_type ?? "actor"] - rank[b.credit_type ?? "actor"] || a.sort_order - b.sort_order)
+                .sort((a, b) => CREDIT_TYPE_RANK[a.credit_type ?? "actor"] - CREDIT_TYPE_RANK[b.credit_type ?? "actor"] || a.sort_order - b.sort_order)
                 .map((c) => <Row key={c.id + c.role_played + c.credit_type + c.play_id + c.is_discredited} c={c} />)}
             </div>
           ),

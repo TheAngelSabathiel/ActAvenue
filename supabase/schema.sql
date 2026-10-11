@@ -240,7 +240,7 @@ create table production_plays (
 );
 create index production_plays_play_idx on production_plays (play_id);
 
--- section: 'artistic' (writers, directors, actors, grouped by play) or
+-- section: 'artistic' (writers, directors, actors grouped by play; choreographers and dancers in their own group) or
 -- 'production' (production and crew, ordered by sort_order).
 -- is_discredited hides a credit publicly without deleting it.
 create table production_credits (
@@ -249,7 +249,7 @@ create table production_credits (
   production_id uuid not null references productions (id) on delete cascade,
   role_played text not null,
   section text not null default 'production' check (section in ('artistic', 'production')),
-  credit_type text check (credit_type in ('writer', 'director', 'actor')),
+  credit_type text check (credit_type in ('writer', 'director', 'actor', 'choreographer', 'dancer')),
   play_id uuid references plays (id) on delete set null,
   sort_order int not null default 0,
   is_discredited boolean not null default false,

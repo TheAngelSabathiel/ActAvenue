@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
+import { CREDIT_TYPES, isDanceType } from "@/lib/credits";
 
 /** Edit a credit: role text, play, type, or discredit/restore. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,7 +15,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof body.role_played === "string" && body.role_played.trim()) update.role_played = body.role_played.trim();
   if (typeof body.is_discredited === "boolean") update.is_discredited = body.is_discredited;
   if ("play_id" in body) update.play_id = body.play_id || null;
-  if (["writer", "director", "actor"].includes(body.credit_type)) update.credit_type = body.credit_type;
+  if (CREDIT_TYPES.includes(body.credit_type)) {
+    update.credit_type = body.credit_type;
+    // Dance credits are not tied to a play.
+    if (isDanceType(body.credit_type)) update.play_id = null;
+  }
   if (typeof body.sort_order === "number") update.sort_order = body.sort_order;
 
   if (Object.keys(update).length === 0) {

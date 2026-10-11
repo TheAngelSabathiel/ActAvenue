@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
-import { defaultRole, type CreditSection, type CreditType } from "@/lib/credits";
+import { CREDIT_TYPES, defaultRole, isDanceType, type CreditSection, type CreditType } from "@/lib/credits";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireStaff();
@@ -28,15 +28,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const profile_id: string | undefined = body.profile_id;
   const section: CreditSection = body.section === "artistic" ? "artistic" : "production";
   const credit_type: CreditType | null =
-    section === "artistic" && ["writer", "director", "actor"].includes(body.credit_type) ? body.credit_type : null;
-  const play_id: string | null = section === "artistic" && body.play_id ? body.play_id : null;
+    section === "artistic" && CREDIT_TYPES.includes(body.credit_type) ? body.credit_type : null;
+  const play_id: string | null = section === "artistic" && body.play_id && !isDanceType(credit_type) ? body.play_id : null;
   const role_played: string = String(body.role_played ?? "").trim() || defaultRole(credit_type);
 
   if (!profile_id || !role_played) {
     return NextResponse.json({ error: "Choose a person and enter their role." }, { status: 400 });
   }
   if (section === "artistic" && !credit_type) {
-    return NextResponse.json({ error: "Choose Actor, Writer or Director." }, { status: 400 });
+    return NextResponse.json({ error: "Choose a credit type." }, { status: 400 });
   }
 
   const db = createServiceClient();

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ProductionCreditWithActor, PublicPlay } from "@/lib/data/productions";
-import { CREDIT_TYPE_RANK } from "@/lib/credits";
+import { CREDIT_TYPE_RANK, isDanceType } from "@/lib/credits";
 import { IMAGES } from "@/lib/images";
 
 function PersonCard({ credit, sub }: { credit: ProductionCreditWithActor; sub: string }) {
@@ -46,7 +46,8 @@ export function CreditsDisplay({
   plays: PublicPlay[];
   credits: ProductionCreditWithActor[];
 }) {
-  const artistic = credits.filter((c) => c.section === "artistic");
+  const artistic = credits.filter((c) => c.section === "artistic" && !isDanceType(c.credit_type));
+  const dance = credits.filter((c) => c.section === "artistic" && isDanceType(c.credit_type));
   const crew = credits.filter((c) => c.section === "production");
 
   // One group per play, in the admin's order. Credits not assigned to a
@@ -56,9 +57,12 @@ export function CreditsDisplay({
     ...plays.map((p) => ({ id: p.id, title: p.title as string | null, items: artistic.filter((c) => c.play_id === p.id) })),
   ].filter((g) => g.items.length > 0);
 
+  const choreographers = dance.filter((c) => c.credit_type === "choreographer");
+  const dancers = dance.filter((c) => c.credit_type === "dancer");
+
   return (
     <>
-      {groups.length > 0 && (
+      {(groups.length > 0 || dance.length > 0) && (
         <section>
           <h2 className="text-2xl mb-2">Artistic Team</h2>
           <hr className="aa-divider" />
@@ -88,6 +92,19 @@ export function CreditsDisplay({
                 </div>
               );
             })}
+            {dance.length > 0 && (
+              <div>
+                <h3 className="text-xl mb-3">Dancers</h3>
+                <NameList label="Choreographer" credits={choreographers} />
+                {dancers.length > 0 && (
+                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 mt-4">
+                    {dancers.map((c) => (
+                      <PersonCard key={c.id} credit={c} sub={c.role_played} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
       )}

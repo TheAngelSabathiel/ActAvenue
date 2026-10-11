@@ -6,7 +6,7 @@ export interface ProductionCreditWithActor {
   id: string;
   role_played: string;
   section: "artistic" | "production";
-  credit_type: "writer" | "director" | "actor" | null;
+  credit_type: "writer" | "director" | "actor" | "choreographer" | "dancer" | null;
   play_id: string | null;
   sort_order: number;
   profile: { id: string; display_name: string | null; photo_url: string | null };
