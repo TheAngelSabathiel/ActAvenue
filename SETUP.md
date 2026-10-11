@@ -131,7 +131,7 @@ A person can hold several credits, in both sections.
 
 **Multi-show checkout.** Run `supabase/migration-orders.sql` once. A cart can now hold tickets for different shows and tiers. Checkout makes one booking per show (own QR), sharing one payment proof and an order code. Admin > Reservations has Approve order, Reject order and Reopen order for bookings from the same payment.
 
-**Payment instructions.** Edit your GCash number, account name and bank details in `lib/payment.ts`. Replace `public/images/payment-gcash-qr.png` and `public/images/payment-bank-qr.png` with your real QR codes (same file names, square).
+**Payment instructions.** Run `supabase/migration-payment-details.sql` once. Then set the GCash and bank details and QR images per production in Admin > Productions > edit > Payment details. Anything left blank uses the defaults in `lib/payment.ts`. If a cart holds shows with different accounts, checkout lists each account with its own amount. Replace `public/images/payment-gcash-qr.png` and `public/images/payment-bank-qr.png` with your real QR codes (same file names, square).
 
 All times are shown and entered in Philippine time (Asia/Manila).
 

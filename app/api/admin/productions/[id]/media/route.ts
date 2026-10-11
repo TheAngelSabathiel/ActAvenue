@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
 
-// POST /api/admin/productions/[id]/media  (form field "file", "kind" = "poster" | "banner")
+const KINDS = {
+  poster: { column: "poster_url", folder: "posters" },
+  banner: { column: "banner_url", folder: "banners" },
+  gcash_qr: { column: "gcash_qr_url", folder: "payment-qr" },
+  bank_qr: { column: "bank_qr_url", folder: "payment-qr" },
+} as const;
+
+// POST /api/admin/productions/[id]/media  (form field "file", "kind" = poster | banner | gcash_qr | bank_qr)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireStaff();
   if (authError) return authError;
@@ -12,8 +19,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const file = formData.get("file") as File | null;
   const kind = formData.get("kind") as string;
 
-  if (!file || !["poster", "banner"].includes(kind)) {
-    return NextResponse.json({ error: "file and kind (poster|banner) are required" }, { status: 400 });
+  if (!file || !Object.hasOwn(KINDS, kind)) {
+    return NextResponse.json({ error: "file and a valid kind are required" }, { status: 400 });
   }
 
   const db = createServiceClient();
@@ -27,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   // Timestamp in the path gives every upload a fresh URL, so replacements
   // show immediately instead of serving a cached copy of the old image.
-  const path = `${kind}s/${id}-${Date.now()}-${safeName}`;
+  const path = `${KINDS[kind as keyof typeof KINDS].folder}/${id}-${kind}-${Date.now()}-${safeName}`;
 
   const { error: uploadError } = await db.storage
     .from("production-media")
@@ -38,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const { data: urlData } = db.storage.from("production-media").getPublicUrl(path);
-  const column = kind === "poster" ? "poster_url" : "banner_url";
+  const column = KINDS[kind as keyof typeof KINDS].column;
 
   const { data, error } = await db
     .from("productions")
@@ -60,12 +67,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const { id } = await params;
   const kind = req.nextUrl.searchParams.get("kind");
-  if (!kind || !["poster", "banner"].includes(kind)) {
-    return NextResponse.json({ error: "kind (poster|banner) is required" }, { status: 400 });
+  if (!kind || !Object.hasOwn(KINDS, kind)) {
+    return NextResponse.json({ error: "A valid kind is required" }, { status: 400 });
   }
 
   const db = createServiceClient();
-  const column = kind === "poster" ? "poster_url" : "banner_url";
+  const column = KINDS[kind as keyof typeof KINDS].column;
   const { data, error } = await db.from("productions").update({ [column]: null }).eq("id", id).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

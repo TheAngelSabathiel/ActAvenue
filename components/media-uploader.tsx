@@ -11,7 +11,7 @@ const MAX_MB = 5;
 
 type Props = {
   productionId: string;
-  kind: "poster" | "banner";
+  kind: "poster" | "banner" | "gcash_qr" | "bank_qr";
   label: string;
   hint: string;
   url: string | null;
@@ -52,7 +52,7 @@ export function MediaUploader({ productionId, kind, label, hint, url, fallback, 
   }
 
   async function remove() {
-    if (!confirm(`Remove the ${kind}? The site will show the default placeholder.`)) return;
+    if (!confirm(`Remove ${label}? The site will show the default instead.`)) return;
     setError(null);
     setBusy(true);
     try {

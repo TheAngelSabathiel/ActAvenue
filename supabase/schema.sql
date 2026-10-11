@@ -47,6 +47,14 @@ create table productions (
   description text,
   poster_url text,
   banner_url text,
+  -- Payment details shown at checkout. Blank falls back to lib/payment.ts defaults.
+  gcash_name text,
+  gcash_number text,
+  gcash_qr_url text,
+  bank_name text,
+  bank_account_name text,
+  bank_account_number text,
+  bank_qr_url text,
   status text not null default 'draft' check (status in ('draft', 'published', 'closed')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

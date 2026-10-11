@@ -1,8 +1,40 @@
 import Image from "next/image";
-import { IMAGES } from "@/lib/images";
-import { PAYMENT } from "@/lib/payment";
+import { resolvePayment, type PaymentGroup } from "@/lib/payment";
 
-export function PaymentInstructions({ total }: { total: number }) {
+function Accounts({ group }: { group: PaymentGroup }) {
+  const { gcash, bank } = group.details;
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <div className="space-y-2">
+        <p className="aa-label mb-0">GCash</p>
+        <Image src={gcash.qr} alt="GCash QR code" width={600} height={600} unoptimized className="w-full max-w-[240px] border-2 border-black" />
+        <p className="mb-0">
+          {gcash.name}
+          <br />
+          <span className="font-bold tabular-nums">{gcash.number}</span>
+        </p>
+      </div>
+      <div className="space-y-2">
+        <p className="aa-label mb-0">Bank transfer</p>
+        <Image src={bank.qr} alt="Bank transfer QR code" width={600} height={600} unoptimized className="w-full max-w-[240px] border-2 border-black" />
+        <p className="mb-0">
+          {bank.bankName}
+          <br />
+          {bank.accountName}
+          <br />
+          <span className="font-bold tabular-nums">{bank.accountNumber}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function PaymentInstructions({ total, payments }: { total: number; payments?: PaymentGroup[] }) {
+  const groups: PaymentGroup[] = payments?.length
+    ? payments
+    : [{ titles: [], total, details: resolvePayment(null) }];
+  const split = groups.length > 1;
+
   return (
     <details open className="aa-card group">
       <summary className="flex items-center justify-between cursor-pointer select-none p-5 font-black uppercase tracking-[0.08em]">
@@ -13,35 +45,24 @@ export function PaymentInstructions({ total }: { total: number }) {
       <div className="px-5 pb-5 space-y-5 text-sm">
         <ol className="list-decimal pl-5 space-y-1 mb-0">
           <li>
-            Pay the exact total: <span className="font-black">₱{total.toFixed(2)}</span>
+            {split ? "Pay each amount below to its own account. Total: " : "Pay the exact total: "}
+            <span className="font-black">₱{total.toFixed(2)}</span>
           </li>
-          <li>Pay by GCash or bank transfer. Scan a QR below or use the account details.</li>
-          <li>Screenshot the receipt or confirmation screen.</li>
-          <li>Upload that screenshot in the Payment proof field below.</li>
+          <li>Pay by GCash or bank transfer. Scan a QR or use the account details.</li>
+          <li>Screenshot the receipt or confirmation screen.{split && " Put all your receipts in one screenshot or PDF."}</li>
+          <li>Upload that file in the Payment proof field below.</li>
         </ol>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="space-y-2">
-            <p className="aa-label mb-0">GCash</p>
-            <Image src={IMAGES.paymentGcash} alt="GCash QR code" width={600} height={600} className="w-full max-w-[240px] border-2 border-black" />
-            <p className="mb-0">
-              {PAYMENT.gcash.name}
-              <br />
-              <span className="font-bold tabular-nums">{PAYMENT.gcash.number}</span>
-            </p>
+        {groups.map((g, i) => (
+          <div key={i} className="space-y-3">
+            {split && (
+              <p className="font-black mb-0">
+                {g.titles.join(", ") || "Your shows"}: ₱{g.total.toFixed(2)}
+              </p>
+            )}
+            <Accounts group={g} />
           </div>
-          <div className="space-y-2">
-            <p className="aa-label mb-0">Bank transfer</p>
-            <Image src={IMAGES.paymentBank} alt="Bank transfer QR code" width={600} height={600} className="w-full max-w-[240px] border-2 border-black" />
-            <p className="mb-0">
-              {PAYMENT.bank.bankName}
-              <br />
-              {PAYMENT.bank.accountName}
-              <br />
-              <span className="font-bold tabular-nums">{PAYMENT.bank.accountNumber}</span>
-            </p>
-          </div>
-        </div>
+        ))}
 
         <div className="border-t-2 border-black pt-4 space-y-2">
           <p className="font-bold mb-0">Your proof must show</p>

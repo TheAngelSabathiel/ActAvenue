@@ -21,9 +21,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
   const allowed = ["title", "description", "poster_url", "banner_url", "status"] as const;
+  const paymentFields = [
+    "gcash_name", "gcash_number", "bank_name", "bank_account_name", "bank_account_number",
+  ] as const;
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
+  }
+  // Blank payment fields clear back to the site default.
+  for (const key of paymentFields) {
+    if (key in body) update[key] = typeof body[key] === "string" && body[key].trim() ? body[key].trim() : null;
   }
 
   const db = createServiceClient();

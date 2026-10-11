@@ -66,7 +66,7 @@ export function SiteHeader() {
           {email ? (
             <>
               <Link href="/account" className="aa-nav-link" onClick={close}>My Tickets</Link>
-              <Link href="/account/settings" className="aa-nav-link" onClick={close}>Settings</Link>
+              <Link href="/account/settings" className="aa-nav-link" onClick={close}>My Profile</Link>
               <button onClick={handleSignOut} className="aa-nav-link text-left">Sign Out</button>
             </>
           ) : (

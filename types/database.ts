@@ -68,6 +68,13 @@ export interface Production {
   description: string | null;
   poster_url: string | null;
   banner_url: string | null;
+  gcash_name: string | null;
+  gcash_number: string | null;
+  gcash_qr_url: string | null;
+  bank_name: string | null;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
+  bank_qr_url: string | null;
   status: ProductionStatus;
   created_at: string;
   updated_at: string;

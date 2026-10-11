@@ -17,6 +17,13 @@ type Production = {
   description: string | null;
   poster_url: string | null;
   banner_url: string | null;
+  gcash_name: string | null;
+  gcash_number: string | null;
+  gcash_qr_url: string | null;
+  bank_name: string | null;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
+  bank_qr_url: string | null;
   status: "draft" | "published" | "closed";
   slug: string;
 };
@@ -240,6 +247,77 @@ export default function ProductionEditorPage() {
             <option value="published">Published</option>
             <option value="closed">Closed</option>
           </select>
+        </div>
+      </section>
+
+      {/* ---- Payment details ---- */}
+      <section className="aa-card p-6 space-y-5">
+        <div>
+          <h2 className="font-extrabold text-xl">Payment details</h2>
+          <p className="text-sm text-muted mb-0">
+            Shown to buyers at checkout. Leave a field or image empty to use the site default.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <p className="aa-label mb-0">GCash</p>
+            {(
+              [
+                ["gcash_name", "Account name"],
+                ["gcash_number", "GCash number"],
+              ] as const
+            ).map(([field, label]) => (
+              <div key={field}>
+                <label className="block text-xs font-bold uppercase text-muted mb-1">{label}</label>
+                <input
+                  defaultValue={production[field] ?? ""}
+                  onBlur={(e) => e.target.value !== (production[field] ?? "") && saveField(field, e.target.value)}
+                  className="w-full border border-ink/20 px-3 py-2 text-sm"
+                />
+              </div>
+            ))}
+            <MediaUploader
+              productionId={id}
+              kind="gcash_qr"
+              label="GCash QR"
+              hint="Square image, 600x600 recommended."
+              url={production.gcash_qr_url}
+              fallback={IMAGES.paymentGcash}
+              aspect="aspect-square"
+              onChange={(p) => setProduction(p as Production)}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <p className="aa-label mb-0">Bank transfer</p>
+            {(
+              [
+                ["bank_name", "Bank name"],
+                ["bank_account_name", "Account name"],
+                ["bank_account_number", "Account number"],
+              ] as const
+            ).map(([field, label]) => (
+              <div key={field}>
+                <label className="block text-xs font-bold uppercase text-muted mb-1">{label}</label>
+                <input
+                  defaultValue={production[field] ?? ""}
+                  onBlur={(e) => e.target.value !== (production[field] ?? "") && saveField(field, e.target.value)}
+                  className="w-full border border-ink/20 px-3 py-2 text-sm"
+                />
+              </div>
+            ))}
+            <MediaUploader
+              productionId={id}
+              kind="bank_qr"
+              label="Bank QR"
+              hint="Square image, 600x600 recommended."
+              url={production.bank_qr_url}
+              fallback={IMAGES.paymentBank}
+              aspect="aspect-square"
+              onChange={(p) => setProduction(p as Production)}
+            />
+          </div>
         </div>
       </section>
 

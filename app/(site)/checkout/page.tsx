@@ -9,6 +9,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useCart } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
 import { PaymentInstructions } from "@/components/payment-instructions";
+import type { PaymentGroup } from "@/lib/payment";
 
 // useSearchParams() requires a Suspense boundary in the App Router - without
 // it, `next build` fails prerendering this route entirely (not just a
@@ -40,14 +41,14 @@ function CheckoutForm() {
   useToastOn(error, "error");
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>("");
-  const [quote, setQuote] = useState<{ discount: number; total: number } | null>(null);
+  const [quote, setQuote] = useState<{ discount: number; total: number; payments: PaymentGroup[] } | null>(null);
   const promoParam = searchParams.get("promo") ?? "";
 
   // What the buyer actually owes (promo applied), from the same pricing as checkout.
   useEffect(() => {
     fetch(`/api/cart/quote?promo=${encodeURIComponent(promoParam)}`)
       .then((r) => r.json())
-      .then((q) => setQuote({ discount: q.discount ?? 0, total: q.total ?? 0 }))
+      .then((q) => setQuote({ discount: q.discount ?? 0, total: q.total ?? 0, payments: q.payments ?? [] }))
       .catch(() => setQuote(null));
   }, [promoParam, items.length, listTotal]);
   const discount = quote?.discount ?? 0;
@@ -161,7 +162,7 @@ function CheckoutForm() {
           <label className={label}>Phone</label>
           <input name="buyer_phone" className="aa-input" />
         </div>
-        <PaymentInstructions total={total} />
+        <PaymentInstructions total={total} payments={quote?.payments} />
         <div>
           <label className={label}>Payment proof</label>
           <input type="file" name="payment_proof" accept="image/*,application/pdf" required className="aa-input" />
