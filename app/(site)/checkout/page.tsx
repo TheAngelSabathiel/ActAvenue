@@ -1,5 +1,7 @@
 "use client";
 
+import { FilePicker } from "@/components/file-picker";
+
 import { toast } from "@/lib/toast";
 import { useToastOn } from "@/lib/use-toast-on";
 
@@ -165,7 +167,7 @@ function CheckoutForm() {
         <PaymentInstructions total={total} payments={quote?.payments} />
         <div>
           <label className={label}>Payment proof</label>
-          <input type="file" name="payment_proof" accept="image/*,application/pdf" required className="aa-input" />
+          <FilePicker name="payment_proof" accept="image/*,application/pdf" required label="Choose file" />
           <p className="text-xs text-muted mt-1 mb-0">
             Screenshot of your GCash or bank transfer receipt. We review it, then email you either way.
           </p>

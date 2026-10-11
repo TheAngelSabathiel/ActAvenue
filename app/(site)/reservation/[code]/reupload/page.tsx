@@ -1,5 +1,7 @@
 "use client";
 
+import { FilePicker } from "@/components/file-picker";
+
 import { toast } from "@/lib/toast";
 import { useToastOn } from "@/lib/use-toast-on";
 
@@ -43,7 +45,7 @@ export default function ReuploadPage() {
           Reference code <span className="font-bold">{params.code}</span>. Upload a clearer copy of your payment proof. This reopens your booking for review.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
-          <input type="file" name="payment_proof" accept="image/*,application/pdf" required className="aa-input" />
+          <FilePicker name="payment_proof" accept="image/*,application/pdf" required label="Choose file" />
           {error && <p className="text-sm text-danger font-bold mb-0">{error}</p>}
           <button type="submit" disabled={submitting} className="aa-btn aa-btn-lg w-full">
             {submitting ? "Uploading..." : "Submit for Review"}

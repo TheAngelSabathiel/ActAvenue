@@ -22,23 +22,6 @@ function PersonCard({ credit, sub }: { credit: ProductionCreditWithActor; sub: s
   );
 }
 
-function NameList({ label, credits }: { label: string; credits: ProductionCreditWithActor[] }) {
-  if (credits.length === 0) return null;
-  return (
-    <p className="mb-2">
-      <span className="aa-label text-muted mr-3">{credits.length > 1 ? `${label}s` : label}</span>
-      {credits.map((c, i) => (
-        <span key={c.id}>
-          {i > 0 && ", "}
-          <Link href={`/actors/${c.profile.id}`} className="font-bold underline">
-            {c.profile.display_name ?? "Cast member"}
-          </Link>
-        </span>
-      ))}
-    </p>
-  );
-}
-
 export function CreditsDisplay({
   plays,
   credits,
@@ -80,29 +63,22 @@ export function CreditsDisplay({
                       {g.id !== "none" ? <Link href={`/plays/${g.id}`} className="hover:underline">{g.title}</Link> : g.title}
                     </h3>
                   )}
-                  <NameList label="Writer" credits={ofType("writer")} />
-                  <NameList label="Director" credits={ofType("director")} />
-                  {cast.length > 0 && (
-                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 mt-4">
-                      {cast.map((c) => (
-                        <PersonCard key={c.id} credit={c} sub={c.role_played} />
-                      ))}
-                    </div>
-                  )}
+                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                    {[...ofType("writer"), ...ofType("director"), ...cast].map((c) => (
+                      <PersonCard key={c.id} credit={c} sub={c.role_played} />
+                    ))}
+                  </div>
                 </div>
               );
             })}
             {dance.length > 0 && (
               <div>
                 <h3 className="text-xl mb-3">Dancers</h3>
-                <NameList label="Choreographer" credits={choreographers} />
-                {dancers.length > 0 && (
-                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 mt-4">
-                    {dancers.map((c) => (
-                      <PersonCard key={c.id} credit={c} sub={c.role_played} />
-                    ))}
-                  </div>
-                )}
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                  {[...choreographers, ...dancers].map((c) => (
+                    <PersonCard key={c.id} credit={c} sub={c.role_played} />
+                  ))}
+                </div>
               </div>
             )}
           </div>
