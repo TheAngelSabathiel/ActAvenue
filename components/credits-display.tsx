@@ -5,8 +5,8 @@ import { CREDIT_TYPE_RANK, isDanceType } from "@/lib/credits";
 import { IMAGES } from "@/lib/images";
 
 function PersonCard({ credit, sub }: { credit: ProductionCreditWithActor; sub: string }) {
-  return (
-    <Link href={`/actors/${credit.profile.id}`} className="aa-card aa-lift p-4 flex items-center gap-3">
+  const body = (
+    <>
       <Image
         src={credit.profile.photo_url ?? IMAGES.headshotPlaceholder}
         alt={credit.profile.display_name ?? ""}
@@ -18,7 +18,14 @@ function PersonCard({ credit, sub }: { credit: ProductionCreditWithActor; sub: s
         <p className="font-black mb-0">{credit.profile.display_name ?? "Cast member"}</p>
         <p className="aa-label text-muted mb-0">{sub}</p>
       </div>
+    </>
+  );
+  return credit.profile.listed ? (
+    <Link href={`/actors/${credit.profile.id}`} className="aa-card aa-lift p-4 flex items-center gap-3">
+      {body}
     </Link>
+  ) : (
+    <div className="aa-card p-4 flex items-center gap-3">{body}</div>
   );
 }
 

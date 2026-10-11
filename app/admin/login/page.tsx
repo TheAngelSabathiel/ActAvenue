@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setLoading(false);
       setError(error.message);
@@ -33,16 +33,14 @@ export default function AdminLoginPage() {
     // explanation. Check role here so there's a clear message instead of a
     // confusing redirect loop, and sign them back out since a non-admin
     // session sitting on the admin login page serves no purpose.
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .single();
+    const access = await fetch("/api/account/access")
+      .then((r) => r.json())
+      .catch(() => null);
 
-    if (!profile || !["admin", "organizer"].includes(profile.role)) {
+    if (!access || (!access.isAdmin && (access.assignments ?? []).length === 0)) {
       await supabase.auth.signOut();
       setLoading(false);
-      setError("This account doesn't have admin access.");
+      setError("This account doesn't have admin or production access.");
       return;
     }
 

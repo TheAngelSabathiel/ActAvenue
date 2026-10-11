@@ -12,6 +12,7 @@ export function SiteHeader() {
   const [email, setEmail] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [staffLabel, setStaffLabel] = useState<string | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -28,6 +29,28 @@ export function SiteHeader() {
       alive = false;
     };
   }, [pathname]);
+
+  useEffect(() => {
+    if (!email) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStaffLabel(null);
+      return;
+    }
+    let alive = true;
+    fetch("/api/account/access")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        if (d.isAdmin) setStaffLabel("Admin");
+        else if ((d.assignments ?? []).some((a: { role: string }) => a.role === "manager")) setStaffLabel("Manage");
+        else if ((d.assignments ?? []).length > 0) setStaffLabel("FOH");
+        else setStaffLabel(null);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [email]);
 
   useEffect(() => {
     const onCount = (e: Event) => setCartCount((e as CustomEvent<number>).detail ?? 0);
@@ -89,6 +112,7 @@ export function SiteHeader() {
           <Link href="/#about" className="aa-nav-link" onClick={close}>About</Link>
           {email ? (
             <>
+              {staffLabel && <Link href="/admin/reservations" className="aa-nav-link" onClick={close}>{staffLabel}</Link>}
               <Link href="/account" className="aa-nav-link" onClick={close}>My Tickets</Link>
               <Link href="/account/settings" className="aa-nav-link" onClick={close}>My Profile</Link>
               <button onClick={handleSignOut} className="aa-nav-link text-left">Sign Out</button>

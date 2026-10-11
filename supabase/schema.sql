@@ -592,3 +592,19 @@ $$;
 grant execute on function hold_ticket_tier(uuid, int) to service_role;
 grant execute on function release_ticket_tier_hold(uuid, int) to service_role;
 grant execute on function increment_promo_usage(uuid) to service_role;
+
+
+-- ---------------------------------------------------------------------------
+-- Per-production access: Managers and FOH (see migration-production-staff.sql)
+-- ---------------------------------------------------------------------------
+create table if not exists production_staff (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(id) on delete cascade,
+  production_id uuid not null references productions(id) on delete cascade,
+  staff_role text not null check (staff_role in ('manager', 'foh')),
+  created_at timestamptz not null default now(),
+  unique (profile_id, production_id)
+);
+create index if not exists production_staff_profile_idx on production_staff (profile_id);
+create index if not exists production_staff_production_idx on production_staff (production_id);
+alter table production_staff enable row level security;

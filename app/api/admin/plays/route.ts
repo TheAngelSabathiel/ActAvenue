@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireAnyAccess, requireStaff } from "@/lib/admin-auth";
 
 /** The full catalog of Act Avenue plays, A to Z. */
 export async function GET() {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  const gate = await requireAnyAccess("manager");
+  if (gate.error) return gate.error;
 
   const db = createServiceClient();
   const { data, error } = await db.from("plays").select("*").order("title", { ascending: true });

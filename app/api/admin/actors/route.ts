@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MEMBER_ROLES } from "@/lib/member-roles";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireAnyAccess } from "@/lib/admin-auth";
 
 /**
  * Lists accounts for the Cast and Crew admin page and the credit picker.
@@ -11,10 +11,14 @@ import { requireStaff } from "@/lib/admin-auth";
  * (default)       every account
  */
 export async function GET(req: NextRequest) {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  // Managers get the people list for crediting, without emails or bios.
+  const gate = await requireAnyAccess("manager");
+  if (gate.error) return gate.error;
+  const isAdmin = gate.access.isAdmin;
 
-  const group = req.nextUrl.searchParams.get("group") ?? (req.nextUrl.searchParams.get("pending") === "true" ? "pending" : "all");
+  const group = !isAdmin
+    ? "all"
+    : (req.nextUrl.searchParams.get("group") ?? (req.nextUrl.searchParams.get("pending") === "true" ? "pending" : "all"));
   const db = createServiceClient();
 
   let query = db
@@ -31,9 +35,24 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Production access (Manager / FOH) per person, for the admin page.
+  const staffByProfile = new Map<string, { id: string; production_id: string; title: string; staff_role: string }[]>();
+  if (isAdmin) {
+    const { data: staffRows } = await db
+      .from("production_staff")
+      .select("id, profile_id, production_id, staff_role, production:productions(title)");
+    for (const r of staffRows ?? []) {
+      const prod = Array.isArray(r.production) ? r.production[0] : r.production;
+      const list = staffByProfile.get(r.profile_id) ?? [];
+      list.push({ id: r.id, production_id: r.production_id, title: prod?.title ?? "Production", staff_role: r.staff_role });
+      staffByProfile.set(r.profile_id, list);
+    }
+  }
+
   // Emails live in auth, not profiles. Attach them so unnamed accounts can be told apart.
   const emails = new Map<string, string>();
   try {
+    if (!isAdmin) throw new Error("skip");
     for (let page = 1; page <= 10; page++) {
       const { data: list } = await db.auth.admin.listUsers({ page, perPage: 1000 });
       const users = list?.users ?? [];
@@ -41,9 +60,14 @@ export async function GET(req: NextRequest) {
       if (users.length < 1000) break;
     }
   } catch (err) {
-    console.error("Could not load account emails:", err);
+    if (isAdmin) console.error("Could not load account emails:", err);
   }
 
-  const actors = (data ?? []).map((p) => ({ ...p, email: emails.get(p.id) ?? null }));
+  const actors = (data ?? []).map((p) => ({
+    ...p,
+    bio: isAdmin ? p.bio : null,
+    email: emails.get(p.id) ?? null,
+    staff: staffByProfile.get(p.id) ?? [],
+  }));
   return NextResponse.json({ actors });
 }

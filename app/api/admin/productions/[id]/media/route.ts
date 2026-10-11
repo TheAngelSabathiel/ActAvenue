@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
 
 const KINDS = {
   poster: { column: "poster_url", folder: "posters" },
@@ -11,10 +11,9 @@ const KINDS = {
 
 // POST /api/admin/productions/[id]/media  (form field "file", "kind" = poster | banner | gcash_qr | bank_qr)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   const kind = formData.get("kind") as string;
@@ -62,10 +61,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 // Clears the image so the site falls back to the default placeholder.
 // The old file stays in storage (no hard deletes).
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const kind = req.nextUrl.searchParams.get("kind");
   if (!kind || !Object.hasOwn(KINDS, kind)) {
     return NextResponse.json({ error: "A valid kind is required" }, { status: 400 });

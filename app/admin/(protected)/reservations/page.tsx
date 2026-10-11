@@ -4,9 +4,11 @@ import { toast } from "@/lib/toast";
 
 import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
+import { useAdminAccess } from "@/components/admin/access-context";
 
 type Row = {
   id: string;
+  production_id: string;
   reference_code: string;
   order_code: string | null;
   order_count: number;
@@ -33,6 +35,7 @@ const STATUS_STYLE: Record<string, string> = {
 const PAGE_SIZE = 20;
 
 export default function AdminReservationsPage() {
+  const { can } = useAdminAccess();
   const [rows, setRows] = useState<Row[]>([]);
   const [tab, setTab] = useState<(typeof STATUS_TABS)[number]>("pending_review");
   const [page, setPage] = useState(1);
@@ -249,13 +252,15 @@ export default function AdminReservationsPage() {
                   >
                     Resend email
                   </button>
-                  <button
-                    disabled={busyId === r.id}
-                    onClick={() => remove(r)}
-                    className="px-3 py-1.5 border border-danger text-danger text-xs font-bold uppercase disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
+                  {can(r.production_id, "manager") && (
+                    <button
+                      disabled={busyId === r.id}
+                      onClick={() => remove(r)}
+                      className="px-3 py-1.5 border border-danger text-danger text-xs font-bold uppercase disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

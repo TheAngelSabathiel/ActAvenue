@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
 
 // GET /api/checkin?q=<reference code or name>&performance_id=<id>
 export async function GET(req: NextRequest) {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  const gate = await requireAnyAccess("foh");
+  if (gate.error) return gate.error;
+  const scope = accessibleProductionIds(gate.access, "foh");
 
   const q = req.nextUrl.searchParams.get("q")?.trim();
   const performanceId = req.nextUrl.searchParams.get("performance_id");
@@ -26,6 +27,10 @@ export async function GET(req: NextRequest) {
     .select("*, reservation_items(*, ticket_tier:ticket_tiers(*))")
     .ilike("buyer_name", `%${q}%`);
 
+  if (scope) {
+    refQuery = refQuery.in("production_id", scope);
+    nameQuery = nameQuery.in("production_id", scope);
+  }
   if (performanceId) {
     refQuery = refQuery.eq("performance_id", performanceId);
     nameQuery = nameQuery.eq("performance_id", performanceId);
@@ -47,8 +52,8 @@ export async function GET(req: NextRequest) {
 
 // POST /api/checkin  { reservation_id }
 export async function POST(req: NextRequest) {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  const gate = await requireAnyAccess("foh");
+  if (gate.error) return gate.error;
 
   const { reservation_id } = await req.json();
   const db = createServiceClient();
@@ -61,6 +66,9 @@ export async function POST(req: NextRequest) {
 
   if (!reservation) {
     return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
+  }
+  if (!canAccess(gate.access, reservation.production_id, "foh")) {
+    return NextResponse.json({ error: "You don't have access to this." }, { status: 403 });
   }
   if (reservation.payment_status !== "confirmed") {
     return NextResponse.json(

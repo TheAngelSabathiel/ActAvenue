@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireAnyAccess } from "@/lib/admin-auth";
 import { POST as approve } from "@/app/api/admin/reservations/[id]/approve/route";
 import { POST as reject } from "@/app/api/admin/reservations/[id]/reject/route";
 import { POST as reopen } from "@/app/api/admin/reservations/[id]/reopen/route";
@@ -16,8 +16,10 @@ const FROM_STATUS = {
 } as const;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string; action: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  // Each booking is access-checked against its own production by the
+  // single-reservation handlers below.
+  const gate = await requireAnyAccess("foh");
+  if (gate.error) return gate.error;
 
   const { code, action } = await params;
   if (!(action in HANDLERS)) return NextResponse.json({ error: "Unknown action" }, { status: 400 });

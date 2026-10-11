@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
 import { generateQrPngBuffer } from "@/lib/qr";
 import { sendApprovedEmail, sendBookingReceivedEmail } from "@/lib/email/send";
 import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
 
 export async function POST(req: NextRequest) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const {
     performance_id,
     buyer_name,
@@ -40,6 +37,9 @@ export async function POST(req: NextRequest) {
     .eq("id", performance.production_id)
     .single();
   if (!production) return NextResponse.json({ error: "Production not found" }, { status: 404 });
+
+  const gate = await requireProduction(production.id, "foh");
+  if (gate.error) return gate.error;
 
   const tierIds = items.map((i: { ticket_tier_id: string }) => i.ticket_tier_id);
   const { data: tiers } = await db.from("ticket_tiers").select("*").in("id", tierIds);

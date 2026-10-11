@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
+import { productionOfReservation } from "@/lib/admin-scope";
 import { generateQrPngBuffer } from "@/lib/qr";
 import { sendApprovedEmail } from "@/lib/email/send";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(await productionOfReservation(id), "foh");
+  if (gate.error) return gate.error;
   const db = createServiceClient();
 
   const { data: reservation, error } = await db

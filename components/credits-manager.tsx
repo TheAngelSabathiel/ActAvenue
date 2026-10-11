@@ -371,7 +371,7 @@ function CreditRow({
           {c.is_discredited && <span className="ml-2 text-xs uppercase text-danger">Discredited</span>}
         </p>
         {unlisted && (
-          <p className="text-xs text-danger">Profile is not public and approved, so this credit is hidden on the site.</p>
+          <p className="text-xs text-danger">No public profile page. The credit still shows on the site with name and photo, without a link.</p>
         )}
       </div>
       {artistic && (

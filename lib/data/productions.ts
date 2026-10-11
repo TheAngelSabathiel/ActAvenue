@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isTierDiscountActive } from "@/lib/pricing";
 import type { ProductionWithPerformances, TicketTier } from "@/types/database";
 
@@ -9,7 +10,7 @@ export interface ProductionCreditWithActor {
   credit_type: "writer" | "director" | "actor" | "choreographer" | "dancer" | null;
   play_id: string | null;
   sort_order: number;
-  profile: { id: string; display_name: string | null; photo_url: string | null };
+  profile: { id: string; display_name: string | null; photo_url: string | null; listed: boolean };
 }
 
 export interface PublicPlay {
@@ -47,12 +48,13 @@ export async function getProductionBySlug(
     })),
   }));
 
-  // Only credits whose profile is public and approved come back (RLS on
-  // `profiles` enforces it), and discredited credits are hidden by the
-  // credits policy. Order: hierarchy set by admin, then name as tie-break.
-  const { data: creditsRaw } = await supabase
+  // Anyone an admin credits is shown, whether or not they asked for a public
+  // profile. `listed` says if they also have a public profile page to link
+  // to. Discredited credits stay hidden. Order: hierarchy set by admin, then
+  // name as tie-break.
+  const { data: creditsRaw } = await createServiceClient()
     .from("production_credits")
-    .select("id, role_played, section, credit_type, play_id, sort_order, profile:profiles(id, display_name, photo_url)")
+    .select("id, role_played, section, credit_type, play_id, sort_order, profile:profiles(id, display_name, photo_url, is_public, is_approved)")
     .eq("production_id", production.id)
     .eq("is_discredited", false);
 
@@ -64,7 +66,12 @@ export async function getProductionBySlug(
       credit_type: c.credit_type,
       play_id: c.play_id,
       sort_order: c.sort_order,
-      profile: Array.isArray(c.profile) ? (c.profile[0] ?? null) : c.profile,
+      profile: (() => {
+        const p = Array.isArray(c.profile) ? (c.profile[0] ?? null) : c.profile;
+        return p
+          ? { id: p.id, display_name: p.display_name, photo_url: p.photo_url, listed: !!(p.is_public && p.is_approved) }
+          : null;
+      })(),
     }))
     .filter((c): c is ProductionCreditWithActor => c.profile !== null)
     .sort(

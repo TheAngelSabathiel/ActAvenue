@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
+import { productionOfCredit } from "@/lib/admin-scope";
 import { CREDIT_TYPES, isDanceType } from "@/lib/credits";
 
 /** Edit a credit: role text, play, type, or discredit/restore. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(await productionOfCredit(id), "manager");
+  if (gate.error) return gate.error;
   const body = await req.json();
   const update: Record<string, unknown> = {};
 
@@ -42,10 +42,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(await productionOfCredit(id), "manager");
+  if (gate.error) return gate.error;
   const db = createServiceClient();
   const { error } = await db.from("production_credits").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

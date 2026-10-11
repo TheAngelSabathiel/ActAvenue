@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
 
 // POST { table: "credits" | "plays", ids: string[] }
 // Sets sort_order from the position in `ids` (first = shown first).
 const TABLES = { credits: "production_credits", plays: "production_plays" } as const;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const { table, ids } = await req.json();
   if (!(table in TABLES) || !Array.isArray(ids) || ids.some((x) => typeof x !== "string")) {
     return NextResponse.json({ error: "table and ids are required" }, { status: 400 });

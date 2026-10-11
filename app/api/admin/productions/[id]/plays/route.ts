@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
 
 /** Plays this production stages, in display order. */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const db = createServiceClient();
   const { data, error } = await db
     .from("production_plays")
@@ -27,10 +26,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 /** Assign a catalog play ({ play_id }) or create one on the spot ({ title }) and assign it. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const body = await req.json();
   const db = createServiceClient();
 
@@ -68,10 +66,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 /** Removes the play from this production. Its credits here become "no specific play". */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const playId = req.nextUrl.searchParams.get("play_id");
   if (!playId) return NextResponse.json({ error: "play_id is required" }, { status: 400 });
 

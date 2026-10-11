@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
 
 const DEFAULT_PAGE_SIZE = 20;
 
 export async function GET(req: NextRequest) {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  const gate = await requireAnyAccess("foh");
+  if (gate.error) return gate.error;
+  const ids = accessibleProductionIds(gate.access, "foh");
+  const productionId = req.nextUrl.searchParams.get("production_id");
+  if (productionId && !canAccess(gate.access, productionId, "foh")) {
+    return NextResponse.json({ error: "You don't have access to this." }, { status: 403 });
+  }
 
   const status = req.nextUrl.searchParams.get("status"); // optional filter
   const page = Math.max(1, Number(req.nextUrl.searchParams.get("page")) || 1);
@@ -27,6 +32,9 @@ export async function GET(req: NextRequest) {
     )
     .order("created_at", { ascending: false })
     .range(from, to);
+
+  if (productionId) query = query.eq("production_id", productionId);
+  else if (ids) query = query.in("production_id", ids);
 
   if (status && status !== "all") {
     query = query.eq("payment_status", status);

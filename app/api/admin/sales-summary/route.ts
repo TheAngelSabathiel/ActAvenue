@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manilaDayStart, manilaDayEnd, formatDate } from "@/lib/datetime";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
 
 /**
  * "Sold" = confirmed reservations only (pending/rejected/expired don't count
@@ -13,8 +13,8 @@ import { requireStaff } from "@/lib/admin-auth";
  * inclusive of the whole "to" day.
  */
 export async function GET(req: NextRequest) {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  const gate = await requireAnyAccess("foh");
+  if (gate.error) return gate.error;
 
   const productionId = req.nextUrl.searchParams.get("production_id");
   const from = req.nextUrl.searchParams.get("from");
@@ -32,7 +32,15 @@ export async function GET(req: NextRequest) {
     )
     .eq("payment_status", "confirmed");
 
-  if (productionId) query = query.eq("production_id", productionId);
+  if (productionId) {
+    if (!canAccess(gate.access, productionId, "foh")) {
+      return NextResponse.json({ error: "You don't have access to this." }, { status: 403 });
+    }
+    query = query.eq("production_id", productionId);
+  } else {
+    const ids = accessibleProductionIds(gate.access, "foh");
+    if (ids) query = query.in("production_id", ids);
+  }
   if (from) query = query.gte("created_at", manilaDayStart(from));
   if (to) {
     // Make "to" inclusive of the entire day rather than midnight-exclusive.

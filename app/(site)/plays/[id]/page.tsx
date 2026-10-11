@@ -20,11 +20,16 @@ function Names({ label, people }: { label: string; people: ShowingPerson[] }) {
       {people.map((p, i) => (
         <span key={p.id + i}>
           {i > 0 && ", "}
-          <Link href={`/actors/${p.id}`} className="font-bold underline">{p.name}</Link>
+          {p.listed ? <Link href={`/actors/${p.id}`} className="font-bold underline">{p.name}</Link> : <span className="font-bold">{p.name}</span>}
         </span>
       ))}
     </p>
   );
+}
+
+function PersonRow({ p, children }: { p: ShowingPerson; children: React.ReactNode }) {
+  const cls = "flex items-center gap-3";
+  return p.listed ? <Link href={`/actors/${p.id}`} className={cls}>{children}</Link> : <div className={cls}>{children}</div>;
 }
 
 function Showing({ s }: { s: PlayShowing }) {
@@ -53,7 +58,7 @@ function Showing({ s }: { s: PlayShowing }) {
       {s.cast.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {s.cast.map((p, i) => (
-            <Link key={p.id + i} href={`/actors/${p.id}`} className="flex items-center gap-3">
+            <PersonRow key={p.id + i} p={p}>
               <Image
                 src={p.photo_url ?? IMAGES.headshotPlaceholder}
                 alt=""
@@ -65,7 +70,7 @@ function Showing({ s }: { s: PlayShowing }) {
                 <p className="font-bold text-sm mb-0">{p.name}</p>
                 <p className="aa-label text-muted mb-0">{p.role}</p>
               </div>
-            </Link>
+            </PersonRow>
           ))}
         </div>
       )}

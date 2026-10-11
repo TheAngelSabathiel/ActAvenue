@@ -6,6 +6,7 @@ import { useToastOn } from "@/lib/use-toast-on";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAdminAccess } from "@/components/admin/access-context";
 
 type PromoCode = {
   id: string;
@@ -22,6 +23,7 @@ type Organization = { id: string; name: string };
 type Production = { id: string; title: string };
 
 export default function PromoCodesPage() {
+  const { isAdmin } = useAdminAccess();
   const [codes, setCodes] = useState<PromoCode[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [productions, setProductions] = useState<Production[]>([]);
@@ -92,7 +94,7 @@ export default function PromoCodesPage() {
         tier&apos;s own time-limited discount pricing - see the pricing rules in the MVP doc.
       </p>
 
-      {organizations.length === 0 && (
+      {isAdmin && organizations.length === 0 && (
         <p className="text-sm text-danger mb-4">
           No organizations yet -{" "}
           <Link href="/admin/organizations" className="underline">
@@ -103,6 +105,7 @@ export default function PromoCodesPage() {
       )}
 
       <form action={createCode} className="aa-card p-5 mb-8 grid sm:grid-cols-2 gap-3">
+        {isAdmin && (
         <select
           value={orgId}
           onChange={(e) => setOrgId(e.target.value)}
@@ -116,14 +119,15 @@ export default function PromoCodesPage() {
             </option>
           ))}
         </select>
+        )}
         <input name="code" placeholder="CODE" required className="border border-ink/20  px-3 py-2 text-sm uppercase" />
         <select name="discount_type" className="border border-ink/20  px-3 py-2 text-sm">
           <option value="percent">Percent off</option>
           <option value="fixed">Fixed amount off</option>
         </select>
         <input name="discount_value" type="number" step="0.01" placeholder="Value" required className="border border-ink/20  px-3 py-2 text-sm" />
-        <select name="applies_to_production_id" className="border border-ink/20  px-3 py-2 text-sm">
-          <option value="">Applies org-wide</option>
+        <select name="applies_to_production_id" required={!isAdmin} className={`border border-ink/20  px-3 py-2 text-sm ${isAdmin ? "" : "sm:col-span-2"}`}>
+          {isAdmin ? <option value="">Applies org-wide</option> : <option value="">Select production...</option>}
           {sortByName(productions, (p) => p.title).map((p) => (
             <option key={p.id} value={p.id}>
               Only for: {p.title}
@@ -133,7 +137,7 @@ export default function PromoCodesPage() {
         <input name="max_uses" type="number" placeholder="Max uses (optional)" className="border border-ink/20  px-3 py-2 text-sm" />
         <input name="valid_until" type="datetime-local" className="border border-ink/20  px-3 py-2 text-sm sm:col-span-2" />
         <button
-          disabled={creating || organizations.length === 0}
+          disabled={creating || (isAdmin ? organizations.length === 0 : productions.length === 0)}
           className="sm:col-span-2 py-2  bg-black text-paper text-sm font-bold uppercase disabled:opacity-50"
         >
           {creating ? "Creating..." : "Create code"}

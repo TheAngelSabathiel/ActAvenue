@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { accessibleProductionIds, requireAnyAccess, requireStaff } from "@/lib/admin-auth";
 
 function slugify(title: string) {
   return title
@@ -12,14 +12,18 @@ function slugify(title: string) {
 }
 
 export async function GET() {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  const gate = await requireAnyAccess("foh");
+  if (gate.error) return gate.error;
 
+  // Managers and FOH only see the productions they are assigned to.
+  const ids = accessibleProductionIds(gate.access, "foh");
   const db = createServiceClient();
-  const { data, error } = await db
+  let query = db
     .from("productions")
     .select("id, title, slug, status, poster_url, banner_url")
     .order("created_at", { ascending: false });
+  if (ids) query = query.in("id", ids);
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ productions: data });

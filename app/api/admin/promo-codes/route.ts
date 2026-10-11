@@ -1,27 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
 
 export async function GET() {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  const gate = await requireAnyAccess("manager");
+  if (gate.error) return gate.error;
 
+  // Managers only see codes tied to productions they manage.
+  const ids = accessibleProductionIds(gate.access, "manager");
   const db = createServiceClient();
-  const { data, error } = await db
+  let query = db
     .from("promo_codes")
     .select("*, production:productions(title)")
     .order("created_at", { ascending: false });
+  if (ids) query = query.in("applies_to_production_id", ids);
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ promo_codes: data });
 }
 
 export async function POST(req: NextRequest) {
-  const authError = await requireStaff();
-  if (authError) return authError;
+  const gate = await requireAnyAccess("manager");
+  if (gate.error) return gate.error;
 
   const {
-    organization_id,
+    organization_id: bodyOrgId,
     code,
     discount_type,
     discount_value,
@@ -30,6 +34,18 @@ export async function POST(req: NextRequest) {
     valid_until,
     max_uses,
   } = await req.json();
+
+  const db = createServiceClient();
+  let organization_id: string | undefined = bodyOrgId;
+  if (!gate.access.isAdmin) {
+    // Managers can only create codes for one of their own productions, and
+    // the organization comes from that production.
+    if (!applies_to_production_id || !canAccess(gate.access, applies_to_production_id, "manager")) {
+      return NextResponse.json({ error: "Pick a production you manage." }, { status: 403 });
+    }
+    const { data: prod } = await db.from("productions").select("organization_id").eq("id", applies_to_production_id).maybeSingle();
+    organization_id = prod?.organization_id;
+  }
 
   if (!organization_id || !code || !discount_type || discount_value === undefined) {
     return NextResponse.json(
@@ -41,7 +57,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "discount_type must be percent or fixed" }, { status: 400 });
   }
 
-  const db = createServiceClient();
   const { data, error } = await db
     .from("promo_codes")
     .insert({

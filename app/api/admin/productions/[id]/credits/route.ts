@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
 import { CREDIT_TYPES, defaultRole, isDanceType, type CreditSection, type CreditType } from "@/lib/credits";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const db = createServiceClient();
   const { data, error } = await db
     .from("production_credits")
@@ -20,10 +19,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const body = await req.json();
   const profile_id: string | undefined = body.profile_id;
   const section: CreditSection = body.section === "artistic" ? "artistic" : "production";

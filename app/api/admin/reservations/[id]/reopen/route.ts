@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
+import { productionOfReservation } from "@/lib/admin-scope";
 import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(await productionOfReservation(id), "foh");
+  if (gate.error) return gate.error;
   const db = createServiceClient();
 
   const { data: reservation } = await db.from("reservations").select("*").eq("id", id).single();

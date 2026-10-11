@@ -4,6 +4,7 @@ import { toast } from "@/lib/toast";
 
 import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
+import { sortByName } from "@/lib/sort";
 import Image from "next/image";
 
 type Actor = {
@@ -16,7 +17,10 @@ type Actor = {
   created_at: string;
   role: string;
   email: string | null;
+  staff: { id: string; production_id: string; title: string; staff_role: "manager" | "foh" }[];
 };
+
+type ProductionOption = { id: string; title: string };
 
 const TABS = ["pending", "members", "audience"] as const;
 const TAB_LABEL = { pending: "Pending review", members: "Cast and Crew", audience: "Audience accounts" } as const;
@@ -25,6 +29,10 @@ export default function AdminActorsPage() {
   const [actors, setActors] = useState<Actor[]>([]);
   const [tab, setTab] = useState<(typeof TABS)[number]>("pending");
   const [search, setSearch] = useState("");
+  const [productions, setProductions] = useState<ProductionOption[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [pickProduction, setPickProduction] = useState("");
+  const [pickRole, setPickRole] = useState<"manager" | "foh">("manager");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -43,6 +51,37 @@ export default function AdminActorsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  useEffect(() => {
+    fetch("/api/admin/productions")
+      .then((r) => r.json())
+      .then((d) => setProductions(d.productions ?? []))
+      .catch(() => {});
+  }, []);
+
+  async function assign(a: Actor) {
+    if (!pickProduction) return;
+    setBusyId(a.id);
+    const res = await fetch("/api/admin/production-staff", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: a.id, production_id: pickProduction, staff_role: pickRole }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusyId(null);
+    if (res.ok) {
+      toast.success(`${a.display_name ?? "Account"} is now ${pickRole === "manager" ? "a Manager" : "FOH"} for that production.`);
+      setPickProduction("");
+    } else toast.error(data.error ?? "Could not assign.");
+    load();
+  }
+
+  async function unassign(staffId: string) {
+    const res = await fetch(`/api/admin/production-staff/${staffId}`, { method: "DELETE" });
+    if (res.ok) toast.success("Access removed.");
+    else toast.error("Could not remove access.");
+    load();
+  }
 
   async function act(id: string, action: "approve" | "reject") {
     setBusyId(id);
@@ -186,7 +225,8 @@ export default function AdminActorsPage() {
         {shown.map((actor) => {
           const selectable = (actor.is_public && !actor.is_approved) || actor.is_approved;
           return (
-            <div key={actor.id} className="aa-card p-5 flex items-center gap-3">
+            <div key={actor.id} className="aa-card p-5">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-4 min-w-0 flex-1">
                 {selectable && (
                   <input
@@ -253,6 +293,14 @@ export default function AdminActorsPage() {
                     Take down
                   </button>
                 )}
+                {actor.role !== "public" && (
+                  <button
+                    onClick={() => setOpenId(openId === actor.id ? null : actor.id)}
+                    className="w-full px-3 py-1.5 border border-ink/30 text-ink/70 text-xs font-bold uppercase"
+                  >
+                    Production access{actor.staff.length > 0 ? ` (${actor.staff.length})` : ""}
+                  </button>
+                )}
                 {actor.role === "actor" && tab === "members" && (
                   <button
                     disabled={busyId === actor.id}
@@ -264,6 +312,55 @@ export default function AdminActorsPage() {
                 )}
               </div>
             </div>
+            {openId === actor.id && (
+              <div className="mt-4 pt-4 border-t border-ink/10 space-y-3">
+                <p className="text-xs text-muted">
+                  Manager: edits the production, plays and credits, promo codes, sales, reservations, new reservations and check-in for that production.
+                  FOH: sales, reservations, new reservations and check-in only.
+                </p>
+                {actor.staff.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {sortByName(actor.staff, (x) => x.title).map((x) => (
+                      <span key={x.id} className="inline-flex items-center gap-2 bg-ink/5 px-2 py-1 text-xs">
+                        <strong>{x.title}</strong>
+                        <span className="uppercase text-muted">{x.staff_role === "manager" ? "Manager" : "FOH"}</span>
+                        <button onClick={() => unassign(x.id)} aria-label="Remove access" className="font-bold text-danger">
+                          Remove
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <select
+                    value={pickProduction}
+                    onChange={(e) => setPickProduction(e.target.value)}
+                    className="border border-ink/20 px-3 py-2 text-sm w-56"
+                  >
+                    <option value="">Select production...</option>
+                    {sortByName(productions, (p) => p.title).map((p) => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={pickRole}
+                    onChange={(e) => setPickRole(e.target.value as "manager" | "foh")}
+                    className="border border-ink/20 px-3 py-2 text-sm"
+                  >
+                    <option value="manager">Manager</option>
+                    <option value="foh">FOH</option>
+                  </select>
+                  <button
+                    disabled={!pickProduction || busyId === actor.id}
+                    onClick={() => assign(actor)}
+                    className="px-4 py-2 bg-black text-white text-xs font-bold uppercase disabled:opacity-50"
+                  >
+                    Assign
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           );
         })}
 

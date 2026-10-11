@@ -6,6 +6,7 @@ import { useToastOn } from "@/lib/use-toast-on";
 
 import { useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
+import { useAdminAccess } from "@/components/admin/access-context";
 import Link from "next/link";
 
 type Production = {
@@ -19,6 +20,7 @@ type Production = {
 type Organization = { id: string; name: string };
 
 export default function AdminProductionsPage() {
+  const { isAdmin } = useAdminAccess();
   const [productions, setProductions] = useState<Production[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,9 +71,9 @@ export default function AdminProductionsPage() {
 
   return (
     <div>
-      <h1 className="font-extrabold text-3xl mb-6">Productions</h1>
+      <h1 className="font-extrabold text-3xl mb-6">{isAdmin ? "Productions" : "My productions"}</h1>
 
-      {!loading && organizations.length === 0 && (
+      {isAdmin && !loading && organizations.length === 0 && (
         <p className="text-sm text-danger mb-4">
           No organizations yet -{" "}
           <Link href="/admin/organizations" className="underline">
@@ -81,6 +83,7 @@ export default function AdminProductionsPage() {
         </p>
       )}
 
+      {isAdmin && (
       <form onSubmit={createProduction} className="aa-card p-5 mb-8 flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs font-bold uppercase text-muted mb-1">Organization</label>
@@ -116,6 +119,7 @@ export default function AdminProductionsPage() {
         </button>
         {error && <p className="text-sm text-danger w-full">{error}</p>}
       </form>
+      )}
 
       {loading && <Spinner className="!py-12" />}
 

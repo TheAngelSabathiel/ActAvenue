@@ -13,6 +13,8 @@ export interface ShowingPerson {
   name: string;
   photo_url: string | null;
   role: string;
+  /** Has a public profile page to link to. */
+  listed: boolean;
 }
 
 export interface PlayShowing {
@@ -41,7 +43,7 @@ const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? nu
 /**
  * A play with every production that staged it. Closed productions are
  * included so the history stays complete; drafts never show. Only public,
- * approved profiles are listed as cast.
+ * approved profiles get a profile link; everyone credited is listed.
  */
 export async function getPlayDetail(id: string): Promise<PlayDetail | null> {
   const db = createServiceClient();
@@ -76,10 +78,10 @@ export async function getPlayDetail(id: string): Promise<PlayDetail | null> {
     const people = (creditRows ?? [])
       .filter((c) => c.production_id === p.id)
       .map((c) => ({ c, profile: one(c.profile) }))
-      .filter(({ profile }) => profile && profile.is_public && profile.is_approved)
+      .filter(({ profile }) => !!profile)
       .map(({ c, profile }) => ({
         type: c.credit_type as string | null,
-        person: { id: profile!.id, name: profile!.display_name ?? "Cast member", photo_url: profile!.photo_url, role: c.role_played },
+        person: { id: profile!.id, name: profile!.display_name ?? "Cast member", photo_url: profile!.photo_url, role: c.role_played, listed: !!(profile!.is_public && profile!.is_approved) },
       }));
     const ofType = (t: string) => people.filter((x) => x.type === t).map((x) => x.person);
     return {

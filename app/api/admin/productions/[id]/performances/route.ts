@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireProduction } from "@/lib/admin-auth";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "foh");
+  if (gate.error) return gate.error;
   const db = createServiceClient();
   const { data, error } = await db
     .from("performances")
@@ -19,10 +18,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await requireStaff();
-  if (authError) return authError;
-
   const { id } = await params;
+  const gate = await requireProduction(id, "manager");
+  if (gate.error) return gate.error;
   const { label, datetime, venue, capacity } = await req.json();
 
   if (!label || !datetime || !venue || !capacity) {
