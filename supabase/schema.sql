@@ -56,6 +56,8 @@ create table productions (
   bank_account_number text,
   bank_qr_url text,
   status text not null default 'draft' check (status in ('draft', 'published', 'closed')),
+  -- Position in the landing page carousel (lowest first).
+  carousel_order int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

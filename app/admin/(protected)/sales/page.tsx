@@ -118,6 +118,7 @@ export default function SalesSummaryPage() {
             className="border border-ink/20  px-3 py-2 text-sm"
             aria-label="To date"
           />
+          <span className="text-xs font-bold uppercase text-muted">PHT</span>
           {(fromDate || toDate || productionId) && (
             <button
               onClick={() => {

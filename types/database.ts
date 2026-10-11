@@ -76,6 +76,7 @@ export interface Production {
   bank_account_number: string | null;
   bank_qr_url: string | null;
   status: ProductionStatus;
+  carousel_order: number;
   created_at: string;
   updated_at: string;
 }

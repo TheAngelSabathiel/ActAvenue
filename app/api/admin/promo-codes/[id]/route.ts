@@ -1,3 +1,4 @@
+import { toIsoManila } from "@/lib/datetime";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { canAccess, requireProduction } from "@/lib/admin-auth";
@@ -19,6 +20,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
+  }
+  for (const k of ["valid_from", "valid_until"] as const) {
+    if (k in update) update[k] = toIsoManila(update[k]);
   }
 
   if (!gate.access.isAdmin && "applies_to_production_id" in update) {

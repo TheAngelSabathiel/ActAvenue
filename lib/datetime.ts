@@ -59,3 +59,18 @@ export function manilaDayEnd(day: string) {
 export function manilaToday() {
   return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 }
+
+const NAIVE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+
+/**
+ * Accepts either a full ISO timestamp (kept as is) or a bare "YYYY-MM-DDTHH:mm"
+ * from a form (read as Philippine time). Returns null for empty values.
+ * Servers run in UTC, so a bare value must never be passed to the database as is.
+ */
+export function toIsoManila(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const v = value.trim();
+  if (NAIVE.test(v)) return fromManilaInput(v.slice(0, 16));
+  const t = new Date(v);
+  return Number.isNaN(t.getTime()) ? null : t.toISOString();
+}

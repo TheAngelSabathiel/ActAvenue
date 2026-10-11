@@ -98,10 +98,10 @@ export function ProductionCarousel({ productions }: { productions: CarouselProdu
       {many && (
         <>
           <button type="button" className="aa-arrow left-3" aria-label="Previous production" onClick={() => go(current - 1)}>
-            <i className="bi bi-chevron-left" />
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 7 12l8 8" /></svg>
           </button>
           <button type="button" className="aa-arrow right-3" aria-label="Next production" onClick={() => go(current + 1)}>
-            <i className="bi bi-chevron-right" />
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8" /></svg>
           </button>
           <div className="absolute -bottom-8 inset-x-0 flex justify-center gap-2">
             {productions.map((p, i) => (

@@ -20,7 +20,7 @@ export async function GET() {
   const db = createServiceClient();
   let query = db
     .from("productions")
-    .select("id, title, slug, status, poster_url, banner_url")
+    .select("*")
     .order("created_at", { ascending: false });
   if (ids) query = query.in("id", ids);
   const { data, error } = await query;

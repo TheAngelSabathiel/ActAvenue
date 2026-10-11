@@ -1,3 +1,4 @@
+import { toIsoManila } from "@/lib/datetime";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
@@ -46,8 +47,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       price,
       quantity_available,
       is_discount_tier: !!is_discount_tier,
-      discount_valid_from: discount_valid_from ?? null,
-      discount_valid_until: discount_valid_until ?? null,
+      discount_valid_from: toIsoManila(discount_valid_from),
+      discount_valid_until: toIsoManila(discount_valid_until),
     })
     .select()
     .single();

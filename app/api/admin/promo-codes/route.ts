@@ -1,3 +1,4 @@
+import { toIsoManila } from "@/lib/datetime";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
@@ -65,8 +66,8 @@ export async function POST(req: NextRequest) {
       discount_type,
       discount_value,
       applies_to_production_id: applies_to_production_id || null,
-      valid_from: valid_from ?? new Date().toISOString(),
-      valid_until: valid_until || null,
+      valid_from: toIsoManila(valid_from) ?? new Date().toISOString(),
+      valid_until: toIsoManila(valid_until),
       max_uses: max_uses || null,
     })
     .select()

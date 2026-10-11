@@ -9,6 +9,7 @@ import { CreditsManager } from "@/components/credits-manager";
 import { ProductionSection } from "@/components/admin/production-section";
 import { PerformanceCard, type Performance } from "@/components/admin/performance-card";
 import { Spinner } from "@/components/spinner";
+import { ManilaDateTimeInput } from "@/components/manila-datetime-input";
 import { useParams } from "next/navigation";
 
 type Production = {
@@ -208,7 +209,7 @@ export default function ProductionEditorPage() {
           <summary className="cursor-pointer font-extrabold">+ Add performance</summary>
           <form action={addPerformance} className="grid sm:grid-cols-2 gap-2 mt-3">
             <input name="label" placeholder="Label (e.g. Matinee - Aug 20)" required className="border border-ink/20  px-2 py-1.5 text-sm" />
-            <input name="datetime" type="datetime-local" required className="border border-ink/20  px-2 py-1.5 text-sm" />
+            <ManilaDateTimeInput name="datetime" required ariaLabel="Performance" defaultTime="19:00" />
             <input name="venue" placeholder="Venue" required className="border border-ink/20  px-2 py-1.5 text-sm" />
             <input name="capacity" type="number" placeholder="Capacity" required className="border border-ink/20  px-2 py-1.5 text-sm" />
             <button className="sm:col-span-2 py-2  bg-black text-paper text-sm font-bold uppercase">

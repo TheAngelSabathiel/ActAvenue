@@ -1,3 +1,4 @@
+import { toIsoManila } from "@/lib/datetime";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
@@ -12,6 +13,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
+  }
+  if ("datetime" in update) {
+    const iso = toIsoManila(update.datetime);
+    if (!iso) return NextResponse.json({ error: "Enter a valid date and time." }, { status: 400 });
+    update.datetime = iso;
   }
 
   const db = createServiceClient();

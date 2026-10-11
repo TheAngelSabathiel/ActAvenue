@@ -6,6 +6,7 @@ import { useToastOn } from "@/lib/use-toast-on";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ManilaDateTimeInput } from "@/components/manila-datetime-input";
 import { useAdminAccess } from "@/components/admin/access-context";
 
 type PromoCode = {
@@ -135,7 +136,10 @@ export default function PromoCodesPage() {
           ))}
         </select>
         <input name="max_uses" type="number" placeholder="Max uses (optional)" className="border border-ink/20  px-3 py-2 text-sm" />
-        <input name="valid_until" type="datetime-local" className="border border-ink/20  px-3 py-2 text-sm sm:col-span-2" />
+        <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase text-muted">Valid until (optional)</span>
+          <ManilaDateTimeInput name="valid_until" defaultTime="23:59" ariaLabel="Valid until" />
+        </div>
         <button
           disabled={creating || (isAdmin ? organizations.length === 0 : productions.length === 0)}
           className="sm:col-span-2 py-2  bg-black text-paper text-sm font-bold uppercase disabled:opacity-50"

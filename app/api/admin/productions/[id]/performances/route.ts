@@ -1,3 +1,4 @@
+import { toIsoManila } from "@/lib/datetime";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
@@ -21,7 +22,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const gate = await requireProduction(id, "manager");
   if (gate.error) return gate.error;
-  const { label, datetime, venue, capacity } = await req.json();
+  const { label, datetime: rawDatetime, venue, capacity } = await req.json();
+  const datetime = toIsoManila(rawDatetime);
 
   if (!label || !datetime || !venue || !capacity) {
     return NextResponse.json({ error: "label, datetime, venue, capacity are required" }, { status: 400 });

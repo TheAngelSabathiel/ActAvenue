@@ -1,5 +1,6 @@
 "use client";
 
+import { ManilaDateTimeInput } from "@/components/manila-datetime-input";
 import { useState } from "react";
 import { SaveBar } from "@/components/save-bar";
 import { api, jsonInit } from "@/lib/api-call";
@@ -125,7 +126,7 @@ export function PerformanceCard({
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="grid sm:grid-cols-2 gap-2 flex-1">
           <input value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} className={`${box} font-extrabold`} aria-label="Performance label" />
-          <input type="datetime-local" value={d.datetime} onChange={(e) => setD({ ...d, datetime: e.target.value })} className={box} aria-label="Performance date and time" />
+          <ManilaDateTimeInput value={d.datetime} onChange={(v) => setD({ ...d, datetime: v })} ariaLabel="Performance date and time" defaultTime="19:00" />
           <input value={d.venue} onChange={(e) => setD({ ...d, venue: e.target.value })} className={box} aria-label="Venue" placeholder="Venue" />
           <input type="number" value={d.capacity} onChange={(e) => setD({ ...d, capacity: e.target.value })} className={box} aria-label="Capacity" placeholder="Capacity" />
         </div>
@@ -154,9 +155,9 @@ export function PerformanceCard({
                 </label>
                 {td.is_discount_tier && (
                   <>
-                    <input type="datetime-local" value={td.from} onChange={(e) => setTier(t.id, { from: e.target.value })} className="border border-ink/20 px-2 py-1 text-xs" aria-label="Discount valid from" />
+                    <ManilaDateTimeInput value={td.from} onChange={(v) => setTier(t.id, { from: v })} ariaLabel="Discount valid from" defaultTime="00:00" />
                     <span className="text-muted">to</span>
-                    <input type="datetime-local" value={td.until} onChange={(e) => setTier(t.id, { until: e.target.value })} className="border border-ink/20 px-2 py-1 text-xs" aria-label="Discount valid until" />
+                    <ManilaDateTimeInput value={td.until} onChange={(v) => setTier(t.id, { until: v })} ariaLabel="Discount valid until" defaultTime="23:59" />
                   </>
                 )}
                 <span className="text-muted tabular-nums ml-auto">
@@ -179,8 +180,8 @@ export function PerformanceCard({
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" name="is_discount_tier" /> Time-limited discount tier
           </label>
-          <input name="discount_valid_from" type="datetime-local" className={box} />
-          <input name="discount_valid_until" type="datetime-local" className={box} />
+          <div className="space-y-1"><p className="aa-label mb-0">Discount from</p><ManilaDateTimeInput name="discount_valid_from" ariaLabel="Discount from" defaultTime="00:00" /></div>
+          <div className="space-y-1"><p className="aa-label mb-0">Discount until</p><ManilaDateTimeInput name="discount_valid_until" ariaLabel="Discount until" defaultTime="23:59" /></div>
           <button className="sm:col-span-2 py-1.5 bg-black text-paper text-xs font-bold uppercase">Add tier</button>
         </form>
       </details>

@@ -15,6 +15,7 @@ type Production = {
   slug: string;
   status: string;
   poster_url: string | null;
+  carousel_order?: number;
 };
 
 type Organization = { id: string; name: string };
@@ -48,6 +49,26 @@ export default function AdminProductionsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
+
+  const published = productions
+    .filter((p) => p.status === "published")
+    .sort((a, b) => (a.carousel_order ?? 0) - (b.carousel_order ?? 0));
+
+  async function moveInCarousel(index: number, dir: -1 | 1) {
+    const ids = published.map((p) => p.id);
+    const j = index + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[index], ids[j]] = [ids[j], ids[index]];
+    const res = await fetch("/api/admin/productions/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) toast.success("Carousel order updated.");
+    else toast.error(data.error ?? "Could not reorder.");
+    load();
+  }
 
   async function createProduction(e: React.FormEvent) {
     e.preventDefault();
@@ -119,6 +140,37 @@ export default function AdminProductionsPage() {
         </button>
         {error && <p className="text-sm text-danger w-full">{error}</p>}
       </form>
+      )}
+
+      {isAdmin && published.length > 1 && (
+        <section className="aa-card p-5 mb-8">
+          <h2 className="font-extrabold text-lg mb-1">Landing page carousel order</h2>
+          <p className="text-xs text-muted mb-3">The first production shows first. Only published productions appear.</p>
+          <ol className="space-y-2">
+            {published.map((p, i) => (
+              <li key={p.id} className="flex items-center gap-3">
+                <span className="w-6 text-sm tabular-nums text-muted">{i + 1}</span>
+                <span className="flex-1 font-bold truncate">{p.title}</span>
+                <button
+                  onClick={() => moveInCarousel(i, -1)}
+                  disabled={i === 0}
+                  className="px-2 py-1 border border-ink/20 text-xs font-bold uppercase disabled:opacity-30"
+                  aria-label={`Move ${p.title} earlier`}
+                >
+                  Up
+                </button>
+                <button
+                  onClick={() => moveInCarousel(i, 1)}
+                  disabled={i === published.length - 1}
+                  className="px-2 py-1 border border-ink/20 text-xs font-bold uppercase disabled:opacity-30"
+                  aria-label={`Move ${p.title} later`}
+                >
+                  Down
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       {loading && <Spinner className="!py-12" />}
