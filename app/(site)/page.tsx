@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listPublishedProductions } from "@/lib/data/homepage";
 import { IMAGES } from "@/lib/images";
 import { ProductionCarousel } from "@/components/production-carousel";
+import { ScrollButton } from "@/components/scroll-button";
 import { CONTACT_EMAIL, SocialLinks } from "@/components/site-footer";
 
 const STEPS = [
@@ -20,7 +21,7 @@ export default async function HomePage() {
         <div className="aa-container">
           <h1 className="text-5xl md:text-7xl mb-4">Book Your Seat</h1>
           <p className="text-lg opacity-75 tracking-[0.08em] mb-8">Tickets for Act Avenue productions</p>
-          <Link href="#now-showing" className="aa-btn aa-btn-light aa-btn-lg">Browse Shows</Link>
+          <ScrollButton targetId="now-showing" className="aa-btn aa-btn-light aa-btn-lg">Browse Shows</ScrollButton>
         </div>
       </section>
 
@@ -72,12 +73,9 @@ export default async function HomePage() {
           <div className="border-l-[5px] border-black pl-6">
             <h2 className="text-2xl mb-3">About</h2>
             <p className="text-lg">
-              Founded in 2019, <strong>ACT AVENUE</strong>, is a young, fast-running,
-and multi-awarded theater group in the country today.
-We aim to promote the value of arts and cultural
-performances by providing an <strong>avenue</strong> and a <strong>safe space</strong> for artists where they can freely discover and
-hone their full potential.
+              Act Avenue builds actors through the ABCD Framework, so every workshop and show has a clear structure:
             </p>
+            <strong>Authenticity, Believability, Creativity, and Development.</strong>
           </div>
           <div id="contact">
             <h2 className="text-2xl mb-3">Get In Touch</h2>
