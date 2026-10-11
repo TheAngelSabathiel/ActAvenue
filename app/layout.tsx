@@ -5,9 +5,10 @@ import "@fontsource/inter/900.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./globals.css";
 import { IMAGES } from "@/lib/images";
+import { Toaster } from "@/components/toaster";
 
 export const metadata: Metadata = {
-  title: "Act Avenue",
+  title: "Act Avenue | Tickets",
   description: "Reserve tickets for upcoming Act Avenue productions.",
   icons: {
     icon: [{ url: IMAGES.logo, type: "image/png" }],
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={{ backgroundImage: `url(${IMAGES.background})` }}
       >
         {children}
+        <Toaster />
       </body>
     </html>
   );

@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useEffect, useState, useCallback } from "react";
 import { MediaUploader } from "@/components/media-uploader";
 import { IMAGES } from "@/lib/images";
@@ -44,6 +47,7 @@ export default function ProductionEditorPage() {
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  useToastOn(message, "error");
 
   const load = useCallback(async () => {
     const [pRes, perfRes] = await Promise.all([
@@ -68,7 +72,12 @@ export default function ProductionEditorPage() {
     });
     const data = await res.json();
     setSaving(false);
-    if (res.ok) setProduction(data.production);
+    if (res.ok) {
+      setProduction(data.production);
+      toast.success("Saved.");
+    } else {
+      toast.error(data.error ?? "Could not save.");
+    }
   }
 
   async function addPerformance(formData: FormData) {
@@ -87,6 +96,7 @@ export default function ProductionEditorPage() {
       setMessage(data.error);
       return;
     }
+    toast.success("Performance added.");
     load();
   }
 
@@ -102,6 +112,7 @@ export default function ProductionEditorPage() {
       setMessage(data.error);
       return;
     }
+    toast.success("Performance updated.");
     load();
   }
 
@@ -114,6 +125,7 @@ export default function ProductionEditorPage() {
       setMessage(data.error);
       return;
     }
+    toast.success("Performance deleted.");
     load();
   }
 
@@ -136,6 +148,7 @@ export default function ProductionEditorPage() {
       setMessage(data.error);
       return;
     }
+    toast.success("Ticket tier added.");
     load();
   }
 
@@ -151,6 +164,7 @@ export default function ProductionEditorPage() {
       setMessage(data.error);
       return;
     }
+    toast.success("Ticket tier updated.");
     load();
   }
 
@@ -163,6 +177,7 @@ export default function ProductionEditorPage() {
       setMessage(data.error);
       return;
     }
+    toast.success("Ticket tier deleted.");
     load();
   }
 

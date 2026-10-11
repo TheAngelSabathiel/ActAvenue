@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { useRouter } from "next/navigation";
@@ -87,7 +90,9 @@ function PasswordSection() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  useToastOn(message, "success");
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -152,6 +157,7 @@ function PasswordSection() {
 function BecomeActorSection({ onUpgraded }: { onUpgraded: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
 
   async function handleClick() {
     setSubmitting(true);
@@ -163,6 +169,7 @@ function BecomeActorSection({ onUpgraded }: { onUpgraded: () => void }) {
       setError(data.error);
       return;
     }
+    toast.success("Actor profile turned on.");
     onUpgraded();
   }
 
@@ -208,6 +215,7 @@ function ProfilePhotoSection({ profile, onSaved }: { profile: Profile; onSaved: 
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
 
   async function upload(file: File) {
     setError(null);
@@ -220,7 +228,10 @@ function ProfilePhotoSection({ profile, onSaved }: { profile: Profile; onSaved: 
       const res = await fetch("/api/account/photo", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) setError(data.error ?? "Upload failed.");
-      else onSaved();
+      else {
+        toast.success("Profile photo updated.");
+        onSaved();
+      }
     } catch {
       setError("Upload failed. Check your connection and try again.");
     } finally {
@@ -236,6 +247,7 @@ function ProfilePhotoSection({ profile, onSaved }: { profile: Profile; onSaved: 
     const res = await fetch("/api/account/photo", { method: "DELETE" });
     setBusy(false);
     if (!res.ok) return setError("Could not remove the photo.");
+    toast.success("Profile photo removed.");
     onSaved();
   }
 
@@ -291,7 +303,9 @@ function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: 
   const [reelUrl, setReelUrl] = useState(profile.reel_url ?? "");
   const [isPublic, setIsPublic] = useState(profile.is_public);
   const [message, setMessage] = useState<string | null>(null);
+  useToastOn(message, "success");
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -386,6 +400,7 @@ function GallerySection() {
   const replaceId = useRef<string | null>(null);
   const [reordering, setReordering] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
 
   async function load() {
     const res = await fetch("/api/account/photos");
@@ -414,12 +429,15 @@ function GallerySection() {
       setError(data.error);
       return;
     }
+    toast.success("Photo added.");
     load();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Remove this photo?")) return;
-    await fetch(`/api/account/photos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/account/photos/${id}`, { method: "DELETE" });
+    if (res.ok) toast.success("Photo removed.");
+    else toast.error("Could not remove the photo.");
     load();
   }
 
@@ -434,6 +452,7 @@ function GallerySection() {
     const data = await res.json();
     setReordering(null);
     if (!res.ok) return setError(data.error ?? "Could not replace the photo.");
+    toast.success("Photo replaced.");
     load();
   }
 
@@ -567,6 +586,7 @@ function DangerZone() {
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
 
   async function handleDelete() {
     setSubmitting(true);
@@ -582,6 +602,7 @@ function DangerZone() {
 
     const supabase = createClient();
     await supabase.auth.signOut();
+    toast.success("Your account was deleted.");
     router.push("/");
     router.refresh();
   }

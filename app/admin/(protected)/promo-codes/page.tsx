@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -23,6 +26,7 @@ export default function PromoCodesPage() {
   const [productions, setProductions] = useState<Production[]>([]);
   const [orgId, setOrgId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -67,12 +71,15 @@ export default function PromoCodesPage() {
       setError(data.error);
       return;
     }
+    toast.success("Promo code created.");
     load();
   }
 
   async function remove(id: string) {
     if (!confirm("Delete this promo code?")) return;
-    await fetch(`/api/admin/promo-codes/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/promo-codes/${id}`, { method: "DELETE" });
+    if (res.ok) toast.success("Promo code deleted.");
+    else toast.error("Could not delete the promo code.");
     load();
   }
 

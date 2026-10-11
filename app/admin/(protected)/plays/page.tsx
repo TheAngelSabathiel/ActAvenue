@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Spinner } from "@/components/spinner";
@@ -12,6 +15,7 @@ const field = "border border-ink/20 px-3 py-2 text-sm";
 export default function AdminPlaysPage() {
   const [plays, setPlays] = useState<Play[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  useToastOn(message, "error");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -35,6 +39,7 @@ export default function AdminPlaysPage() {
     const data = await res.json();
     if (!res.ok) return setMessage(data.error);
     setMessage(null);
+    toast.success("Play added.");
     setTitle("");
     setDescription("");
     load();
@@ -88,6 +93,7 @@ function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => voi
     });
     const data = await res.json();
     onError(res.ok ? null : data.error);
+    if (res.ok) toast.success("Saved.");
     onChange();
   }
 
@@ -101,6 +107,7 @@ function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => voi
     const data = await res.json();
     setBusy(false);
     onError(res.ok ? null : data.error);
+    if (res.ok) toast.success("Photo updated.");
     if (input.current) input.current.value = "";
     onChange();
   }
@@ -110,12 +117,14 @@ function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => voi
     setBusy(true);
     await fetch(`/api/admin/plays/${play.id}/media`, { method: "DELETE" });
     setBusy(false);
+    toast.success("Photo removed.");
     onChange();
   }
 
   async function remove() {
     if (!confirm(`Delete "${play.title}"? It leaves every production, and its credits become "no specific play".`)) return;
     await fetch(`/api/admin/plays/${play.id}`, { method: "DELETE" });
+    toast.success("Play deleted.");
     onChange();
   }
 

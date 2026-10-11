@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useEffect, useState } from "react";
 
 type Production = { id: string; title: string; slug: string };
@@ -62,9 +64,11 @@ export default function NewReservationPage() {
     setSubmitting(false);
 
     if (!res.ok) {
+      toast.error(data.error ?? "Could not create the reservation.");
       setMessage(data.error);
       return;
     }
+    toast.success(`Reservation ${data.reservation.reference_code} created.`);
     setMessage(`Reservation ${data.reservation.reference_code} created.`);
     setBuyerName("");
     setBuyerEmail("");

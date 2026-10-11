@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 
@@ -72,9 +74,12 @@ export default function AdminReservationsPage() {
     const data = await res.json();
     setBusyId(null);
     if (!res.ok) {
-      alert(data.error ?? "Action failed");
+      toast.error(data.error ?? "Action failed");
       return;
     }
+    toast.success(
+      { approve: "Reservation approved. E-ticket emailed.", reject: "Reservation rejected. Buyer emailed.", reopen: "Reservation reopened.", "resend-email": "Email resent." }[action]
+    );
     // If this action moved the last row on this page out of the current
     // filter (e.g. approving the only item on page 2), step back a page
     // rather than leaving an empty page displayed. resend-email doesn't
@@ -98,7 +103,8 @@ export default function AdminReservationsPage() {
     });
     const data = await res.json();
     setBusyId(null);
-    if (!res.ok) alert(data.error ?? "Action failed");
+    if (!res.ok) toast.error(data.error ?? "Action failed");
+    else toast.success(`Order ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "reopened"} (${data.count} bookings).`);
     load();
   }
 

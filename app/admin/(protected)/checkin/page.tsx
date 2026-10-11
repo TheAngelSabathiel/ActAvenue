@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useState } from "react";
 import { formatDateTime } from "@/lib/datetime";
 
@@ -37,9 +39,11 @@ export default function CheckinPage() {
     });
     const data = await res.json();
     if (!res.ok) {
+      toast.error(data.error ?? "Check-in failed.");
       setMessage(data.error);
       return;
     }
+    toast.success(`Checked in ${data.reservation.buyer_name}.`);
     setMessage(`Checked in ${data.reservation.buyer_name}.`);
     search();
   }

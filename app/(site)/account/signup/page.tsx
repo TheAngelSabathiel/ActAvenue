@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,6 +15,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [isActor, setIsActor] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
   const [submitting, setSubmitting] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
 
@@ -46,9 +50,11 @@ export default function SignupPage() {
     // active session immediately. Otherwise the buyer needs to confirm
     // via email first.
     if (data.session) {
+      toast.success("Account created.");
       router.push("/account");
       router.refresh();
     } else {
+      toast.success("Account created. Check your email to confirm it.");
       setCheckEmail(true);
     }
   }

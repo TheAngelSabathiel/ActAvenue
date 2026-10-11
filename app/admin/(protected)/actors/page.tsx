@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import Image from "next/image";
@@ -41,8 +43,10 @@ export default function AdminActorsPage() {
 
   async function act(id: string, action: "approve" | "reject") {
     setBusyId(id);
-    await fetch(`/api/admin/actors/${id}/${action}`, { method: "POST" });
+    const res = await fetch(`/api/admin/actors/${id}/${action}`, { method: "POST" });
     setBusyId(null);
+    if (res.ok) toast.success(action === "approve" ? "Profile approved." : "Profile taken down.");
+    else toast.error("Action failed. Try again.");
     load();
   }
 
@@ -71,8 +75,11 @@ export default function AdminActorsPage() {
     if (targets.length === 0) return;
 
     setBulkBusy(true);
-    await Promise.all(targets.map((a) => fetch(`/api/admin/actors/${a.id}/${action}`, { method: "POST" })));
+    const results = await Promise.all(targets.map((a) => fetch(`/api/admin/actors/${a.id}/${action}`, { method: "POST" })));
     setBulkBusy(false);
+    const failed = results.filter((r) => !r.ok).length;
+    if (failed) toast.error(`${failed} of ${targets.length} failed.`);
+    else toast.success(`${targets.length} profile${targets.length === 1 ? "" : "s"} ${action === "approve" ? "approved" : "taken down"}.`);
     load();
   }
 

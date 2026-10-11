@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { Spinner } from "@/components/spinner";
@@ -21,6 +24,7 @@ export function MediaUploader({ productionId, kind, label, hint, url, fallback, 
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
 
   async function upload(file: File) {
     setError(null);
@@ -35,7 +39,10 @@ export function MediaUploader({ productionId, kind, label, hint, url, fallback, 
       const res = await fetch(`/api/admin/productions/${productionId}/media`, { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) setError(data.error ?? "Upload failed.");
-      else onChange(data.production);
+      else {
+        onChange(data.production);
+        toast.success(`${label} updated.`);
+      }
     } catch {
       setError("Upload failed. Check your connection and try again.");
     } finally {
@@ -52,7 +59,10 @@ export function MediaUploader({ productionId, kind, label, hint, url, fallback, 
       const res = await fetch(`/api/admin/productions/${productionId}/media?kind=${kind}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) setError(data.error ?? "Could not remove.");
-      else onChange(data.production);
+      else {
+        onChange(data.production);
+        toast.success(`${label} removed.`);
+      }
     } finally {
       setBusy(false);
     }

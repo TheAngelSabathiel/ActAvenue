@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { Suspense, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -34,6 +37,7 @@ function CheckoutForm() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>("");
   const [quote, setQuote] = useState<{ discount: number; total: number } | null>(null);
@@ -80,6 +84,11 @@ function CheckoutForm() {
       return;
     }
 
+    toast.success(
+      data.count > 1
+        ? "Booking submitted. Check your email. We confirm payment first, then send your e-tickets."
+        : "Booking submitted. Check your email. We confirm payment first, then send your e-ticket."
+    );
     router.push(
       data.count > 1 ? `/order/${data.order_code}` : `/reservation/${data.reservation.reference_code}`
     );

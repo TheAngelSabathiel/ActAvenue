@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import Link from "next/link";
@@ -22,6 +25,7 @@ export default function AdminProductionsPage() {
   const [orgId, setOrgId] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
 
   async function load() {
     setLoading(true);
@@ -58,6 +62,7 @@ export default function AdminProductionsPage() {
       return;
     }
     setNewTitle("");
+    toast.success("Production created.");
     load();
   }
 

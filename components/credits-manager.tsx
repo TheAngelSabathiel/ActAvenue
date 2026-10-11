@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useEffect, useState, useCallback } from "react";
 import { CREDIT_TYPES, CREDIT_TYPE_LABEL, CREDIT_TYPE_RANK, isDanceType, type CreditSection, type CreditType } from "@/lib/credits";
 
@@ -85,8 +87,13 @@ export function CreditsManager({ productionId }: { productionId: string }) {
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) setMessage(data.error ?? "Something went wrong.");
-    else setMessage(null);
+    if (!res.ok) {
+      setMessage(data.error ?? "Something went wrong.");
+      toast.error(data.error ?? "Something went wrong.");
+    } else {
+      setMessage(null);
+      toast.success(method === "DELETE" ? "Removed." : method === "POST" ? "Added." : "Saved.");
+    }
     await load();
     return res.ok;
   }

@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useEffect, useState } from "react";
 import { useCart } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
@@ -76,8 +78,9 @@ export function PerformancePicker({
       const perf = performances.find((p) => p.id === performanceId);
       const tier = perf?.ticket_tiers.find((t) => t.id === tierId);
       setAdded({ tier: tier?.label ?? "Ticket", show: productionTitle, performance: perf?.label ?? "" });
-    } catch {
+    } catch (err) {
       setStatus((s) => ({ ...s, [tierId]: "error" }));
+      toast.error(err instanceof Error ? err.message : "Could not add to cart.");
     }
   }
 

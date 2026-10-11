@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useState } from "react";
 import { Spinner } from "@/components/spinner";
 import Link from "next/link";
@@ -40,6 +42,8 @@ export default function CartPage() {
       else reason = reason ?? data.reason ?? data.error;
     }
     setPromoResult(discount > 0 ? { valid: true, discount } : { valid: false, reason, discount: 0 });
+    if (discount > 0) toast.success(`Promo code applied. You save ₱${discount.toFixed(2)}.`);
+    else toast.error(reason ?? "That code can't be used here.");
     setCheckingPromo(false);
   }
 

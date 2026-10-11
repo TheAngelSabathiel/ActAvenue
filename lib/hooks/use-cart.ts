@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useCallback, useEffect, useState } from "react";
 import type { CartItemWithDetails } from "@/types/database";
 
@@ -42,7 +44,10 @@ export function useCart() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantity }),
       });
-      if (!res.ok) throw new Error("Could not update quantity");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Could not update quantity.");
+      }
       await refresh();
     },
     [refresh]
@@ -50,7 +55,9 @@ export function useCart() {
 
   const removeItem = useCallback(
     async (itemId: string) => {
-      await fetch(`/api/cart/items/${itemId}`, { method: "DELETE" });
+      const res = await fetch(`/api/cart/items/${itemId}`, { method: "DELETE" });
+      if (res.ok) toast.success("Removed from cart.");
+      else toast.error("Could not remove the item.");
       await refresh();
     },
     [refresh]

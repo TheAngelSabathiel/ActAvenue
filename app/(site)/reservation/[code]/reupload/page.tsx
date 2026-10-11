@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 
@@ -8,6 +11,7 @@ export default function ReuploadPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -27,6 +31,7 @@ export default function ReuploadPage() {
       return;
     }
 
+    toast.success("Proof submitted. We will review it and email you.");
     router.push(`/reservation/${params.code}`);
   }
 

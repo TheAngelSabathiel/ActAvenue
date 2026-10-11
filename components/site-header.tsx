@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -21,6 +23,7 @@ export function SiteHeader() {
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
+    toast.success("Signed out.");
     setEmail(null);
     setOpen(false);
   }

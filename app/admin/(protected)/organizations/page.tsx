@@ -1,5 +1,8 @@
 "use client";
 
+import { toast } from "@/lib/toast";
+import { useToastOn } from "@/lib/use-toast-on";
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
@@ -14,6 +17,7 @@ export default function OrganizationsPage() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useToastOn(error, "error");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function load() {
@@ -43,22 +47,27 @@ export default function OrganizationsPage() {
       return;
     }
     setNewName("");
+    toast.success("Organization created.");
     load();
   }
 
   async function renameOrg(id: string, name: string) {
-    await fetch(`/api/admin/organizations/${id}`, {
+    const res = await fetch(`/api/admin/organizations/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
+    if (res.ok) toast.success("Organization renamed.");
+    else toast.error("Could not rename the organization.");
     load();
   }
 
   async function uploadLogo(id: string, file: File) {
     const formData = new FormData();
     formData.append("file", file);
-    await fetch(`/api/admin/organizations/${id}/logo`, { method: "POST", body: formData });
+    const res = await fetch(`/api/admin/organizations/${id}/logo`, { method: "POST", body: formData });
+    if (res.ok) toast.success("Logo updated.");
+    else toast.error("Logo upload failed.");
     load();
   }
 
