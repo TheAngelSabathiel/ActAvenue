@@ -13,8 +13,12 @@ export function useCart() {
     setLoading(true);
     const res = await fetch("/api/cart");
     const data = await res.json();
-    setItems(data.items ?? []);
+    const list: CartItemWithDetails[] = data.items ?? [];
+    setItems(list);
     setLoading(false);
+    window.dispatchEvent(
+      new CustomEvent("aa-cart-count", { detail: list.reduce((n, i) => n + i.quantity, 0) })
+    );
   }, []);
 
   useEffect(() => {

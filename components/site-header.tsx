@@ -4,12 +4,36 @@ import { toast } from "@/lib/toast";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { IMAGES } from "@/lib/images";
 
 export function SiteHeader() {
   const [email, setEmail] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/cart")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        const items: { quantity: number }[] = d.items ?? [];
+        setCartCount(items.reduce((n, i) => n + i.quantity, 0));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    const onCount = (e: Event) => setCartCount((e as CustomEvent<number>).detail ?? 0);
+    window.addEventListener("aa-cart-count", onCount);
+    return () => window.removeEventListener("aa-cart-count", onCount);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -74,6 +98,14 @@ export function SiteHeader() {
           )}
           <Link href="/cart" className="aa-btn aa-btn-sm md:ml-2 mt-2 md:mt-0 self-start" onClick={close}>
             <i className="bi bi-cart3" /> Cart
+            {cartCount > 0 && (
+              <span
+                className="ml-1 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-white px-1.5 text-[11px] font-bold leading-none text-black"
+                aria-label={`${cartCount} in cart`}
+              >
+                {cartCount}
+              </span>
+            )}
           </Link>
         </nav>
       </div>
