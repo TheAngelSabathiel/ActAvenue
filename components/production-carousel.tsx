@@ -1,8 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+
+/** Seconds each production stays on screen before the carousel moves on. */
+const AUTO_ADVANCE_MS = 6000;
 
 export type CarouselProduction = {
   id: string;
@@ -21,19 +24,39 @@ export function ProductionCarousel({ productions }: { productions: CarouselProdu
 
   const go = (i: number) => setIndex((i + count) % count);
 
+  // Auto-advance so every production gets airtime. Pauses while the visitor
+  // hovers or focuses the carousel, and is skipped for people who prefer
+  // reduced motion. Depending on `current` restarts the timer after any
+  // manual arrow, dot or swipe, so it never jumps right after a click.
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (!many || paused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setTimeout(() => setIndex((current + 1) % count), AUTO_ADVANCE_MS);
+    return () => clearTimeout(timer);
+  }, [many, paused, current, count]);
+
   return (
     <div
       className="relative mx-auto max-w-3xl shadow-[0_1rem_3rem_rgba(0,0,0,.175)]"
       role="region"
       aria-roledescription="carousel"
       aria-label="Current productions"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
       onKeyDown={(e) => {
         if (!many) return;
         if (e.key === "ArrowLeft") go(current - 1);
         if (e.key === "ArrowRight") go(current + 1);
       }}
-      onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+      onTouchStart={(e) => {
+        touchX.current = e.touches[0].clientX;
+        setPaused(true);
+      }}
       onTouchEnd={(e) => {
+        setPaused(false);
         if (!many || touchX.current === null) return;
         const dx = e.changedTouches[0].clientX - touchX.current;
         touchX.current = null;

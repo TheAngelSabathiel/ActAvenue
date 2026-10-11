@@ -381,6 +381,9 @@ function GallerySection() {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const addInput = useRef<HTMLInputElement>(null);
+  const replaceInput = useRef<HTMLInputElement>(null);
+  const replaceId = useRef<string | null>(null);
   const [reordering, setReordering] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -474,20 +477,17 @@ function GallerySection() {
             <div key={photo.id} className="relative aspect-[3/4]  overflow-hidden group">
               <Image src={photo.photo_url} alt={photo.caption ?? ""} fill className="object-cover" />
               <div className="absolute top-1 left-1 right-1 flex justify-between gap-1">
-                <label className="bg-black/80 text-paper text-xs px-1.5 py-0.5 font-bold uppercase cursor-pointer">
+                <button
+                  type="button"
+                  disabled={reordering === photo.id}
+                  onClick={() => {
+                    replaceId.current = photo.id;
+                    replaceInput.current?.click();
+                  }}
+                  className="bg-black/80 text-paper text-xs px-1.5 py-0.5 font-bold uppercase"
+                >
                   Replace
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    disabled={reordering === photo.id}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      e.target.value = "";
-                      if (f) handleReplace(photo.id, f);
-                    }}
-                  />
-                </label>
+                </button>
                 <button
                   onClick={() => handleDelete(photo.id)}
                   className="bg-black/80 text-paper text-xs px-1.5 py-0.5 font-bold uppercase"
@@ -524,15 +524,40 @@ function GallerySection() {
       )}
 
       {error && <p className="text-sm text-danger font-bold">{error}</p>}
-      {uploading && <p className="text-sm text-muted">Uploading...</p>}
 
       <input
+        ref={replaceInput}
         type="file"
         accept="image/png,image/jpeg,image/webp"
-        disabled={uploading || photos.length >= 8}
-        onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
-        className="text-xs"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f && replaceId.current) handleReplace(replaceId.current, f);
+        }}
       />
+      <input
+        ref={addInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) handleUpload(f);
+        }}
+      />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={uploading || photos.length >= 8}
+          onClick={() => addInput.current?.click()}
+          className="aa-btn aa-btn-sm"
+        >
+          {uploading ? "Uploading..." : "Add photo"}
+        </button>
+        <span className="text-xs text-muted">{photos.length} of 8</span>
+      </div>
     </section>
   );
 }
