@@ -35,15 +35,15 @@ export function Toaster() {
         <div
           key={t.id}
           role={t.kind === "error" ? "alert" : "status"}
-          className={`pointer-events-auto flex items-start gap-3 px-4 py-3 shadow-[0_.5rem_1.5rem_rgba(0,0,0,.25)] ${TONE[t.kind]}`}
+          className={`pointer-events-auto flex items-center gap-3 px-4 py-3 shadow-[0_.5rem_1.5rem_rgba(0,0,0,.25)] ${TONE[t.kind]}`}
         >
-          <i className={`bi ${ICON[t.kind]} mt-0.5`} />
-          <p className="flex-1 text-sm font-bold mb-0">{t.text}</p>
+          <i className={`bi ${ICON[t.kind]} flex h-5 w-5 shrink-0 items-center justify-center text-lg leading-none`} />
+          <p className="flex-1 text-sm font-bold leading-5 mb-0">{t.text}</p>
           <button
             type="button"
             aria-label="Dismiss"
             onClick={() => setItems((prev) => prev.filter((x) => x.id !== t.id))}
-            className="opacity-75 hover:opacity-100"
+            className="flex h-5 w-5 shrink-0 items-center justify-center leading-none opacity-75 hover:opacity-100"
           >
             <i className="bi bi-x-lg" />
           </button>
