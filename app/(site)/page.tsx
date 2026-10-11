@@ -75,7 +75,7 @@ export default async function HomePage() {
               Founded in 2019, <strong>ACT AVENUE</strong>, is a young, fast-running,
 and multi-awarded theater group in the country today.
 We aim to promote the value of arts and cultural
-performances by providing an <strong>avenue</strong> and a <strong>safe spacce</strong> for artists where they can freely discover and
+performances by providing an <strong>avenue</strong> and a <strong>safe space</strong> for artists where they can freely discover and
 hone their full potential.
             </p>
           </div>
