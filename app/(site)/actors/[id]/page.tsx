@@ -54,14 +54,21 @@ export default async function ActorProfilePage({ params }: { params: Promise<{ i
           <hr className="aa-divider" />
           <div className="space-y-2">
             {actor.production_credits.map((credit) => (
-              <Link
-                key={credit.id}
-                href={`/productions/${credit.production.slug}`}
-                className="aa-card aa-lift p-4 flex justify-between items-center"
-              >
-                <span className="font-black">{credit.production.title}</span>
-                <span className="aa-label text-muted">{credit.role_played}</span>
-              </Link>
+              credit.production.status === "published" ? (
+                <Link
+                  key={credit.id}
+                  href={`/productions/${credit.production.slug}`}
+                  className="aa-card aa-lift p-4 flex justify-between items-center"
+                >
+                  <span className="font-black">{credit.production.title}</span>
+                  <span className="aa-label text-muted">{credit.role_played}</span>
+                </Link>
+              ) : (
+                <div key={credit.id} className="aa-card p-4 flex justify-between items-center">
+                  <span className="font-black">{credit.production.title}</span>
+                  <span className="aa-label text-muted">{credit.role_played}</span>
+                </div>
+              )
             ))}
           </div>
         </section>

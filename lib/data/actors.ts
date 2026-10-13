@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { MEMBER_ROLES } from "@/lib/member-roles";
 import type { ActorPhoto, Profile, ProductionCredit } from "@/types/database";
 
@@ -19,7 +20,7 @@ export async function listPublicActors(): Promise<Profile[]> {
 
 export interface ActorProfileWithDetails extends Profile {
   actor_photos: ActorPhoto[];
-  production_credits: (ProductionCredit & { production: { title: string; slug: string } })[];
+  production_credits: (ProductionCredit & { production: { title: string; slug: string; status: "published" | "closed" } })[];
 }
 
 export async function getPublicActor(id: string): Promise<ActorProfileWithDetails | null> {
@@ -41,12 +42,18 @@ export async function getPublicActor(id: string): Promise<ActorProfileWithDetail
     .eq("profile_id", id)
     .order("sort_order", { ascending: true });
 
-  const { data: credits } = await supabase
+  // Draft productions are never shown on a public profile. Read with the
+  // service client so visitors and signed-in users see the same list.
+  const { data: credits } = await createServiceClient()
     .from("production_credits")
-    .select("*, production:productions(title, slug)")
+    .select("*, production:productions(title, slug, status)")
     .eq("profile_id", id)
     .eq("is_discredited", false)
     .order("created_at", { ascending: false });
 
-  return { ...profile, actor_photos: photos ?? [], production_credits: credits ?? [] };
+  const visible = (credits ?? [])
+    .map((c) => ({ ...c, production: Array.isArray(c.production) ? (c.production[0] ?? null) : c.production }))
+    .filter((c) => c.production && c.production.status !== "draft");
+
+  return { ...profile, actor_photos: photos ?? [], production_credits: visible as ActorProfileWithDetails["production_credits"] };
 }
