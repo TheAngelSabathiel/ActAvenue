@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { STAFF_ROLES } from "@/lib/member-roles";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { SOCIALS, normalizeSocial } from "@/lib/social-links";
 
 /**
  * Updates the caller's own profile fields. Deliberately whitelists columns
@@ -23,6 +24,17 @@ export async function POST(req: NextRequest) {
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
+  }
+
+  // Optional contact and social links: each is cleaned into a safe https link
+  // (or an email address) and may be blank.
+  for (const s of SOCIALS) {
+    if (!(s.key in body)) continue;
+    const value = normalizeSocial(s.key, body[s.key]);
+    if (value === undefined) {
+      return NextResponse.json({ error: `Check the ${s.label} entry.` }, { status: 400 });
+    }
+    update[s.key] = value;
   }
 
   const db = createServiceClient();

@@ -1,3 +1,4 @@
+import { isTransferred } from "@/lib/transfer";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -55,7 +56,14 @@ export default async function ReservationStatusPage({
   if (!reservation) notFound();
 
   const siblings = await getSiblingCount(reservation.order_code);
-  const status = STATUS_COPY[reservation.payment_status];
+  const transferred = isTransferred(reservation.rejection_reason);
+  const status = transferred
+    ? {
+        label: "Moved to another show",
+        tone: "bg-soft text-muted border border-[#dee2e6]",
+        body: `This booking was transferred. ${reservation.rejection_reason?.replace("Transferred to ", "Your new reference code is ")}. This QR code no longer works, please use the new one from your transfer email.`,
+      }
+    : STATUS_COPY[reservation.payment_status];
 
   return (
     <div className="aa-container max-w-xl py-12">
@@ -105,7 +113,7 @@ export default async function ReservationStatusPage({
           </div>
         </div>
 
-        {reservation.payment_status === "rejected" && (
+        {reservation.payment_status === "rejected" && !transferred && (
           <a href={`/reservation/${reservation.reference_code}/reupload`} className="aa-btn aa-btn-lg w-full">
             Re-upload Payment Proof
           </a>

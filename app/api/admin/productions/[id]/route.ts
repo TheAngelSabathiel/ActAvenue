@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const gate = await requireProduction(id, "manager");
   if (gate.error) return gate.error;
   const body = await req.json();
-  const allowed = ["title", "description", "poster_url", "banner_url", "status"] as const;
+  const allowed = ["title", "description", "poster_url", "banner_url", "status", "email_note"] as const;
   const paymentFields = [
     "gcash_name", "gcash_number", "bank_name", "bank_account_name", "bank_account_number",
   ] as const;

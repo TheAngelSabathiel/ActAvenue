@@ -1,3 +1,4 @@
+import { isTransferred } from "@/lib/transfer";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDateTime } from "@/lib/datetime";
@@ -38,7 +39,7 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
 
       {data.map((r) => (
         <Link key={r.id} href={`/reservation/${r.reference_code}`} className="aa-card aa-lift p-6 block space-y-1">
-          <p className="aa-label text-muted mb-1">{STATUS_LABEL[r.payment_status]}</p>
+          <p className="aa-label text-muted mb-1">{isTransferred(r.rejection_reason) ? "Moved to another show" : STATUS_LABEL[r.payment_status]}</p>
           <p className="font-black text-xl mb-0">{r.production.title}</p>
           <p className="font-bold mb-0">{r.performance.label}</p>
           <p className="text-sm mb-2">{formatDateTime(r.performance.datetime)} - {r.performance.venue}</p>

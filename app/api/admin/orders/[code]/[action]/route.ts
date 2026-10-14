@@ -1,3 +1,4 @@
+import { isTransferred } from "@/lib/transfer";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireAnyAccess } from "@/lib/admin-auth";
@@ -29,12 +30,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
   const db = createServiceClient();
   const { data: rows } = await db
     .from("reservations")
-    .select("id, reference_code, payment_status")
+    .select("id, reference_code, payment_status, rejection_reason")
     .eq("order_code", code)
     .in("payment_status", [...FROM_STATUS[key]]);
 
+  const eligible = (rows ?? []).filter((r) => !isTransferred(r.rejection_reason));
+
   const results: { reference_code: string; ok: boolean; error?: string }[] = [];
-  for (const r of rows ?? []) {
+  for (const r of eligible) {
     const res = await HANDLERS[key](
       new NextRequest(req.url, { method: "POST", headers: req.headers, body: body || undefined }),
       { params: Promise.resolve({ id: r.id }) }

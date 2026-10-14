@@ -38,6 +38,21 @@ function itemsList(items: ReservationEmailContext["items"]) {
     .join("\n");
 }
 
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Extra note an admin or manager set for a production. Empty when none. */
+function noteText(production: Production) {
+  const note = production.email_note?.trim();
+  return note ? `${note}\n\n` : "";
+}
+
+function noteHtml(production: Production) {
+  const note = production.email_note?.trim();
+  return note ? `<p style="white-space:pre-line">${escapeHtml(note)}</p>\n` : "";
+}
+
 function showDetails(production: Production, performance: Performance) {
   const when = formatDateTimeLong(performance.datetime);
   return `${production.title}\n${performance.label} - ${when}\n${performance.venue}`;
@@ -108,7 +123,7 @@ export async function sendApprovedEmail(
 ${itemsList(items)}
 
 Total: ${money(reservation.total)}</pre>
-<p>See you at the show!</p>`,
+${noteHtml(production)}<p>See you at the show!</p>`,
     text: `Hi ${reservation.buyer_name},
 
 Your booking is confirmed! Reference code: ${reservation.reference_code}
@@ -119,7 +134,58 @@ ${itemsList(items)}
 
 Total: ${money(reservation.total)}
 
-Your QR e-ticket is attached/embedded in this email - show it at the door.`,
+Your QR e-ticket is attached/embedded in this email - show it at the door.
+
+${noteText(production)}See you at the show!`,
+  });
+}
+
+/**
+ * Sent when a confirmed booking is moved to another show. Carries the new
+ * reference code and QR, and says the old QR no longer works.
+ */
+export async function sendTransferEmail(
+  ctx: ReservationEmailContext,
+  qrCodeUrl: string,
+  previous: { referenceCode: string; performance: Performance }
+) {
+  const { reservation, production, performance, items } = ctx;
+  if (!reservation.buyer_email) return null;
+  const was = `${previous.performance.label} - ${formatDateTimeLong(previous.performance.datetime)}`;
+
+  return getResend().emails.send({
+    from: FROM,
+    to: reservation.buyer_email,
+    subject: `Show transfer confirmed - ${production.title}`,
+    html: `<p>Hi ${escapeHtml(reservation.buyer_name)},</p>
+<p>Your show transfer was done successfully. Your booking has been moved to the show below.</p>
+<p><strong>Your previous QR code (reference ${previous.referenceCode}) can no longer be used.</strong> Please use the new QR code below at the door.</p>
+<p><img src="${qrCodeUrl}" alt="New QR code" width="240" height="240" /></p>
+<p><strong>New reference code:</strong> ${reservation.reference_code}</p>
+<pre>${showDetails(production, performance)}
+
+${itemsList(items)}
+
+Total: ${money(reservation.total)}</pre>
+<p>Previous show: ${escapeHtml(was)}</p>
+${noteHtml(production)}<p>See you at the show!</p>`,
+    text: `Hi ${reservation.buyer_name},
+
+Your show transfer was done successfully. Your booking has been moved to the show below.
+
+Your previous QR code (reference ${previous.referenceCode}) can no longer be used. Please use the new QR code in this email at the door.
+
+New reference code: ${reservation.reference_code}
+
+${showDetails(production, performance)}
+
+${itemsList(items)}
+
+Total: ${money(reservation.total)}
+
+Previous show: ${was}
+
+${noteText(production)}See you at the show!`,
   });
 }
 

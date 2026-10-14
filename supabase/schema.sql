@@ -26,6 +26,12 @@ create table profiles (
   photo_url text,
   resume_url text,
   reel_url text,
+  -- Optional contact and social links (see migration-profile-links-email-notes.sql).
+  contact_email text,
+  facebook_url text,
+  instagram_url text,
+  x_url text,
+  tiktok_url text,
   -- is_public: the actor's own intent to be listed publicly.
   -- is_approved: admin sign-off, required in addition to is_public before
   -- the profile actually appears anywhere public — see the moderation
@@ -55,6 +61,8 @@ create table productions (
   bank_account_name text,
   bank_account_number text,
   bank_qr_url text,
+  -- Extra note added to confirmation and transfer emails.
+  email_note text,
   status text not null default 'draft' check (status in ('draft', 'published', 'closed')),
   -- Position in the landing page carousel (lowest first).
   carousel_order int not null default 0,

@@ -25,6 +25,7 @@ type Production = {
   bank_account_name: string | null;
   bank_account_number: string | null;
   bank_qr_url: string | null;
+  email_note: string | null;
   status: "draft" | "published" | "closed";
   slug: string;
 };
@@ -185,6 +186,19 @@ export default function ProductionEditorPage() {
               { key: "bank_account_number", label: "Account number" },
             ],
             images: [{ kind: "bank_qr", urlKey: "bank_qr_url", label: "Bank QR", hint: "Square image, 600x600 recommended.", fallback: IMAGES.paymentBank, aspect: "aspect-square" }],
+          },
+        ]}
+      />
+
+      <ProductionSection
+        productionId={id}
+        production={production}
+        title="Email notes"
+        intro="Extra information added to the confirmation email and the show transfer email, just before the closing line. Leave empty for none."
+        onSaved={(p) => setProduction(p as unknown as Production)}
+        groups={[
+          {
+            fields: [{ key: "email_note", label: "Note for buyers (for example: arrival time, venue reminders, house rules)", type: "textarea", rows: 5 }],
           },
         ]}
       />

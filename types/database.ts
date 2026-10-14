@@ -24,6 +24,11 @@ export interface Profile {
   photo_url: string | null;
   resume_url: string | null;
   reel_url: string | null;
+  contact_email: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  x_url: string | null;
+  tiktok_url: string | null;
   is_public: boolean;
   is_approved: boolean;
   created_at: string;
@@ -75,6 +80,7 @@ export interface Production {
   bank_account_name: string | null;
   bank_account_number: string | null;
   bank_qr_url: string | null;
+  email_note: string | null;
   status: ProductionStatus;
   carousel_order: number;
   created_at: string;

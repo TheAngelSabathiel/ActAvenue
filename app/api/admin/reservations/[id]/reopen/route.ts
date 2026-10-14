@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfReservation } from "@/lib/admin-scope";
+import { isTransferred } from "@/lib/transfer";
 import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,6 +15,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   if (!reservation) {
     return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
+  }
+
+  if (isTransferred(reservation.rejection_reason)) {
+    return NextResponse.json({ error: "This booking was transferred to another show and can't be reopened." }, { status: 400 });
   }
 
   if (!["rejected", "expired"].includes(reservation.payment_status)) {

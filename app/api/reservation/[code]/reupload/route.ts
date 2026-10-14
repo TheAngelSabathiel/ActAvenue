@@ -1,3 +1,4 @@
+import { isTransferred } from "@/lib/transfer";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
@@ -33,6 +34,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
   // rejected booking that shares this order. Rejection released their holds,
   // so each needs to be re-checked and re-applied - the atomic hold RPC
   // (check + increment in one DB statement) prevents racing a concurrent buyer.
+  if (isTransferred(reservation.rejection_reason)) {
+    return NextResponse.json(
+      { error: "This booking was moved to another show. Please use the new QR code from your transfer email." },
+      { status: 400 }
+    );
+  }
+
   let targets = [reservation];
   if (reservation.order_code) {
     const { data: siblings } = await db
@@ -40,7 +48,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
       .select("*")
       .eq("order_code", reservation.order_code)
       .eq("payment_status", "rejected");
-    if (siblings?.length) targets = siblings;
+    const live = (siblings ?? []).filter((s) => !isTransferred(s.rejection_reason));
+    if (live.length) targets = live;
   }
 
   const { data: items } = await db

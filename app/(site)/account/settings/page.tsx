@@ -10,6 +10,7 @@ import Image from "next/image";
 import { IMAGES } from "@/lib/images";
 import { createClient } from "@/lib/supabase/client";
 import { validateImageFile } from "@/lib/upload";
+import { SOCIALS, socialText, type SocialKey } from "@/lib/social-links";
 
 type Profile = {
   id: string;
@@ -19,6 +20,11 @@ type Profile = {
   photo_url: string | null;
   resume_url: string | null;
   reel_url: string | null;
+  contact_email: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  x_url: string | null;
+  tiktok_url: string | null;
   is_public: boolean;
   is_approved: boolean;
 };
@@ -301,6 +307,14 @@ function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: 
   const [bio, setBio] = useState(profile.bio ?? "");
   const [resumeUrl, setResumeUrl] = useState(profile.resume_url ?? "");
   const [reelUrl, setReelUrl] = useState(profile.reel_url ?? "");
+  const [socials, setSocials] = useState<Record<SocialKey, string>>(() => {
+    const init = {} as Record<SocialKey, string>;
+    for (const s of SOCIALS) {
+      const v = profile[s.key];
+      init[s.key] = v ? (s.key === "contact_email" ? v : socialText(s.key, v)) : "";
+    }
+    return init;
+  });
   const [isPublic, setIsPublic] = useState(profile.is_public);
   const [message, setMessage] = useState<string | null>(null);
   useToastOn(message, "success");
@@ -323,6 +337,7 @@ function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: 
         resume_url: resumeUrl || null,
         reel_url: reelUrl || null,
         is_public: isPublic,
+        ...Object.fromEntries(SOCIALS.map((s) => [s.key, socials[s.key] || null])),
       }),
     });
     const data = await res.json();
@@ -369,6 +384,21 @@ function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: 
           placeholder="Reel link (YouTube, Vimeo, etc.)"
           className="w-full border border-ink/20  px-3 py-2 text-sm"
         />
+        <div className="space-y-2 pt-1">
+          <p className="text-xs font-bold uppercase text-muted">Contact and social links (optional)</p>
+          {SOCIALS.map((s) => (
+            <div key={s.key} className="flex items-center gap-3">
+              <span className="w-20 shrink-0 text-sm font-bold">{s.label}</span>
+              <input
+                value={socials[s.key]}
+                onChange={(e) => setSocials((x) => ({ ...x, [s.key]: e.target.value }))}
+                placeholder={s.placeholder}
+                inputMode={s.key === "contact_email" ? "email" : "text"}
+                className="w-full border border-ink/20 px-3 py-2 text-sm"
+              />
+            </div>
+          ))}
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
           Show my profile publicly in the cast &amp; crew directory

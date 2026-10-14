@@ -5,10 +5,15 @@ import { toast } from "@/lib/toast";
 import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { useAdminAccess } from "@/components/admin/access-context";
+import { TransferDialog } from "@/components/admin/transfer-dialog";
+import { isTransferred } from "@/lib/transfer";
 
 type Row = {
   id: string;
   production_id: string;
+  performance_id: string;
+  rejection_reason: string | null;
+  checked_in: boolean;
   reference_code: string;
   order_code: string | null;
   order_count: number;
@@ -43,6 +48,7 @@ export default function AdminReservationsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [transferring, setTransferring] = useState<Row | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -158,8 +164,11 @@ export default function AdminReservationsPage() {
                 <span
                   className={`inline-block px-2 py-0.5  text-xs font-bold uppercase mb-2 ${STATUS_STYLE[r.payment_status]}`}
                 >
-                  {r.payment_status.replace("_", " ")}
+                  {isTransferred(r.rejection_reason) ? "transferred" : r.payment_status.replace("_", " ")}
                 </span>
+                {isTransferred(r.rejection_reason) && (
+                  <p className="text-xs font-bold text-muted mb-1">{r.rejection_reason}. This QR no longer works.</p>
+                )}
                 <p className="font-extrabold text-lg">{r.buyer_name}</p>
                 <p className="text-xs text-muted tabular-nums">
                   {r.reference_code} · {r.buyer_email ?? "no email (walk-in)"} · {r.booking_source}
@@ -209,7 +218,16 @@ export default function AdminReservationsPage() {
                       </button>
                     </>
                   )}
-                  {["rejected", "expired"].includes(r.payment_status) && (
+                  {r.payment_status === "confirmed" && !r.checked_in && can(r.production_id, "manager") && (
+                    <button
+                      disabled={busyId === r.id}
+                      onClick={() => setTransferring(r)}
+                      className="px-3 py-1.5 border border-ink/30 text-xs font-bold uppercase disabled:opacity-50"
+                    >
+                      Transfer
+                    </button>
+                  )}
+                  {["rejected", "expired"].includes(r.payment_status) && !isTransferred(r.rejection_reason) && (
                     <button
                       disabled={busyId === r.id}
                       onClick={() => act(r.id, "reopen")}
@@ -236,7 +254,7 @@ export default function AdminReservationsPage() {
                       </button>
                     </>
                   )}
-                  {r.order_count > 1 && ["rejected", "expired"].includes(r.payment_status) && (
+                  {r.order_count > 1 && ["rejected", "expired"].includes(r.payment_status) && !isTransferred(r.rejection_reason) && (
                     <button
                       disabled={busyId === r.id}
                       onClick={() => actOrder(r, "reopen")}
@@ -245,6 +263,7 @@ export default function AdminReservationsPage() {
                       Reopen order
                     </button>
                   )}
+                  {!isTransferred(r.rejection_reason) && (
                   <button
                     disabled={busyId === r.id}
                     onClick={() => act(r.id, "resend-email")}
@@ -252,6 +271,7 @@ export default function AdminReservationsPage() {
                   >
                     Resend email
                   </button>
+                  )}
                   {can(r.production_id, "manager") && (
                     <button
                       disabled={busyId === r.id}
@@ -294,6 +314,16 @@ export default function AdminReservationsPage() {
             </button>
           </div>
         </div>
+      )}
+      {transferring && (
+        <TransferDialog
+          reservation={transferring}
+          onClose={() => setTransferring(null)}
+          onDone={() => {
+            setTransferring(null);
+            load();
+          }}
+        />
       )}
     </div>
   );
