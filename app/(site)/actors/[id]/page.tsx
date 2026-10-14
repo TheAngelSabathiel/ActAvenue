@@ -8,14 +8,6 @@ import { CREDIT_TYPE_RANK, CREDIT_TYPE_LABEL, type CreditType } from "@/lib/cred
 
 type Credits = ActorProfileWithDetails["production_credits"];
 
-const ARTISTIC_LABEL: Record<CreditType, string> = {
-  actor: "Acting",
-  director: "Directing",
-  writer: "Writing",
-  dancer: "Dancing",
-  choreographer: "Choreography",
-};
-
 type Line = { id: string; label: string; detail: string };
 
 /** One card per production: artistic roles and management roles listed separately. */
@@ -36,7 +28,9 @@ function groupByProduction(credits: Credits) {
     if (c.section === "artistic") {
       const type = (c.credit_type ?? "actor") as CreditType;
       const generic = c.role_played === CREDIT_TYPE_LABEL[type] || c.role_played === "Actor";
-      card.artistic.push({ id: c.id, label: ARTISTIC_LABEL[type], detail: generic ? "" : c.role_played, rank: CREDIT_TYPE_RANK[type] });
+      // "Actor · Maria, Play Title". The character and the play are each left out when there is none.
+      const detail = [generic ? "" : c.role_played, c.play?.title ?? ""].filter(Boolean).join(", ");
+      card.artistic.push({ id: c.id, label: CREDIT_TYPE_LABEL[type], detail, rank: CREDIT_TYPE_RANK[type] });
     } else {
       card.management.push({ id: c.id, label: c.role_played, detail: "" });
     }

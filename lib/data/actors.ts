@@ -20,7 +20,10 @@ export async function listPublicActors(): Promise<Profile[]> {
 
 export interface ActorProfileWithDetails extends Profile {
   actor_photos: ActorPhoto[];
-  production_credits: (ProductionCredit & { production: { title: string; slug: string; status: "published" | "closed" } })[];
+  production_credits: (ProductionCredit & {
+    production: { title: string; slug: string; status: "published" | "closed" };
+    play: { title: string } | null;
+  })[];
 }
 
 export async function getPublicActor(id: string): Promise<ActorProfileWithDetails | null> {
@@ -46,13 +49,17 @@ export async function getPublicActor(id: string): Promise<ActorProfileWithDetail
   // service client so visitors and signed-in users see the same list.
   const { data: credits } = await createServiceClient()
     .from("production_credits")
-    .select("*, production:productions(title, slug, status)")
+    .select("*, production:productions(title, slug, status), play:plays(title)")
     .eq("profile_id", id)
     .eq("is_discredited", false)
     .order("created_at", { ascending: false });
 
   const visible = (credits ?? [])
-    .map((c) => ({ ...c, production: Array.isArray(c.production) ? (c.production[0] ?? null) : c.production }))
+    .map((c) => ({
+      ...c,
+      production: Array.isArray(c.production) ? (c.production[0] ?? null) : c.production,
+      play: Array.isArray(c.play) ? (c.play[0] ?? null) : c.play,
+    }))
     .filter((c) => c.production && c.production.status !== "draft");
 
   return { ...profile, actor_photos: photos ?? [], production_credits: visible as ActorProfileWithDetails["production_credits"] };
