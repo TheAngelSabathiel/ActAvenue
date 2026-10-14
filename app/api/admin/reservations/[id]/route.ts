@@ -1,3 +1,4 @@
+import { promoUsesForDiscount } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
@@ -31,9 +32,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (reservation.promo_code_id && reservation.discount_amount > 0) {
-    const { data: promo } = await db.from("promo_codes").select("times_used").eq("id", reservation.promo_code_id).maybeSingle();
+    const { data: promo } = await db
+      .from("promo_codes")
+      .select("times_used, discount_type, discount_value")
+      .eq("id", reservation.promo_code_id)
+      .maybeSingle();
     if (promo && promo.times_used > 0) {
-      await db.from("promo_codes").update({ times_used: promo.times_used - 1 }).eq("id", reservation.promo_code_id);
+      // Give back every use this booking consumed (one per ticket for fixed-amount codes).
+      const back = Math.min(promo.times_used, promoUsesForDiscount(promo, reservation.discount_amount));
+      await db.from("promo_codes").update({ times_used: promo.times_used - back }).eq("id", reservation.promo_code_id);
     }
   }
 

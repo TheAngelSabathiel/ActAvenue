@@ -76,11 +76,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Price each show on its own. A promo only discounts the shows it applies to.
+  // A code with limited uses is spread across the shows in order: each show
+  // sees the uses the earlier ones already took.
+  let promoLeft = promo;
   const plans = [...groups.values()].map((groupItems) => {
     const performance = groupItems[0].performance;
     const production = productionById.get(performance.production_id)!;
     const cartLines = groupItems.map((i) => ({ ticket_tier: i.ticket_tier as TicketTier, quantity: i.quantity }));
-    return { groupItems, performance, production, pricing: calculatePricing(cartLines, promo, production.id) };
+    const pricing = calculatePricing(cartLines, promoLeft, production.id);
+    if (promoLeft) promoLeft = { ...promoLeft, times_used: promoLeft.times_used + pricing.promoUses };
+    return { groupItems, performance, production, pricing };
   });
 
   // --- Atomic inventory hold ---
@@ -218,8 +223,14 @@ export async function POST(req: NextRequest) {
     if (promo) {
       for (const plan of plans) {
         if (plan.pricing.discountAmount <= 0) continue;
-        const { error: promoError } = await incrementPromoUsage(db, promo.id);
-        if (promoError) console.error(`Promo usage increment failed for ${promo.code}:`, promoError.message);
+        // A fixed-amount code uses up one use per discounted ticket.
+        for (let n = 0; n < Math.max(1, plan.pricing.promoUses); n++) {
+          const { error: promoError } = await incrementPromoUsage(db, promo.id);
+          if (promoError) {
+            console.error(`Promo usage increment failed for ${promo.code}:`, promoError.message);
+            break;
+          }
+        }
       }
     }
 

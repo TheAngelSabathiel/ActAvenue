@@ -11,6 +11,8 @@ export interface PricingResult {
   total: number;
   discountSource: "promo" | "tier" | "none";
   rejectedPromoReason?: string;
+  /** How many uses of the code this order consumes (a fixed-amount code uses one per discounted ticket). */
+  promoUses: number;
 }
 
 /** Is a tier's time-limited discount window currently active? */
@@ -23,11 +25,36 @@ export function isTierDiscountActive(tier: TicketTier, now = new Date()): boolea
   return true;
 }
 
-function promoDiscountAmount(promo: PromoCode, subtotal: number): number {
+/**
+ * Percent codes take a percentage off the eligible subtotal and use the code once.
+ * Fixed-amount codes take the amount off every eligible ticket (never more than
+ * the ticket's price) and use the code once per discounted ticket. If the code
+ * has fewer uses left than tickets, only that many tickets are discounted.
+ */
+function promoDiscount(promo: PromoCode, regularLines: CartLineInput[]): { amount: number; uses: number } {
+  const subtotal = regularLines.reduce((sum, l) => sum + l.ticket_tier.price * l.quantity, 0);
+  if (subtotal <= 0) return { amount: 0, uses: 0 };
+
   if (promo.discount_type === "percent") {
-    return Math.round(((subtotal * promo.discount_value) / 100) * 100) / 100;
+    return { amount: Math.round(((subtotal * promo.discount_value) / 100) * 100) / 100, uses: 1 };
   }
-  return Math.min(promo.discount_value, subtotal);
+
+  let left = promo.max_uses === null ? Infinity : Math.max(0, promo.max_uses - promo.times_used);
+  let amount = 0;
+  let uses = 0;
+  for (const l of regularLines) {
+    const n = Math.min(l.quantity, left);
+    amount += Math.min(promo.discount_value, l.ticket_tier.price) * n;
+    uses += n;
+    left -= n;
+  }
+  return { amount: Math.round(amount * 100) / 100, uses };
+}
+
+/** Uses of a fixed-amount code that a stored discount represents (for giving them back on delete). */
+export function promoUsesForDiscount(promo: Pick<PromoCode, "discount_type" | "discount_value">, discountAmount: number): number {
+  if (promo.discount_type === "percent" || promo.discount_value <= 0) return 1;
+  return Math.max(1, Math.round(discountAmount / promo.discount_value));
 }
 
 export function isPromoCodeValid(
@@ -68,14 +95,8 @@ export function calculatePricing(
 ): PricingResult {
   const subtotal = lines.reduce((sum, l) => sum + l.ticket_tier.price * l.quantity, 0);
 
-  const discountTierSubtotal = lines
-    .filter((l) => isTierDiscountActive(l.ticket_tier, now))
-    .reduce((sum, l) => sum + l.ticket_tier.price * l.quantity, 0);
-
-  const regularSubtotal = subtotal - discountTierSubtotal;
-
   if (!promo) {
-    return { subtotal, discountAmount: 0, total: subtotal, discountSource: "none" };
+    return { subtotal, discountAmount: 0, total: subtotal, discountSource: "none", promoUses: 0 };
   }
 
   const validity = isPromoCodeValid(promo, productionId, now);
@@ -86,21 +107,24 @@ export function calculatePricing(
       total: subtotal,
       discountSource: "none",
       rejectedPromoReason: validity.reason,
+      promoUses: 0,
     };
   }
 
   // Promo only ever applies to the non-discount-tier portion of the cart.
-  const promoDiscount = promoDiscountAmount(promo, regularSubtotal);
+  const regularLines = lines.filter((l) => !isTierDiscountActive(l.ticket_tier, now));
+  const { amount: promoAmount, uses } = promoDiscount(promo, regularLines);
 
   // Nothing to compare against on the discount-tier portion - the tier
   // pricing itself *is* the discount, so just report it as "tier" sourced
   // if that's where all the savings vs. list price already are.
-  const total = Math.max(0, subtotal - promoDiscount);
+  const total = Math.max(0, subtotal - promoAmount);
 
   return {
     subtotal,
-    discountAmount: promoDiscount,
+    discountAmount: promoAmount,
     total,
-    discountSource: promoDiscount > 0 ? "promo" : "none",
+    discountSource: promoAmount > 0 ? "promo" : "none",
+    promoUses: promoAmount > 0 ? uses : 0,
   };
 }

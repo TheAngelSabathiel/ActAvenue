@@ -47,8 +47,10 @@ export async function GET(req: NextRequest) {
   let total = 0;
   // Shows that pay into the same account are merged into one payee.
   const payees = new Map<string, PaymentGroup>();
+  let promoLeft = promo;
   for (const g of groups.values()) {
-    const p = calculatePricing(g.lines, promo, g.productionId);
+    const p = calculatePricing(g.lines, promoLeft, g.productionId);
+    if (promoLeft) promoLeft = { ...promoLeft, times_used: promoLeft.times_used + p.promoUses };
     subtotal += p.subtotal;
     discount += p.discountAmount;
     total += p.total;

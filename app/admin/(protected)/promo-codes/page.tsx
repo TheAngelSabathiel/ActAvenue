@@ -124,7 +124,7 @@ export default function PromoCodesPage() {
         <input name="code" placeholder="CODE" required className="border border-ink/20  px-3 py-2 text-sm uppercase" />
         <select name="discount_type" className="border border-ink/20  px-3 py-2 text-sm">
           <option value="percent">Percent off</option>
-          <option value="fixed">Fixed amount off</option>
+          <option value="fixed">Fixed amount off per ticket</option>
         </select>
         <input name="discount_value" type="number" step="0.01" placeholder="Value" required className="border border-ink/20  px-3 py-2 text-sm" />
         <select name="applies_to_production_id" required={!isAdmin} className={`border border-ink/20  px-3 py-2 text-sm ${isAdmin ? "" : "sm:col-span-2"}`}>
@@ -155,7 +155,7 @@ export default function PromoCodesPage() {
             <div className="min-w-0">
               <p className="tabular-nums">{c.code}</p>
               <p className="text-xs text-muted">
-                {c.discount_type === "percent" ? `${c.discount_value}% off` : `₱${c.discount_value} off`}
+                {c.discount_type === "percent" ? `${c.discount_value}% off` : `₱${c.discount_value} off per ticket`}
                 {" · "}
                 {c.production?.title ?? "org-wide"}
                 {" · "}
