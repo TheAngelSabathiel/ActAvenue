@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { manilaDayStart, manilaDayEnd, formatDate } from "@/lib/datetime";
+import { manilaDayStart, manilaDayEnd } from "@/lib/datetime";
 import { createServiceClient } from "@/lib/supabase/service";
 import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
 
+type TierRow = { id: string; label: string; tier_type: string; price: number; tickets: number; gross: number; discount: number; revenue: number };
+type PerfRow = { id: string; label: string; datetime: string; venue: string; tickets: number; gross: number; discount: number; revenue: number; tiers: TierRow[] };
+type ProdRow = { id: string; title: string; tickets: number; gross: number; discount: number; revenue: number; performances: PerfRow[] };
+
+const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+const round = (n: number) => Math.round(n * 100) / 100;
+
 /**
- * "Sold" = confirmed reservations only (pending/rejected/expired don't count
- * as revenue). Admin-manual walk-ins are included since a confirmed walk-in
- * is a real sale - booking_source is broken out separately so it's visible.
+ * "Sold" = confirmed reservations only. Every production, show and ticket tier
+ * is listed, with zeros when nothing sold yet. A reservation's discount is
+ * shared across its ticket lines by their share of the price.
  *
- * GET /api/admin/sales-summary?production_id=<optional>&from=<ISO date>&to=<ISO date>
- * from/to filter on reservations.created_at (when the booking was made),
- * inclusive of the whole "to" day.
+ * GET /api/admin/sales-summary?production_id=<optional>&from=<date>&to=<date>
+ * from/to filter on when the booking was made.
  */
 export async function GET(req: NextRequest) {
   const gate = await requireAnyAccess("foh");
@@ -21,134 +27,121 @@ export async function GET(req: NextRequest) {
   const to = req.nextUrl.searchParams.get("to");
   const db = createServiceClient();
 
+  if (productionId && !canAccess(gate.access, productionId, "foh")) {
+    return NextResponse.json({ error: "You don't have access to this." }, { status: 403 });
+  }
+  const scope = productionId ? [productionId] : accessibleProductionIds(gate.access, "foh");
+
+  // Structure first, so shows and tiers with no sales still appear.
+  let structure = db
+    .from("productions")
+    .select("id, title, performances(id, label, datetime, venue, ticket_tiers(id, label, tier_type, price))")
+    .order("title", { ascending: true });
+  if (scope) structure = structure.in("id", scope);
+  const { data: productions, error: structError } = await structure;
+  if (structError) return NextResponse.json({ error: structError.message }, { status: 500 });
+
   let query = db
     .from("reservations")
     .select(
-      `id, total, discount_amount, booking_source, promo_code_id, created_at,
-       production:productions(id, title),
-       performance:performances(id, label, datetime),
-       reservation_items(quantity, unit_price, ticket_tier:ticket_tiers(id, label)),
+      `id, total, discount_amount, booking_source, promo_uses, performance_id, production_id,
+       reservation_items(quantity, unit_price, ticket_tier_id),
        promo_code:promo_codes(code)`
     )
     .eq("payment_status", "confirmed");
-
-  if (productionId) {
-    if (!canAccess(gate.access, productionId, "foh")) {
-      return NextResponse.json({ error: "You don't have access to this." }, { status: 403 });
-    }
-    query = query.eq("production_id", productionId);
-  } else {
-    const ids = accessibleProductionIds(gate.access, "foh");
-    if (ids) query = query.in("production_id", ids);
-  }
+  if (scope) query = query.in("production_id", scope);
   if (from) query = query.gte("created_at", manilaDayStart(from));
-  if (to) {
-    // Make "to" inclusive of the entire day rather than midnight-exclusive.
-    query = query.lte("created_at", manilaDayEnd(to));
-  }
-
+  if (to) query = query.lte("created_at", manilaDayEnd(to));
   const { data: reservations, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const prodMap = new Map<string, ProdRow>();
+  const perfMap = new Map<string, PerfRow>();
+  const tierMap = new Map<string, TierRow>();
+  for (const p of productions ?? []) {
+    const row: ProdRow = { id: p.id, title: p.title, tickets: 0, gross: 0, discount: 0, revenue: 0, performances: [] };
+    const perfs = [...(p.performances ?? [])].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+    for (const perf of perfs) {
+      const pr: PerfRow = { id: perf.id, label: perf.label, datetime: perf.datetime, venue: perf.venue, tickets: 0, gross: 0, discount: 0, revenue: 0, tiers: [] };
+      const tiers = [...(perf.ticket_tiers ?? [])].sort((a, b) => Number(b.price) - Number(a.price) || a.label.localeCompare(b.label));
+      for (const t of tiers) {
+        const tr: TierRow = { id: t.id, label: t.label, tier_type: t.tier_type, price: Number(t.price), tickets: 0, gross: 0, discount: 0, revenue: 0 };
+        pr.tiers.push(tr);
+        tierMap.set(t.id, tr);
+      }
+      row.performances.push(pr);
+      perfMap.set(perf.id, pr);
+    }
+    prodMap.set(p.id, row);
+  }
+
   let totalRevenue = 0;
   let totalDiscount = 0;
-  let totalTicketsSold = 0;
-  let onlineCount = 0;
-  let walkInCount = 0;
-
-  const byProduction = new Map<string, { title: string; revenue: number; tickets: number }>();
-  const byPerformance = new Map<string, { label: string; production: string; revenue: number; tickets: number }>();
-  const byTier = new Map<string, { label: string; revenue: number; tickets: number }>();
+  let totalTickets = 0;
+  let online = 0;
+  let walkIn = 0;
   const byPromo = new Map<string, { uses: number; discountGiven: number }>();
 
   for (const r of reservations ?? []) {
-    totalRevenue += r.total;
-    totalDiscount += r.discount_amount;
-    if (r.booking_source === "admin_manual") walkInCount += 1;
-    else onlineCount += 1;
+    totalRevenue += Number(r.total);
+    totalDiscount += Number(r.discount_amount);
+    if (r.booking_source === "admin_manual") walkIn += 1;
+    else online += 1;
 
-    const production = Array.isArray(r.production) ? r.production[0] : r.production;
-    const performance = Array.isArray(r.performance) ? r.performance[0] : r.performance;
-    const promoCode = Array.isArray(r.promo_code) ? r.promo_code[0] : r.promo_code;
-
-    if (production) {
-      const key = production.id;
-      const entry = byProduction.get(key) ?? { title: production.title, revenue: 0, tickets: 0 };
-      entry.revenue += r.total;
-      byProduction.set(key, entry);
-    }
-
-    if (performance && production) {
-      const key = performance.id;
-      const entry =
-        byPerformance.get(key) ??
-        {
-          label: `${performance.label} (${formatDate(performance.datetime)})`,
-          production: production.title,
-          revenue: 0,
-          tickets: 0,
-        };
-      entry.revenue += r.total;
-      byPerformance.set(key, entry);
-    }
-
-    // Proportionally allocate this reservation's discount across its line
-    // items by revenue share, so byTier revenue is net (and reconciles
-    // with totals.revenue) instead of gross unit_price × quantity. This is
-    // an allocation, not a stored fact - discounts apply at the reservation
-    // level, not per line item - but it's the standard way to attribute an
-    // order-level discount down to line items for reporting.
     const items = r.reservation_items ?? [];
-    const reservationGrossSubtotal = items.reduce(
-      (sum, item) => sum + item.unit_price * item.quantity,
-      0
-    );
+    const gross = items.reduce((n, i) => n + Number(i.unit_price) * i.quantity, 0);
+    const ticketCount = items.reduce((n, i) => n + i.quantity, 0);
+    totalTickets += ticketCount;
 
+    const prod = prodMap.get(r.production_id);
+    const perf = perfMap.get(r.performance_id);
     for (const item of items) {
-      const tier = Array.isArray(item.ticket_tier) ? item.ticket_tier[0] : item.ticket_tier;
-      totalTicketsSold += item.quantity;
-
-      if (production) {
-        const entry = byProduction.get(production.id);
-        if (entry) entry.tickets += item.quantity;
-      }
-      if (performance) {
-        const entry = byPerformance.get(performance.id);
-        if (entry) entry.tickets += item.quantity;
-      }
-      if (tier) {
-        const grossItemRevenue = item.unit_price * item.quantity;
-        const itemShare = reservationGrossSubtotal > 0 ? grossItemRevenue / reservationGrossSubtotal : 0;
-        const netItemRevenue = grossItemRevenue - r.discount_amount * itemShare;
-
-        const key = tier.id;
-        const entry = byTier.get(key) ?? { label: tier.label, revenue: 0, tickets: 0 };
-        entry.revenue += netItemRevenue;
-        entry.tickets += item.quantity;
-        byTier.set(key, entry);
+      const lineGross = Number(item.unit_price) * item.quantity;
+      const share = gross > 0 ? lineGross / gross : 0;
+      const lineDiscount = Number(r.discount_amount) * share;
+      for (const target of [tierMap.get(item.ticket_tier_id), perf, prod]) {
+        if (!target) continue;
+        target.tickets += item.quantity;
+        target.gross += lineGross;
+        target.discount += lineDiscount;
+        target.revenue += lineGross - lineDiscount;
       }
     }
 
-    if (promoCode) {
-      const entry = byPromo.get(promoCode.code) ?? { uses: 0, discountGiven: 0 };
-      entry.uses += 1;
-      entry.discountGiven += r.discount_amount;
-      byPromo.set(promoCode.code, entry);
+    const promo = one(r.promo_code);
+    if (promo) {
+      // Usage counts tickets, not orders.
+      const entry = byPromo.get(promo.code) ?? { uses: 0, discountGiven: 0 };
+      entry.uses += (r.promo_uses as number | null) ?? ticketCount;
+      entry.discountGiven += Number(r.discount_amount);
+      byPromo.set(promo.code, entry);
+    }
+  }
+
+  const fix = <T extends { gross: number; discount: number; revenue: number }>(o: T) => {
+    o.gross = round(o.gross);
+    o.discount = round(o.discount);
+    o.revenue = round(o.revenue);
+  };
+  const out = [...prodMap.values()];
+  for (const p of out) {
+    fix(p);
+    for (const pf of p.performances) {
+      fix(pf);
+      pf.tiers.forEach(fix);
     }
   }
 
   return NextResponse.json({
     totals: {
-      revenue: totalRevenue,
-      discountGiven: totalDiscount,
-      ticketsSold: totalTicketsSold,
+      revenue: round(totalRevenue),
+      discountGiven: round(totalDiscount),
+      ticketsSold: totalTickets,
       reservationsConfirmed: reservations?.length ?? 0,
-      onlineBookings: onlineCount,
-      walkInBookings: walkInCount,
+      onlineBookings: online,
+      walkInBookings: walkIn,
     },
-    byProduction: Array.from(byProduction.values()),
-    byPerformance: Array.from(byPerformance.values()),
-    byTier: Array.from(byTier.values()),
-    byPromo: Array.from(byPromo.entries()).map(([code, v]) => ({ code, ...v })),
+    productions: out,
+    byPromo: [...byPromo.entries()].map(([code, v]) => ({ code, uses: v.uses, discountGiven: round(v.discountGiven) })),
   });
 }
