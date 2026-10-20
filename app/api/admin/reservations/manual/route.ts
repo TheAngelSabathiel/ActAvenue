@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
-import { generateQrPngBuffer } from "@/lib/qr";
+import { ensureTicketQrs } from "@/lib/tickets";
 import { sendApprovedEmail, sendBookingReceivedEmail } from "@/lib/email/send";
 import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
 
@@ -153,25 +153,14 @@ export async function POST(req: NextRequest) {
     // booking for the same walk-in. So: log and continue without a QR
     // rather than fail the whole registration over it.
     try {
-      const qrBuffer = await generateQrPngBuffer(referenceCode);
-      const qrPath = `qr-codes/${referenceCode}.png`;
-      const { error: qrUploadError } = await db.storage.from("e-tickets").upload(qrPath, qrBuffer, {
-        contentType: "image/png",
-        upsert: true,
-      });
-      if (qrUploadError) throw new Error(qrUploadError.message);
-
-      const { data: qrUrlData } = db.storage.from("e-tickets").getPublicUrl(qrPath);
-      await db
-        .from("reservations")
-        .update({ qr_code_url: qrUrlData.publicUrl })
-        .eq("id", reservation.id);
+      const ticketItems = await ensureTicketQrs(db, reservation.id, referenceCode);
+      ctx.items = ticketItems;
 
       // Reservation + QR are already committed at this point - an email
       // failure shouldn't fail the registration itself.
       if (buyer_email) {
         try {
-          await sendApprovedEmail(ctx, qrUrlData.publicUrl);
+          await sendApprovedEmail(ctx);
           await db
             .from("reservations")
             .update({ approval_email_sent_at: new Date().toISOString() })

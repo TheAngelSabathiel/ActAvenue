@@ -53,6 +53,38 @@ function noteHtml(production: Production) {
   return note ? `<p style="white-space:pre-line">${escapeHtml(note)}</p>\n` : "";
 }
 
+
+const SHARE_NOTE =
+  "Share each QR code only with the people in your group who are part of this order. Every QR can be scanned only as many times as the quantity shown, so please do not pass it to anyone outside your order.";
+
+/** One QR per ticket type. The QR admits as many people as the quantity. */
+function ticketBlocksHtml(items: ReservationEmailContext["items"], fallbackQr?: string) {
+  return items
+    .map((i) => {
+      const qr = i.qr_code_url ?? fallbackQr;
+      const admits = i.quantity === 1 ? "Admits 1 person" : `Admits ${i.quantity} people. This QR scans ${i.quantity} times.`;
+      return `<div style="margin:16px 0;padding:12px;border:1px solid #ddd">
+<p style="margin:0 0 6px"><strong>${escapeHtml(i.ticket_tier.label)}</strong> x ${i.quantity}<br>${admits}</p>
+${qr ? `<img src="${qr}" alt="QR code for ${escapeHtml(i.ticket_tier.label)}" width="240" height="240" />` : ""}
+${i.ticket_code ? `<p style="margin:6px 0 0">Ticket code: ${escapeHtml(i.ticket_code)}</p>` : ""}
+</div>`;
+    })
+    .join("\n");
+}
+
+function ticketBlocksText(items: ReservationEmailContext["items"]) {
+  return items
+    .map((i) => `  - ${i.ticket_tier.label} x ${i.quantity}${i.ticket_code ? ` (ticket code ${i.ticket_code})` : ""}: scans ${i.quantity} time${i.quantity === 1 ? "" : "s"}`)
+    .join("\n");
+}
+
+function shareHtml(items: ReservationEmailContext["items"]) {
+  return items.some((i) => i.quantity > 1) || items.length > 1 ? `<p><strong>${SHARE_NOTE}</strong></p>\n` : "";
+}
+function shareText(items: ReservationEmailContext["items"]) {
+  return items.some((i) => i.quantity > 1) || items.length > 1 ? `${SHARE_NOTE}\n\n` : "";
+}
+
 function showDetails(production: Production, performance: Performance) {
   const when = formatDateTimeLong(performance.datetime);
   return `${production.title}\n${performance.label} - ${when}\n${performance.venue}`;
@@ -105,7 +137,7 @@ ${multi ? `Order total: ${money(grandTotal)}\n\n` : ""}${multi ? "Each show gets
 /** Email 2 - sent when admin approves. Includes QR/e-ticket + full show details. */
 export async function sendApprovedEmail(
   ctx: ReservationEmailContext,
-  qrCodeUrl: string
+  qrCodeUrl?: string
 ) {
   const { reservation, production, performance, items } = ctx;
   if (!reservation.buyer_email) return null;
@@ -115,9 +147,8 @@ export async function sendApprovedEmail(
     to: reservation.buyer_email,
     subject: `You're confirmed - ${production.title}`,
     html: `<p>Hi ${reservation.buyer_name},</p>
-<p>Your booking is confirmed. Show this QR code at the door.</p>
-<p><img src="${qrCodeUrl}" alt="QR code" width="240" height="240" /></p>
-<p><strong>Reference code:</strong> ${reservation.reference_code}</p>
+<p>Your booking is confirmed. Show the QR code for your ticket type at the door.</p>
+${ticketBlocksHtml(items, qrCodeUrl)}${shareHtml(items)}<p><strong>Reference code:</strong> ${reservation.reference_code}</p>
 <pre>${showDetails(production, performance)}
 
 ${itemsList(items)}
@@ -134,9 +165,11 @@ ${itemsList(items)}
 
 Total: ${money(reservation.total)}
 
-Your QR e-ticket is attached/embedded in this email - show it at the door.
+Your QR e-tickets are embedded in this email, one per ticket type. Show them at the door.
 
-${noteText(production)}See you at the show!`,
+${ticketBlocksText(items)}
+
+${shareText(items)}${noteText(production)}See you at the show!`,
   });
 }
 
@@ -146,7 +179,7 @@ ${noteText(production)}See you at the show!`,
  */
 export async function sendTransferEmail(
   ctx: ReservationEmailContext,
-  qrCodeUrl: string,
+  qrCodeUrl: string | undefined,
   previous: { referenceCode: string; performance: Performance }
 ) {
   const { reservation, production, performance, items } = ctx;
@@ -160,8 +193,7 @@ export async function sendTransferEmail(
     html: `<p>Hi ${escapeHtml(reservation.buyer_name)},</p>
 <p>Your show transfer was done successfully. Your booking has been moved to the show below.</p>
 <p><strong>Your previous QR code (reference ${previous.referenceCode}) can no longer be used.</strong> Please use the new QR code below at the door.</p>
-<p><img src="${qrCodeUrl}" alt="New QR code" width="240" height="240" /></p>
-<p><strong>New reference code:</strong> ${reservation.reference_code}</p>
+${ticketBlocksHtml(items, qrCodeUrl)}${shareHtml(items)}<p><strong>New reference code:</strong> ${reservation.reference_code}</p>
 <pre>${showDetails(production, performance)}
 
 ${itemsList(items)}
@@ -173,9 +205,11 @@ ${noteHtml(production)}<p>See you at the show!</p>`,
 
 Your show transfer was done successfully. Your booking has been moved to the show below.
 
-Your previous QR code (reference ${previous.referenceCode}) can no longer be used. Please use the new QR code in this email at the door.
+Your previous QR code (reference ${previous.referenceCode}) can no longer be used. Please use the new QR codes in this email at the door.
 
-New reference code: ${reservation.reference_code}
+${ticketBlocksText(items)}
+
+${shareText(items)}New reference code: ${reservation.reference_code}
 
 ${showDetails(production, performance)}
 
@@ -184,6 +218,47 @@ ${itemsList(items)}
 Total: ${money(reservation.total)}
 
 Previous show: ${was}
+
+${noteText(production)}See you at the show!`,
+  });
+}
+
+/** Sent when staff change the quantity on a ticket line of a confirmed booking. */
+export async function sendQuantityChangedEmail(
+  ctx: ReservationEmailContext,
+  change: { tier: string; from: number; to: number }
+) {
+  const { reservation, production, performance, items } = ctx;
+  if (!reservation.buyer_email) return null;
+  const verb = change.to > change.from ? "increased" : "reduced";
+
+  return getResend().emails.send({
+    from: FROM,
+    to: reservation.buyer_email,
+    subject: `Your ticket quantity was updated - ${production.title}`,
+    html: `<p>Hi ${escapeHtml(reservation.buyer_name)},</p>
+<p>The quantity for your <strong>${escapeHtml(change.tier)}</strong> tickets was ${verb} from ${change.from} to <strong>${change.to}</strong>.</p>
+<p>Your QR code stays the same. It now scans ${change.to} time${change.to === 1 ? "" : "s"}.</p>
+${ticketBlocksHtml(items)}${shareHtml(items)}<p><strong>Reference code:</strong> ${reservation.reference_code}</p>
+<pre>${showDetails(production, performance)}
+
+${itemsList(items)}
+
+Total: ${money(reservation.total)}</pre>
+${noteHtml(production)}<p>See you at the show!</p>`,
+    text: `Hi ${reservation.buyer_name},
+
+The quantity for your ${change.tier} tickets was ${verb} from ${change.from} to ${change.to}. Your QR code stays the same. It now scans ${change.to} time${change.to === 1 ? "" : "s"}.
+
+${ticketBlocksText(items)}
+
+${shareText(items)}Reference code: ${reservation.reference_code}
+
+${showDetails(production, performance)}
+
+${itemsList(items)}
+
+Total: ${money(reservation.total)}
 
 ${noteText(production)}See you at the show!`,
   });

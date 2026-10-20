@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfReservation } from "@/lib/admin-scope";
-import { generateQrPngBuffer } from "@/lib/qr";
+import { ensureTicketQrs } from "@/lib/tickets";
 import { sendApprovedEmail } from "@/lib/email/send";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -21,30 +21,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
   }
 
-  // Generate + upload QR code encoding just the reference code (see lib/qr.ts).
-  // This route is idempotent (operates on an existing reservation id, still
-  // pending_review until this succeeds), so unlike manual registration,
-  // it's safe for an admin to just retry "Approve" if this fails.
-  let qrUrlData: { publicUrl: string };
+  // One QR per ticket type (see lib/tickets.ts). Idempotent, so an admin can
+  // simply press Approve again if this fails.
+  let ticketItems;
   try {
-    const qrBuffer = await generateQrPngBuffer(reservation.reference_code);
-    const qrPath = `qr-codes/${reservation.reference_code}.png`;
-    const { error: qrUploadError } = await db.storage
-      .from("e-tickets")
-      .upload(qrPath, qrBuffer, { contentType: "image/png", upsert: true });
-
-    if (qrUploadError) throw new Error(qrUploadError.message);
-    qrUrlData = db.storage.from("e-tickets").getPublicUrl(qrPath).data;
+    ticketItems = await ensureTicketQrs(db, id, reservation.reference_code);
   } catch (err) {
     console.error(`QR generation failed for reservation ${id}:`, err);
     return NextResponse.json({ error: "Failed to generate QR code. Please try approving again." }, { status: 500 });
   }
+  const qrUrlData = { publicUrl: ticketItems[0]?.qr_code_url ?? "" };
 
   const { data: updated, error: updateError } = await db
     .from("reservations")
     .update({
       payment_status: "confirmed",
-      qr_code_url: qrUrlData.publicUrl,
+      qr_code_url: qrUrlData.publicUrl || null,
     })
     .eq("id", id)
     .select()
@@ -54,10 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: updateError?.message }, { status: 500 });
   }
 
-  const { data: items } = await db
-    .from("reservation_items")
-    .select("*, ticket_tier:ticket_tiers(*)")
-    .eq("reservation_id", id);
+  const items = ticketItems;
 
   // The approval (status + QR) is already committed at this point - an
   // email failure shouldn't fail the approval itself; recoverable via the

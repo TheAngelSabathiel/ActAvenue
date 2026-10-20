@@ -218,8 +218,12 @@ create table reservation_items (
   ticket_tier_id uuid not null references ticket_tiers (id) on delete restrict,
   quantity integer not null check (quantity > 0),
   unit_price numeric(10, 2) not null,
-  id_proof_path text
+  id_proof_path text,
+  ticket_code text,
+  qr_code_url text,
+  scans_used integer not null default 0
 );
+create unique index reservation_items_ticket_code_idx on reservation_items (ticket_code) where ticket_code is not null;
 
 create index reservation_items_reservation_idx on reservation_items (reservation_id);
 

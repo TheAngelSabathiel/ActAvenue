@@ -22,7 +22,9 @@ export function PerformancePicker({
   const [performances, setPerformances] = useState(initialPerformances);
   const [activeId, setActiveId] = useState(initialPerformances[0]?.id);
   const [added, setAdded] = useState<AddedItem | null>(null);
+  const [qty, setQty] = useState<Record<string, number>>({});
   const [idFor, setIdFor] = useState<{ tierId: string; performanceId: string } | null>(null);
+  const qtyOf = (tier: TicketTier & { remaining?: number }) => Math.min(Math.max(1, qty[tier.id] ?? 1), Math.max(1, tier.remaining ?? 1));
   const [idFile, setIdFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Record<string, "idle" | "adding" | "added" | "error">>({});
 
@@ -78,20 +80,20 @@ export function PerformancePicker({
       setIdFile(null);
       setIdFor({ tierId: tier.id, performanceId });
     } else {
-      void handleAdd(tier.id, performanceId);
+      void handleAdd(tier.id, performanceId, null, qtyOf(tier as never));
     }
   }
 
-  async function handleAdd(tierId: string, performanceId: string, file?: File | null) {
+  async function handleAdd(tierId: string, performanceId: string, file?: File | null, quantity = 1) {
     setStatus((s) => ({ ...s, [tierId]: "adding" }));
     try {
-      await addItem(tierId, performanceId, 1, file);
+      await addItem(tierId, performanceId, quantity, file);
       setStatus((s) => ({ ...s, [tierId]: "idle" }));
       setIdFor(null);
       const perf = performances.find((p) => p.id === performanceId);
       const tier = perf?.ticket_tiers.find((t) => t.id === tierId);
       setAdded({
-        tier: tier?.label ?? "Ticket",
+        tier: `${tier?.label ?? "Ticket"} x ${quantity}`,
         show: productionTitle,
         performance: perf?.label ?? "",
         day: perf ? formatDayLong(perf.datetime) : undefined,
@@ -131,7 +133,10 @@ export function PerformancePicker({
               <button
                 className="aa-btn flex-1"
                 disabled={!idFile || status[idFor.tierId] === "adding"}
-                onClick={() => handleAdd(idFor.tierId, idFor.performanceId, idFile)}
+                onClick={() => {
+                  const t = performances.flatMap((p) => p.ticket_tiers).find((x) => x.id === idFor.tierId);
+                  void handleAdd(idFor.tierId, idFor.performanceId, idFile, t ? qtyOf(t) : 1);
+                }}
               >
                 {status[idFor.tierId] === "adding" ? "Uploading..." : "Upload and add to cart"}
               </button>
@@ -190,12 +195,20 @@ export function PerformancePicker({
                   </div>
                   <div className="aa-perforation p-5 flex flex-col justify-between gap-3 sm:w-44">
                     <p className="font-black text-2xl mb-0">₱{tier.price.toFixed(2)}</p>
+                    {!soldOut && (
+                      <div className="flex items-center gap-2" role="group" aria-label={`Quantity for ${tier.label}`}>
+                        <span className="aa-label mb-0">Qty</span>
+                        <button type="button" className="aa-btn aa-btn-outline aa-btn-sm !px-3" aria-label="Fewer" onClick={() => setQty((q) => ({ ...q, [tier.id]: Math.max(1, qtyOf(tier) - 1) }))}>-</button>
+                        <span className="w-6 text-center font-black tabular-nums">{qtyOf(tier)}</span>
+                        <button type="button" className="aa-btn aa-btn-outline aa-btn-sm !px-3" aria-label="More" disabled={qtyOf(tier) >= tier.remaining} onClick={() => setQty((q) => ({ ...q, [tier.id]: Math.min(tier.remaining, qtyOf(tier) + 1) }))}>+</button>
+                      </div>
+                    )}
                     <button
                       disabled={soldOut || s === "adding"}
                       onClick={() => startAdd(tier, active.id)}
                       className="aa-btn aa-btn-sm w-full"
                     >
-                      {soldOut ? "Sold out" : s === "adding" ? "Adding..." : "Add to cart"}
+                      {soldOut ? "Sold out" : s === "adding" ? "Adding..." : qtyOf(tier) > 1 ? `Add ${qtyOf(tier)} to cart` : "Add to cart"}
                     </button>
                     {s === "error" && (
                       <p className="text-danger text-xs font-bold mb-0">Could not add. Try again.</p>

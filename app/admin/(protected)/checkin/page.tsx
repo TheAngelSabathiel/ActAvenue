@@ -12,13 +12,14 @@ type Result = {
   payment_status: string;
   checked_in: boolean;
   checked_in_at: string | null;
-  reservation_items: { id: string; quantity: number; ticket_tier: { label: string } }[];
+  reservation_items: { id: string; quantity: number; scans_used?: number; ticket_code?: string | null; ticket_tier: { label: string } }[];
 };
 
 export default function CheckinPage() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
+  const [matched, setMatched] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   async function search() {
@@ -28,14 +29,15 @@ export default function CheckinPage() {
     const res = await fetch(`/api/checkin?q=${encodeURIComponent(q)}`);
     const data = await res.json();
     setResults(data.results ?? []);
+    setMatched(data.matched_item_id ?? null);
     setLoading(false);
   }
 
-  async function checkIn(id: string) {
+  async function checkIn(itemId: string, count: number) {
     const res = await fetch("/api/checkin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservation_id: id }),
+      body: JSON.stringify({ item_id: itemId, count }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -43,8 +45,8 @@ export default function CheckinPage() {
       setMessage(data.error);
       return;
     }
-    toast.success(`Checked in ${data.reservation.buyer_name}.`);
-    setMessage(`Checked in ${data.reservation.buyer_name}.`);
+    toast.success(`Admitted ${data.admitted} for ${data.reservation.buyer_name}.`);
+    setMessage(null);
     search();
   }
 
@@ -80,19 +82,31 @@ export default function CheckinPage() {
               </p>
               <p className="text-xs text-muted">Status: {r.payment_status}</p>
             </div>
-            {r.checked_in ? (
-              <span className="text-xs font-bold uppercase text-green-700 shrink-0">
-                Checked in {r.checked_in_at ? formatDateTime(r.checked_in_at) : ""}
-              </span>
-            ) : (
-              <button
-                onClick={() => checkIn(r.id)}
-                disabled={r.payment_status !== "confirmed"}
-                className="px-3 py-1.5  bg-green-700 text-white text-xs font-bold uppercase disabled:opacity-40 shrink-0"
-              >
-                Check in
-              </button>
-            )}
+            <div className="w-full space-y-2">
+              {r.reservation_items.map((i) => {
+                const used = i.scans_used ?? 0;
+                const left = i.quantity - used;
+                return (
+                  <div key={i.id} className={`flex flex-wrap items-center justify-between gap-2 border p-2 ${matched === i.id ? "border-black border-2" : "border-ink/10"}`}>
+                    <p className="text-sm mb-0">
+                      <strong>{i.ticket_tier.label}</strong> · admitted {used}/{i.quantity}
+                      {matched === i.id && <span className="aa-label bg-accent px-2 py-0.5 ml-2">Scanned</span>}
+                    </p>
+                    {left <= 0 ? (
+                      <span className="text-xs font-bold uppercase text-green-700">Fully used</span>
+                    ) : (
+                      <span className="flex gap-2">
+                        <button onClick={() => checkIn(i.id, 1)} disabled={r.payment_status !== "confirmed"} className="px-3 py-1.5 bg-green-700 text-white text-xs font-bold uppercase disabled:opacity-40">Admit 1</button>
+                        {left > 1 && (
+                          <button onClick={() => checkIn(i.id, left)} disabled={r.payment_status !== "confirmed"} className="px-3 py-1.5 bg-black text-white text-xs font-bold uppercase disabled:opacity-40">Admit all {left}</button>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              {r.checked_in && <p className="text-xs font-bold uppercase text-green-700 mb-0">Everyone admitted {r.checked_in_at ? formatDateTime(r.checked_in_at) : ""}</p>}
+            </div>
           </div>
         ))}
       </div>

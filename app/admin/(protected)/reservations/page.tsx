@@ -5,6 +5,7 @@ import { toast } from "@/lib/toast";
 import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { useAdminAccess } from "@/components/admin/access-context";
+import { QuantityEditor } from "@/components/admin/quantity-editor";
 import { TransferDialog } from "@/components/admin/transfer-dialog";
 import { isTransferred } from "@/lib/transfer";
 
@@ -25,7 +26,7 @@ type Row = {
   payment_proof_url: string | null;
   production: { title: string };
   performance: { label: string; datetime: string };
-  reservation_items: { id: string; quantity: number; id_proof_path?: string | null; ticket_tier: { label: string; tier_type: string } }[];
+  reservation_items: { id: string; quantity: number; id_proof_path?: string | null; scans_used?: number; ticket_tier: { label: string; tier_type: string } }[];
 };
 
 const STATUS_TABS = ["all", "pending_review", "confirmed", "rejected", "expired"] as const;
@@ -192,6 +193,12 @@ export default function AdminReservationsPage() {
                     </span>
                   ))}
                 </p>
+                {["pending_review", "confirmed"].includes(r.payment_status) && !isTransferred(r.rejection_reason) && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs font-bold uppercase underline">Edit quantity</summary>
+                    <QuantityEditor reservationId={r.id} items={r.reservation_items} confirmed={r.payment_status === "confirmed"} onChanged={load} />
+                  </details>
+                )}
               </div>
 
               <div className="flex flex-col items-end gap-2">

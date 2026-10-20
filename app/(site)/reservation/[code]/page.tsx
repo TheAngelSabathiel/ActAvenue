@@ -89,15 +89,26 @@ export default async function ReservationStatusPage({
 
         <p className="mb-0">{status.body}</p>
 
-        {reservation.payment_status === "confirmed" && reservation.qr_code_url && (
-          <div className="flex justify-center py-4">
-            <Image
-              src={reservation.qr_code_url}
-              alt="E-ticket QR code"
-              width={220}
-              height={220}
-              className="border-2 border-black"
-            />
+        {reservation.payment_status === "confirmed" && (
+          <div className="space-y-6 py-4">
+            {(reservation.reservation_items as { id: string; quantity: number; qr_code_url?: string | null; ticket_tier: { label: string } }[]).map((item) => {
+              const qr = item.qr_code_url ?? reservation.qr_code_url;
+              if (!qr) return null;
+              return (
+                <div key={item.id} className="text-center space-y-2">
+                  <p className="font-black mb-0">{item.ticket_tier.label} x {item.quantity}</p>
+                  <p className="text-sm text-muted mb-0">
+                    {item.quantity === 1 ? "Admits 1 person." : `Admits ${item.quantity} people. This QR scans ${item.quantity} times.`}
+                  </p>
+                  <div className="flex justify-center">
+                    <Image src={qr} alt={`QR code for ${item.ticket_tier.label}`} width={220} height={220} className="border-2 border-black" />
+                  </div>
+                </div>
+              );
+            })}
+            <p className="text-sm font-bold mb-0">
+              Share each QR only with the people in your order. It scans only as many times as the quantity, so do not pass it to anyone outside your group.
+            </p>
           </div>
         )}
 

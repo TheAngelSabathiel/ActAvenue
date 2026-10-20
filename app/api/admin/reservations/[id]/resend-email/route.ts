@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfReservation } from "@/lib/admin-scope";
+import { ensureTicketQrs } from "@/lib/tickets";
 import { sendApprovedEmail, sendBookingReceivedEmail, sendRejectedEmail } from "@/lib/email/send";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -39,13 +40,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       await sendBookingReceivedEmail(ctx);
       break;
     case "confirmed":
-      if (!reservation.qr_code_url) {
-        return NextResponse.json(
-          { error: "No QR code on file for this confirmed reservation." },
-          { status: 400 }
-        );
+      try {
+        ctx.items = await ensureTicketQrs(db, id, reservation.reference_code);
+      } catch {
+        return NextResponse.json({ error: "Could not prepare the QR codes." }, { status: 500 });
       }
-      await sendApprovedEmail(ctx, reservation.qr_code_url);
+      await sendApprovedEmail(ctx);
       break;
     case "rejected": {
       const reuploadUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/reservation/${reservation.reference_code}/reupload`;

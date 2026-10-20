@@ -199,6 +199,9 @@ export interface ReservationItem {
   quantity: number;
   unit_price: number;
   id_proof_path?: string | null;
+  ticket_code?: string | null;
+  qr_code_url?: string | null;
+  scans_used?: number;
 }
 
 // ---- Composite view types used by the UI ----

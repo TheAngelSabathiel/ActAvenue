@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfReservation } from "@/lib/admin-scope";
-import { generateQrPngBuffer } from "@/lib/qr";
+import { ensureTicketQrs } from "@/lib/tickets";
 import { sendTransferEmail } from "@/lib/email/send";
 import { holdTicketTier, releaseTicketTierHold, releaseTicketTierHolds } from "@/lib/inventory";
 import { TRANSFER_PREFIX } from "@/lib/transfer";
@@ -51,6 +51,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq("reservation_id", id);
   if (!oldItems?.length) return NextResponse.json({ error: "This booking has no tickets." }, { status: 400 });
 
+  if (oldItems.some((i) => (i.scans_used ?? 0) > 0)) {
+    return NextResponse.json({ error: "Some tickets were already scanned at the door, so this booking can't be transferred." }, { status: 409 });
+  }
+
   // Match each ticket line to the tier of the same type on the new show.
   const { data: targetTiers } = await db.from("ticket_tiers").select("*").eq("performance_id", performance_id);
   const plan: { oldItem: (typeof oldItems)[number]; newTierId: string }[] = [];
@@ -98,20 +102,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Could not generate a reference code, try again." }, { status: 500 });
   }
 
-  // QR first, so a storage failure leaves nothing half done.
-  let qrUrl: string;
-  try {
-    const buffer = await generateQrPngBuffer(referenceCode);
-    const path = `qr-codes/${referenceCode}.png`;
-    const { error: uploadError } = await db.storage.from("e-tickets").upload(path, buffer, { contentType: "image/png", upsert: true });
-    if (uploadError) throw new Error(uploadError.message);
-    qrUrl = db.storage.from("e-tickets").getPublicUrl(path).data.publicUrl;
-  } catch (err) {
-    console.error(`QR generation failed for transfer of ${id}:`, err);
-    await undo();
-    return NextResponse.json({ error: "Could not create the new QR code. Nothing was changed, please try again." }, { status: 500 });
-  }
-
   const { data: created, error: insertError } = await db
     .from("reservations")
     .insert({
@@ -130,7 +120,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       payment_status: "confirmed",
       booking_source: old.booking_source,
       payment_proof_url: old.payment_proof_url,
-      qr_code_url: qrUrl,
     })
     .select()
     .single();
@@ -157,6 +146,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: itemsError.message }, { status: 500 });
   }
 
+  // One QR per ticket type on the new booking.
+  let finalItems = newItems ?? [];
+  try {
+    finalItems = await ensureTicketQrs(db, created.id, referenceCode);
+  } catch (err) {
+    console.error(`QR generation failed for transfer of ${id}:`, err);
+  }
+
   // The new booking now holds the seats. Retire the old one and free its seats.
   // Its promo link moves to the new booking so the code's use is not counted twice.
   const { error: retireError } = await db
@@ -177,8 +174,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let emailed = false;
   try {
     const sent = await sendTransferEmail(
-      { reservation: created, production: old.production, performance: target, items: newItems ?? [] },
-      qrUrl,
+      { reservation: created, production: old.production, performance: target, items: finalItems },
+      undefined,
       { referenceCode: old.reference_code, performance: old.performance }
     );
     if (sent) {
