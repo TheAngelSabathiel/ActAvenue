@@ -225,9 +225,9 @@ export default function AdminActorsPage() {
         {shown.map((actor) => {
           const selectable = (actor.is_public && !actor.is_approved) || actor.is_approved;
           return (
-            <div key={actor.id} className="aa-card p-5">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-4 min-w-0 flex-1">
+            <div key={actor.id} className="aa-card p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                 {selectable && (
                   <input
                     type="checkbox"
@@ -265,7 +265,7 @@ export default function AdminActorsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 shrink-0 ml-auto w-36">
+              <div className="flex flex-row flex-wrap sm:flex-col gap-2 shrink-0 sm:ml-auto w-full sm:w-36 [&>button]:flex-1 sm:[&>button]:flex-none">
                 {actor.role === "public" && (
                   <button
                     disabled={busyId === actor.id}

@@ -64,7 +64,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <AdminAccessProvider value={value}>
       <div className="min-h-screen bg-white">
         <header className="bg-black text-white sticky top-0 z-40">
-          <nav className="aa-container !max-w-6xl py-3 flex items-center gap-1 overflow-x-auto">
+          <nav className="aa-container !max-w-6xl py-3 flex items-center gap-1 overflow-x-auto no-scrollbar">
             <span className="font-black tracking-[0.12em] mr-4 shrink-0">{heading}</span>
             {nav.map((n) => (
               <Link key={n.href} href={n.href} className="aa-nav-link shrink-0 whitespace-nowrap">
@@ -76,7 +76,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           </nav>
         </header>
-        <main className="aa-container !max-w-6xl py-10">{children}</main>
+        <main className="aa-container !max-w-6xl py-6 sm:py-10">{children}</main>
       </div>
     </AdminAccessProvider>
   );

@@ -117,3 +117,20 @@
     .aa-perforation { border-top: 0; border-left: 2px dashed #000; }
   }
 }
+
+/* Phones: bigger tap targets, no iOS zoom on inputs, tighter side padding. */
+@media (max-width: 639px) {
+  .aa-container { padding-inline: 1rem; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea { font-size: 16px; }
+  .aa-btn { min-height: 44px; }
+  .aa-btn-sm { min-height: 40px; }
+}
+/* Touch screens have no hover, so skip the lift and invert effects. */
+@media (hover: none) {
+  .aa-lift:hover { transform: none; box-shadow: 0 .125rem .25rem rgba(0,0,0,.075); }
+  .aa-btn:hover { transform: none; }
+  .aa-box:hover { background: #fff; color: inherit; }
+  .aa-btn-outline:hover { background: transparent; color: #000; }
+}
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

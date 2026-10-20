@@ -158,7 +158,7 @@ export function PerformanceCard({
           return (
             <div key={t.id} className="border-t border-ink/10 pt-3">
               <div className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <select value={td.tier_type} onChange={(e) => setTier(t.id, { tier_type: e.target.value as TierType })} className="border border-ink/20 px-2 py-1 text-sm" aria-label="Tier type">
                     {TYPE_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>{o.name}</option>

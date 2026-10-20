@@ -159,7 +159,7 @@ export default function AdminReservationsPage() {
 
       <div className="space-y-3">
         {rows.map((r) => (
-          <div key={r.id} className="aa-card p-5">
+          <div key={r.id} className="aa-card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 break-words">
                 <span
@@ -201,7 +201,7 @@ export default function AdminReservationsPage() {
                 )}
               </div>
 
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-col items-start sm:items-end gap-2 w-full sm:w-auto">
                 {r.payment_proof_url && (
                   <a
                     href={r.payment_proof_url}
@@ -212,7 +212,7 @@ export default function AdminReservationsPage() {
                     View proof
                   </a>
                 )}
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex flex-wrap justify-start sm:justify-end gap-2">
                   {r.payment_status === "pending_review" && (
                     <>
                       <button
