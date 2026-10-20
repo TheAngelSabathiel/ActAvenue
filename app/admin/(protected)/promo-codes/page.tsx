@@ -161,27 +161,39 @@ export default function PromoCodesPage() {
         {error && <p className="text-sm text-danger sm:col-span-2">{error}</p>}
       </form>
 
-      <div className="space-y-2">
-        {codes.map((c) => (
-          <div key={c.id} className="aa-card p-4 flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="tabular-nums">{c.code}</p>
-              <p className="text-xs text-muted">
-                {c.discount_type === "percent" ? `${c.discount_value}% off` : `₱${c.discount_value} off per ticket`}
-                {" · "}
-                {c.production?.title ?? "org-wide"}
-                {" · "}
-                {c.applicable_tier_types?.length ? c.applicable_tier_types.map(tierTypeName).join(", ") : "all ticket types"}
-                {" · "}
-                used {c.times_used}
-                {c.max_uses ? `/${c.max_uses}` : ""}
-              </p>
-            </div>
-            <button onClick={() => remove(c.id)} className="text-xs font-bold uppercase text-danger">
-              Delete
-            </button>
-          </div>
-        ))}
+      <div className="space-y-8">
+        {(() => {
+          const groups = new Map<string, PromoCode[]>();
+          for (const c of codes) {
+            const k = c.production?.title ?? "";
+            groups.set(k, [...(groups.get(k) ?? []), c]);
+          }
+          const keys = sortByName([...groups.keys()].filter(Boolean), (k) => k);
+          if (groups.has("")) keys.push("");
+          return keys.map((k) => (
+            <section key={k || "org"} className="space-y-2">
+              <h2 className="text-lg font-black">{k || "Organization-wide"}</h2>
+              {groups.get(k)!.map((c) => (
+                <div key={c.id} className="aa-card p-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="tabular-nums">{c.code}</p>
+                    <p className="text-xs text-muted">
+                      {c.discount_type === "percent" ? `${c.discount_value}% off` : `₱${c.discount_value} off per ticket`}
+                      {" · "}
+                      {c.applicable_tier_types?.length ? c.applicable_tier_types.map(tierTypeName).join(", ") : "all ticket types"}
+                      {" · "}
+                      used {c.times_used}
+                      {c.max_uses ? `/${c.max_uses}` : ""}
+                    </p>
+                  </div>
+                  <button onClick={() => remove(c.id)} className="text-xs font-bold uppercase text-danger">
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </section>
+          ));
+        })()}
       </div>
     </div>
   );
