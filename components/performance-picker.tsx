@@ -5,7 +5,8 @@ import { toast } from "@/lib/toast";
 import { useEffect, useState } from "react";
 import { useCart } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
-import { formatDateTime } from "@/lib/datetime";
+import { formatDayLong, formatDayShort, formatTime } from "@/lib/datetime";
+import { ID_INSTRUCTION } from "@/lib/tiers";
 import { isTierDiscountActive } from "@/lib/pricing";
 import { AddedToCartModal, type AddedItem } from "@/components/added-to-cart-modal";
 import type { PerformanceWithTiers, TicketTier } from "@/types/database";
@@ -21,6 +22,8 @@ export function PerformancePicker({
   const [performances, setPerformances] = useState(initialPerformances);
   const [activeId, setActiveId] = useState(initialPerformances[0]?.id);
   const [added, setAdded] = useState<AddedItem | null>(null);
+  const [idFor, setIdFor] = useState<{ tierId: string; performanceId: string } | null>(null);
+  const [idFile, setIdFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Record<string, "idle" | "adding" | "added" | "error">>({});
 
   // Live remaining-quantity counts: subscribe to ticket_tiers changes so
@@ -70,14 +73,31 @@ export function PerformancePicker({
 
   const active = performances.find((p) => p.id === activeId);
 
-  async function handleAdd(tierId: string, performanceId: string) {
+  function startAdd(tier: TicketTier, performanceId: string) {
+    if (tier.require_id) {
+      setIdFile(null);
+      setIdFor({ tierId: tier.id, performanceId });
+    } else {
+      void handleAdd(tier.id, performanceId);
+    }
+  }
+
+  async function handleAdd(tierId: string, performanceId: string, file?: File | null) {
     setStatus((s) => ({ ...s, [tierId]: "adding" }));
     try {
-      await addItem(tierId, performanceId, 1);
+      await addItem(tierId, performanceId, 1, file);
       setStatus((s) => ({ ...s, [tierId]: "idle" }));
+      setIdFor(null);
       const perf = performances.find((p) => p.id === performanceId);
       const tier = perf?.ticket_tiers.find((t) => t.id === tierId);
-      setAdded({ tier: tier?.label ?? "Ticket", show: productionTitle, performance: perf?.label ?? "" });
+      setAdded({
+        tier: tier?.label ?? "Ticket",
+        show: productionTitle,
+        performance: perf?.label ?? "",
+        day: perf ? formatDayLong(perf.datetime) : undefined,
+        time: perf ? formatTime(perf.datetime) : undefined,
+        venue: perf?.venue,
+      });
     } catch (err) {
       setStatus((s) => ({ ...s, [tierId]: "error" }));
       toast.error(err instanceof Error ? err.message : "Could not add to cart.");
@@ -95,23 +115,60 @@ export function PerformancePicker({
   return (
     <div className="space-y-6">
       {added && <AddedToCartModal item={added} onClose={() => setAdded(null)} />}
-      <div className="flex flex-wrap gap-2">
-        {performances.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setActiveId(p.id)}
-            className={`aa-btn aa-btn-sm ${activeId === p.id ? "aa-btn-black" : "aa-btn-outline"}`}
-          >
-            {p.label}
-          </button>
-        ))}
+      {idFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setIdFor(null)} role="presentation">
+          <div role="dialog" aria-modal="true" className="aa-card w-full max-w-md p-8 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <p className="aa-label text-muted mb-0">ID required</p>
+            <p className="mb-0">{ID_INSTRUCTION}</p>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setIdFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm"
+              aria-label="Upload ID"
+            />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                className="aa-btn flex-1"
+                disabled={!idFile || status[idFor.tierId] === "adding"}
+                onClick={() => handleAdd(idFor.tierId, idFor.performanceId, idFile)}
+              >
+                {status[idFor.tierId] === "adding" ? "Uploading..." : "Upload and add to cart"}
+              </button>
+              <button className="aa-btn aa-btn-outline flex-1" onClick={() => setIdFor(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <p className="aa-label text-muted mb-0">Step 1: choose your show date</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {performances.map((p) => {
+          const on = activeId === p.id;
+          return (
+            <button
+              key={p.id}
+              onClick={() => setActiveId(p.id)}
+              aria-pressed={on}
+              className={`text-left border-2 border-black p-4 transition ${on ? "bg-black text-white" : "bg-white hover:bg-[#f2f2f2]"}`}
+            >
+              <span className="block text-xl font-black leading-tight">{formatDayShort(p.datetime)}</span>
+              <span className="block text-lg font-bold">{formatTime(p.datetime)}</span>
+              <span className={`block text-sm ${on ? "opacity-80" : "text-black/70"}`}>{p.venue}</span>
+              {on && <span className="aa-label mt-2 inline-block bg-accent text-black px-2 py-0.5">Selected</span>}
+            </button>
+          );
+        })}
       </div>
 
       {active && (
         <div className="space-y-4">
-          <p className="text-muted mb-0">
-            {formatDateTime(active.datetime)} - {active.venue}
-          </p>
+          <div className="bg-black text-white p-5 border-l-[8px] border-accent">
+            <p className="aa-label opacity-75 mb-1">Step 2: you are booking</p>
+            <p className="text-2xl md:text-3xl font-black mb-1">{formatDayLong(active.datetime)}</p>
+            <p className="text-2xl md:text-3xl font-black mb-2">{formatTime(active.datetime)}</p>
+            <p className="text-lg mb-0"><i className="bi bi-geo-alt" /> {active.venue}</p>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {active.ticket_tiers.map((tier) => {
@@ -122,6 +179,8 @@ export function PerformancePicker({
                 <div key={tier.id} className="aa-card aa-lift flex flex-col sm:flex-row">
                   <div className="flex-1 p-5">
                     <p className="font-black text-lg mb-1">{tier.label}</p>
+                    {tier.description && <p className="text-sm mb-1 whitespace-pre-line">{tier.description}</p>}
+                    {tier.require_id && <p className="text-xs text-muted mb-1">ID upload required (Student, PWD, Senior).</p>}
                     {tier.discount_active && (
                       <span className="aa-label bg-accent px-2 py-0.5 inline-block">Limited-time price</span>
                     )}
@@ -133,7 +192,7 @@ export function PerformancePicker({
                     <p className="font-black text-2xl mb-0">₱{tier.price.toFixed(2)}</p>
                     <button
                       disabled={soldOut || s === "adding"}
-                      onClick={() => handleAdd(tier.id, active.id)}
+                      onClick={() => startAdd(tier, active.id)}
                       className="aa-btn aa-btn-sm w-full"
                     >
                       {soldOut ? "Sold out" : s === "adding" ? "Adding..." : "Add to cart"}

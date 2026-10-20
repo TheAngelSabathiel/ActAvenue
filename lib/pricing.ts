@@ -113,7 +113,19 @@ export function calculatePricing(
 
   // Promo only ever applies to the non-discount-tier portion of the cart.
   const regularLines = lines.filter((l) => !isTierDiscountActive(l.ticket_tier, now));
-  const { amount: promoAmount, uses } = promoDiscount(promo, regularLines);
+  const types = promo.applicable_tier_types;
+  const eligibleLines = types && types.length ? regularLines.filter((l) => types.includes(l.ticket_tier.tier_type)) : regularLines;
+  if (types && types.length && regularLines.length > 0 && eligibleLines.length === 0) {
+    return {
+      subtotal,
+      discountAmount: 0,
+      total: subtotal,
+      discountSource: "none",
+      rejectedPromoReason: "Promo code not valid for this ticket type / show.",
+      promoUses: 0,
+    };
+  }
+  const { amount: promoAmount, uses } = promoDiscount(promo, eligibleLines);
 
   // Nothing to compare against on the discount-tier portion - the tier
   // pricing itself *is* the discount, so just report it as "tier" sourced

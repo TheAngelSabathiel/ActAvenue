@@ -3,6 +3,8 @@ import Image from "next/image";
 import { getProductionBySlug } from "@/lib/data/productions";
 import { CreditsDisplay } from "@/components/credits-display";
 import { PerformancePicker } from "@/components/performance-picker";
+import { PartnersSection } from "@/components/partners-section";
+import { getPartners } from "@/lib/data/partners";
 import { IMAGES } from "@/lib/images";
 
 export default async function ProductionPage({
@@ -13,6 +15,7 @@ export default async function ProductionPage({
   const { slug } = await params;
   const production = await getProductionBySlug(slug);
   if (!production) notFound();
+  const partners = await getPartners(production.id);
 
   return (
     <>
@@ -56,6 +59,8 @@ export default async function ProductionPage({
         </section>
 
         <CreditsDisplay plays={production.plays} credits={production.credits} />
+
+        <PartnersSection partners={partners} />
       </div>
     </>
   );

@@ -8,7 +8,7 @@ import { IMAGES } from "@/lib/images";
 import { Toaster } from "@/components/toaster";
 
 export const metadata: Metadata = {
-  title: "Act Avenue | Tickets",
+  title: "Act Avenue",
   description: "Reserve tickets for upcoming Act Avenue productions.",
   icons: {
     icon: [{ url: IMAGES.logo, type: "image/png" }],

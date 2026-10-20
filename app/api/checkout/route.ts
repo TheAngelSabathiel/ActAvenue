@@ -47,6 +47,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
   }
 
+  const missingId = items.find((i) => i.ticket_tier.require_id && !i.id_proof_path);
+  if (missingId) {
+    return NextResponse.json(
+      { error: `Upload your ID for "${missingId.ticket_tier.label}" in your cart first.` },
+      { status: 400 }
+    );
+  }
+
   // One checkout can span several shows. Each show becomes its own
   // reservation (own reference code, QR and check-in); they share a single
   // payment proof and an order_code so staff and the buyer can see them together.
@@ -197,6 +205,7 @@ export async function POST(req: NextRequest) {
             ticket_tier_id: i.ticket_tier_id,
             quantity: i.quantity,
             unit_price: i.ticket_tier.price,
+            id_proof_path: i.id_proof_path ?? null,
           }))
         )
         .select("*, ticket_tier:ticket_tiers(*)");

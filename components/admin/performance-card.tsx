@@ -6,10 +6,18 @@ import { SaveBar } from "@/components/save-bar";
 import { api, jsonInit } from "@/lib/api-call";
 import { fromManilaInput, toManilaInput } from "@/lib/datetime";
 import { toast } from "@/lib/toast";
+import { TIER_TYPES, tierTypeName, ID_INSTRUCTION } from "@/lib/tiers";
+import type { TierType } from "@/types/database";
+
+const TYPE_OPTIONS = [...TIER_TYPES].sort((a, b) => a.name.localeCompare(b.name));
 
 export type Tier = {
   id: string;
   label: string;
+  tier_type: TierType;
+  alias: string | null;
+  description: string | null;
+  require_id: boolean;
   price: number;
   quantity_available: number;
   quantity_held: number;
@@ -28,7 +36,10 @@ export type Performance = {
 };
 
 type TierDraft = {
-  label: string;
+  tier_type: TierType;
+  alias: string;
+  description: string;
+  require_id: boolean;
   price: string;
   quantity_available: string;
   is_discount_tier: boolean;
@@ -46,7 +57,10 @@ const toDraft = (perf: Performance): Draft => ({
     perf.ticket_tiers.map((t) => [
       t.id,
       {
-        label: t.label,
+        tier_type: t.tier_type,
+        alias: t.alias ?? "",
+        description: t.description ?? "",
+        require_id: t.require_id,
         price: String(t.price),
         quantity_available: String(t.quantity_available),
         is_discount_tier: t.is_discount_tier,
@@ -88,7 +102,10 @@ export function PerformanceCard({
       const a = d.tiers[t.id] ?? base.tiers[t.id];
       const b = base.tiers[t.id];
       const c: Record<string, unknown> = {};
-      if (a.label !== b.label) c.label = a.label;
+      if (a.tier_type !== b.tier_type) c.tier_type = a.tier_type;
+      if (a.alias !== b.alias) c.alias = a.alias;
+      if (a.description !== b.description) c.description = a.description;
+      if (a.require_id !== b.require_id) c.require_id = a.require_id;
       if (a.price !== b.price) c.price = Number(a.price);
       if (a.quantity_available !== b.quantity_available) c.quantity_available = Number(a.quantity_available);
       if (a.is_discount_tier !== b.is_discount_tier) c.is_discount_tier = a.is_discount_tier;
@@ -141,17 +158,31 @@ export function PerformanceCard({
           return (
             <div key={t.id} className="border-t border-ink/10 pt-3">
               <div className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                <input value={td.label} onChange={(e) => setTier(t.id, { label: e.target.value })} className="border border-ink/20 px-2 py-1 text-sm" aria-label="Tier label" />
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={td.tier_type} onChange={(e) => setTier(t.id, { tier_type: e.target.value as TierType })} className="border border-ink/20 px-2 py-1 text-sm" aria-label="Tier type">
+                    {TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.name}</option>
+                    ))}
+                  </select>
+                  <input value={td.alias} onChange={(e) => setTier(t.id, { alias: e.target.value })} placeholder={`Display name (default ${tierTypeName(td.tier_type)})`} className="border border-ink/20 px-2 py-1 text-sm" aria-label="Tier display name" />
+                </div>
                 <input type="number" step="0.01" value={td.price} onChange={(e) => setTier(t.id, { price: e.target.value })} className="border border-ink/20 px-2 py-1 text-sm w-24 tabular-nums" aria-label="Price" />
                 <input type="number" value={td.quantity_available} onChange={(e) => setTier(t.id, { quantity_available: e.target.value })} className="border border-ink/20 px-2 py-1 text-sm w-24 tabular-nums" aria-label="Quantity available" title="Total quantity available" />
                 <button onClick={() => onDeleteTier(t.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger">
                   Delete
                 </button>
               </div>
+              <textarea value={td.description} onChange={(e) => setTier(t.id, { description: e.target.value })} rows={2} placeholder="Inclusions (optional)" className="border border-ink/20 px-2 py-1 text-sm w-full mt-2" aria-label="Tier description" />
+              {td.tier_type === "discounted" && (
+                <label className="flex items-start gap-1.5 mt-2 text-xs">
+                  <input type="checkbox" className="mt-0.5" checked={td.require_id} onChange={(e) => setTier(t.id, { require_id: e.target.checked })} />
+                  <span>Require ID upload (Student, PWD, Senior) before add to cart<span className="block text-muted">{ID_INSTRUCTION}</span></span>
+                </label>
+              )}
               <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
                 <label className="flex items-center gap-1.5">
                   <input type="checkbox" checked={td.is_discount_tier} onChange={(e) => setTier(t.id, { is_discount_tier: e.target.checked })} />
-                  Discount tier
+                  Time-limited price window
                 </label>
                 {td.is_discount_tier && (
                   <>
@@ -174,11 +205,22 @@ export function PerformanceCard({
       <details className="text-sm">
         <summary className="cursor-pointer font-bold text-xs uppercase text-danger">+ Add ticket tier</summary>
         <form action={(fd) => onAddTier(perf.id, fd)} className="grid sm:grid-cols-2 gap-2 mt-3">
-          <input name="label" placeholder="Label (e.g. VIP)" required className={box} />
+          <select name="tier_type" required defaultValue="" className={box} aria-label="Tier type">
+            <option value="" disabled>Tier type</option>
+            {TYPE_OPTIONS.filter((o) => !perf.ticket_tiers.some((t) => t.tier_type === o.value)).map((o) => (
+              <option key={o.value} value={o.value}>{o.name}</option>
+            ))}
+          </select>
+          <input name="alias" placeholder="Display name (optional)" className={box} />
+          <textarea name="description" rows={2} placeholder="Inclusions (optional)" className={`${box} sm:col-span-2`} />
+          <label className="flex items-start gap-2 text-xs sm:col-span-2">
+            <input type="checkbox" name="require_id" className="mt-0.5" />
+            <span>Discounted only: require ID upload (Student, PWD, Senior) before add to cart</span>
+          </label>
           <input name="price" type="number" step="0.01" placeholder="Price" required className={box} />
           <input name="quantity_available" type="number" placeholder="Quantity" required className={box} />
           <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" name="is_discount_tier" /> Time-limited discount tier
+            <input type="checkbox" name="is_discount_tier" /> Time-limited price window
           </label>
           <div className="space-y-1"><p className="aa-label mb-0">Discount from</p><ManilaDateTimeInput name="discount_valid_from" ariaLabel="Discount from" defaultTime="00:00" /></div>
           <div className="space-y-1"><p className="aa-label mb-0">Discount until</p><ManilaDateTimeInput name="discount_valid_until" ariaLabel="Discount until" defaultTime="23:59" /></div>

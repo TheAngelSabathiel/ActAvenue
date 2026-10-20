@@ -25,7 +25,7 @@ type Row = {
   payment_proof_url: string | null;
   production: { title: string };
   performance: { label: string; datetime: string };
-  reservation_items: { id: string; quantity: number; ticket_tier: { label: string } }[];
+  reservation_items: { id: string; quantity: number; id_proof_path?: string | null; ticket_tier: { label: string; tier_type: string } }[];
 };
 
 const STATUS_TABS = ["all", "pending_review", "confirmed", "rejected", "expired"] as const;
@@ -185,6 +185,12 @@ export default function AdminReservationsPage() {
                   {r.reservation_items.map((i) => `${i.quantity}× ${i.ticket_tier.label}`).join(", ")}
                   {" · "}
                   <span className="tabular-nums">₱{r.total.toFixed(2)}</span>
+                  {r.reservation_items.filter((i) => i.id_proof_path).map((i) => (
+                    <span key={i.id}>
+                      {" · "}
+                      <a href={`/api/admin/reservations/${r.id}/id-proof?item=${i.id}`} target="_blank" rel="noopener noreferrer" className="underline font-bold">View ID ({i.ticket_tier.label})</a>
+                    </span>
+                  ))}
                 </p>
               </div>
 

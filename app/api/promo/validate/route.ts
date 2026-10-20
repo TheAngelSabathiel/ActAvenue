@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   if (pricing.discountAmount === 0) {
     return NextResponse.json({
       valid: false,
-      reason: "This code doesn't apply to any items in your cart (discounted-tier tickets don't accept promo codes).",
+      reason: pricing.rejectedPromoReason ?? "This code doesn't apply to any items in your cart (discounted-tier tickets don't accept promo codes).",
     });
   }
 

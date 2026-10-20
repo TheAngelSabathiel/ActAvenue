@@ -99,6 +99,10 @@ create table ticket_tiers (
   quantity_available integer not null check (quantity_available >= 0),
   quantity_held integer not null default 0 check (quantity_held >= 0),
   is_discount_tier boolean not null default false,
+  tier_type text not null default 'regular' check (tier_type in ('regular', 'vip', 'discounted', 'special')),
+  alias text,
+  description text,
+  require_id boolean not null default false,
   discount_valid_from timestamptz,
   discount_valid_until timestamptz,
   created_at timestamptz not null default now()
@@ -120,6 +124,7 @@ create table promo_codes (
   valid_until timestamptz,
   max_uses integer,
   times_used integer not null default 0,
+  applicable_tier_types text[],
   created_at timestamptz not null default now(),
   unique (organization_id, code)
 );
@@ -142,6 +147,7 @@ create table cart_items (
   performance_id uuid not null references performances (id) on delete cascade,
   ticket_tier_id uuid not null references ticket_tiers (id) on delete cascade,
   quantity integer not null check (quantity > 0),
+  id_proof_path text,
   created_at timestamptz not null default now()
 );
 
@@ -211,7 +217,8 @@ create table reservation_items (
   reservation_id uuid not null references reservations (id) on delete cascade,
   ticket_tier_id uuid not null references ticket_tiers (id) on delete restrict,
   quantity integer not null check (quantity > 0),
-  unit_price numeric(10, 2) not null
+  unit_price numeric(10, 2) not null,
+  id_proof_path text
 );
 
 create index reservation_items_reservation_idx on reservation_items (reservation_id);
@@ -618,3 +625,24 @@ create table if not exists production_staff (
 create index if not exists production_staff_profile_idx on production_staff (profile_id);
 create index if not exists production_staff_production_idx on production_staff (production_id);
 alter table production_staff enable row level security;
+
+-- ============================================================
+-- PRODUCTION PARTNERS (sponsors, media partners, partner organizations)
+-- ============================================================
+create table production_partners (
+  id uuid primary key default gen_random_uuid(),
+  production_id uuid not null references productions (id) on delete cascade,
+  category text not null check (category in ('sponsor', 'media', 'organization')),
+  sponsor_level text check (sponsor_level in ('co_presenter', 'major', 'minor', 'special_thanks')),
+  name text not null,
+  url text,
+  logo_url text,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index production_partners_production_idx on production_partners (production_id);
+alter table production_partners enable row level security;
+create policy "Public can read partners of published productions"
+  on production_partners for select
+  using (exists (select 1 from productions p where p.id = production_partners.production_id and p.status in ('published', 'closed')));
+-- Private bucket for discount ID uploads: insert into storage.buckets (id, name, public) values ('id-proofs', 'id-proofs', false);

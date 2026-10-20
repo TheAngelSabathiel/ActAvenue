@@ -82,10 +82,10 @@ export default async function ActorProfilePage({ params }: { params: Promise<{ i
         {(actor.resume_url || actor.reel_url) && (
           <div className="flex justify-center gap-3 mt-6">
             {actor.resume_url && (
-              <a href={actor.resume_url} target="_blank" rel="noreferrer" className="aa-btn aa-btn-outline aa-btn-sm">Resume</a>
+              <a href={actor.resume_url} target="_blank" rel="noopener noreferrer" className="aa-btn aa-btn-outline aa-btn-sm">Resume</a>
             )}
             {actor.reel_url && (
-              <a href={actor.reel_url} target="_blank" rel="noreferrer" className="aa-btn aa-btn-outline aa-btn-sm">Reel</a>
+              <a href={actor.reel_url} target="_blank" rel="noopener noreferrer" className="aa-btn aa-btn-outline aa-btn-sm">Reel</a>
             )}
           </div>
         )}

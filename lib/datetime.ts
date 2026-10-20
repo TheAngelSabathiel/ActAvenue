@@ -29,6 +29,16 @@ export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-PH", { ...base, year: "numeric", month: "short", day: "numeric" });
 }
 
+/** Saturday, November 8, 2026 */
+export function formatDayLong(iso: string) {
+  return new Date(iso).toLocaleDateString("en-PH", { ...base, weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+
+/** Sat, Nov 8 */
+export function formatDayShort(iso: string) {
+  return new Date(iso).toLocaleDateString("en-PH", { ...base, weekday: "short", month: "short", day: "numeric" });
+}
+
 /** 7:00 PM */
 export function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-PH", { ...base, hour: "numeric", minute: "2-digit" });

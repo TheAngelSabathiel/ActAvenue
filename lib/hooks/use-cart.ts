@@ -28,12 +28,23 @@ export function useCart() {
   }, [refresh]);
 
   const addItem = useCallback(
-    async (ticket_tier_id: string, performance_id: string, quantity: number) => {
-      const res = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticket_tier_id, performance_id, quantity }),
-      });
+    async (ticket_tier_id: string, performance_id: string, quantity: number, idFile?: File | null) => {
+      let init: RequestInit;
+      if (idFile) {
+        const fd = new FormData();
+        fd.set("ticket_tier_id", ticket_tier_id);
+        fd.set("performance_id", performance_id);
+        fd.set("quantity", String(quantity));
+        fd.set("id_file", idFile);
+        init = { method: "POST", body: fd };
+      } else {
+        init = {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticket_tier_id, performance_id, quantity }),
+        };
+      }
+      const res = await fetch("/api/cart", init);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not add to cart");
       await refresh();

@@ -6,6 +6,7 @@ import { useToastOn } from "@/lib/use-toast-on";
 import { useEffect, useState, useCallback } from "react";
 import { IMAGES } from "@/lib/images";
 import { CreditsManager } from "@/components/credits-manager";
+import { PartnersManager } from "@/components/admin/partners-manager";
 import { ProductionSection } from "@/components/admin/production-section";
 import { PerformanceCard, type Performance } from "@/components/admin/performance-card";
 import { Spinner } from "@/components/spinner";
@@ -90,7 +91,10 @@ export default function ProductionEditorPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        label: formData.get("label"),
+        tier_type: formData.get("tier_type"),
+        alias: formData.get("alias"),
+        description: formData.get("description"),
+        require_id: formData.get("require_id") === "on",
         price: Number(formData.get("price")),
         quantity_available: Number(formData.get("quantity_available")),
         is_discount_tier: isDiscount,
@@ -234,6 +238,8 @@ export default function ProductionEditorPage() {
       </section>
 
       <CreditsManager productionId={id} />
+
+      <PartnersManager productionId={id} />
     </div>
   );
 }

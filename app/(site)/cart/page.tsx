@@ -4,6 +4,7 @@ import { toast } from "@/lib/toast";
 
 import { useState } from "react";
 import { Spinner } from "@/components/spinner";
+import { formatDayLong, formatTime } from "@/lib/datetime";
 import Link from "next/link";
 import { useCart } from "@/lib/hooks/use-cart";
 
@@ -48,11 +49,13 @@ export default function CartPage() {
   }
 
   // Group lines by show so a mixed cart reads clearly.
-  const shows = new Map<string, { title: string; performance: string; lines: typeof items }>();
+  const shows = new Map<string, { title: string; performance: string; when: string; venue: string; lines: typeof items }>();
   for (const i of items) {
     const entry = shows.get(i.performance_id) ?? {
       title: i.performance.production?.title ?? "",
       performance: i.performance.label,
+      when: `${formatDayLong(i.performance.datetime)}, ${formatTime(i.performance.datetime)}`,
+      venue: i.performance.venue,
       lines: [],
     };
     entry.lines.push(i);
@@ -78,14 +81,19 @@ export default function CartPage() {
         <div className="space-y-4">
           {[...shows.entries()].map(([performanceId, show]) => (
             <div key={performanceId} className="space-y-2">
-              <p className="aa-label text-muted mb-0">
-                {show.title ? `${show.title} - ` : ""}{show.performance}
-              </p>
+              <div className="bg-black text-white px-6 py-3">
+                <p className="aa-label opacity-75 mb-0">{show.title ? `${show.title} - ` : ""}{show.performance}</p>
+                <p className="font-black text-lg mb-0">{show.when}</p>
+                <p className="mb-0 text-sm">{show.venue}</p>
+              </div>
               {show.lines.map((item) => (
                 <div key={item.id} className="aa-card px-6 py-4 flex flex-wrap items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-black mb-0">{item.ticket_tier.label}</p>
                     <p className="text-sm text-muted mb-0">₱{item.ticket_tier.price.toFixed(2)} each</p>
+                    {item.ticket_tier.require_id && (
+                      <p className="text-xs font-bold mb-0">{item.id_proof_path ? "ID uploaded" : "ID needed. Remove and re-add this ticket to upload."}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 ml-auto">
                     <input

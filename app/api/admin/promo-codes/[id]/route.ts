@@ -1,4 +1,5 @@
 import { toIsoManila } from "@/lib/datetime";
+import { cleanTypes } from "@/lib/tiers";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { canAccess, requireProduction } from "@/lib/admin-auth";
@@ -16,11 +17,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     "valid_from",
     "valid_until",
     "max_uses",
+    "applicable_tier_types",
   ] as const;
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
   }
+  if ("applicable_tier_types" in update) update.applicable_tier_types = cleanTypes(update.applicable_tier_types);
   for (const k of ["valid_from", "valid_until"] as const) {
     if (k in update) update[k] = toIsoManila(update[k]);
   }

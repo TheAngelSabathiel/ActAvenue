@@ -51,12 +51,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq("reservation_id", id);
   if (!oldItems?.length) return NextResponse.json({ error: "This booking has no tickets." }, { status: 400 });
 
-  // Match each ticket line to the tier with the same name on the new show.
+  // Match each ticket line to the tier of the same type on the new show.
   const { data: targetTiers } = await db.from("ticket_tiers").select("*").eq("performance_id", performance_id);
   const plan: { oldItem: (typeof oldItems)[number]; newTierId: string }[] = [];
   for (const item of oldItems) {
     const match = (targetTiers ?? []).find(
-      (t) => t.label.trim().toLowerCase() === item.ticket_tier.label.trim().toLowerCase()
+      (t) => t.tier_type === item.ticket_tier.tier_type
     );
     if (!match) {
       return NextResponse.json(
@@ -147,6 +147,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ticket_tier_id: p.newTierId,
         quantity: p.oldItem.quantity,
         unit_price: p.oldItem.unit_price,
+        id_proof_path: p.oldItem.id_proof_path ?? null,
       }))
     )
     .select("*, ticket_tier:ticket_tiers(*)");

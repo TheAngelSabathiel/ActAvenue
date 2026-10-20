@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfTier } from "@/lib/admin-scope";
+import { isTierType, tierDisplayName, tierTypeName } from "@/lib/tiers";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,7 +11,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (gate.error) return gate.error;
   const body = await req.json();
   const allowed = [
-    "label",
+    "tier_type",
+    "alias",
+    "description",
+    "require_id",
     "price",
     "quantity_available",
     "is_discount_tier",
@@ -26,6 +30,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const db = createServiceClient();
+  const { data: current } = await db.from("ticket_tiers").select("*").eq("id", id).single();
+  if (!current) return NextResponse.json({ error: "Tier not found." }, { status: 404 });
+
+  if ("tier_type" in update && !isTierType(update.tier_type)) {
+    return NextResponse.json({ error: "Tier type must be Regular, VIP, Discounted or Special." }, { status: 400 });
+  }
+  for (const k of ["alias", "description"] as const) {
+    if (k in update) update[k] = typeof update[k] === "string" && (update[k] as string).trim() ? (update[k] as string).trim() : null;
+  }
+  const type = (update.tier_type ?? current.tier_type) as string;
+  if (update.tier_type && update.tier_type !== current.tier_type) {
+    const { data: clash } = await db
+      .from("ticket_tiers")
+      .select("id")
+      .eq("performance_id", current.performance_id)
+      .eq("tier_type", type)
+      .neq("id", id)
+      .maybeSingle();
+    if (clash) {
+      return NextResponse.json({ error: `This show already has a ${tierTypeName(type)} tier.` }, { status: 409 });
+    }
+  }
+  if (type !== "discounted") update.require_id = false;
+  const alias = "alias" in update ? (update.alias as string | null) : current.alias;
+  update.label = tierDisplayName({ tier_type: type, alias });
+
   const { data, error } = await db
     .from("ticket_tiers")
     .update(update)

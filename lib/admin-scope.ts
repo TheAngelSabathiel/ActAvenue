@@ -31,3 +31,8 @@ export async function productionOfPromo(id: string): Promise<string | null> {
   const { data } = await createServiceClient().from("promo_codes").select("applies_to_production_id").eq("id", id).maybeSingle();
   return data?.applies_to_production_id ?? null;
 }
+
+export async function productionOfPartner(id: string): Promise<string | null> {
+  const { data } = await createServiceClient().from("production_partners").select("production_id").eq("id", id).maybeSingle();
+  return data?.production_id ?? null;
+}

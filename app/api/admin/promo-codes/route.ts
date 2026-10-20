@@ -1,6 +1,7 @@
 import { toIsoManila } from "@/lib/datetime";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { cleanTypes } from "@/lib/tiers";
 import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
 
 export async function GET() {
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
     valid_from,
     valid_until,
     max_uses,
+    applicable_tier_types,
   } = await req.json();
 
   const db = createServiceClient();
@@ -69,6 +71,7 @@ export async function POST(req: NextRequest) {
       valid_from: toIsoManila(valid_from) ?? new Date().toISOString(),
       valid_until: toIsoManila(valid_until),
       max_uses: max_uses || null,
+      applicable_tier_types: cleanTypes(applicable_tier_types),
     })
     .select()
     .single();

@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   let query = db
     .from("reservations")
     .select(
-      "*, production:productions(title), performance:performances(label, datetime), reservation_items(*, ticket_tier:ticket_tiers(label))",
+      "*, production:productions(title), performance:performances(label, datetime), reservation_items(*, ticket_tier:ticket_tiers(label, tier_type))",
       { count: "exact" }
     )
     .order("created_at", { ascending: false })

@@ -9,7 +9,7 @@ type Perf = {
   label: string;
   datetime: string;
   venue: string;
-  ticket_tiers: { id: string; label: string; quantity_available: number; quantity_held: number }[];
+  ticket_tiers: { id: string; label: string; tier_type: string; quantity_available: number; quantity_held: number }[];
 };
 
 export type TransferTarget = {
@@ -19,7 +19,7 @@ export type TransferTarget = {
   reference_code: string;
   buyer_name: string;
   performance: { label: string; datetime: string };
-  reservation_items: { id: string; quantity: number; ticket_tier: { label: string } }[];
+  reservation_items: { id: string; quantity: number; ticket_tier: { label: string; tier_type: string } }[];
 };
 
 /** Pick a new show for a confirmed booking, with a clear warning before it happens. */
@@ -50,10 +50,10 @@ export function TransferDialog({
   const options = (perfs ?? []).filter((p) => p.id !== reservation.performance_id);
   const chosen = options.find((p) => p.id === target);
 
-  // Left for each ticket line on the chosen show (same tier name).
+  // Left for each ticket line on the chosen show (same tier type).
   const lines = chosen
     ? reservation.reservation_items.map((i) => {
-        const tier = chosen.ticket_tiers.find((t) => t.label.trim().toLowerCase() === i.ticket_tier.label.trim().toLowerCase());
+        const tier = chosen.ticket_tiers.find((t) => t.tier_type === i.ticket_tier.tier_type);
         const left = tier ? tier.quantity_available - tier.quantity_held : null;
         return { label: i.ticket_tier.label, quantity: i.quantity, left };
       })

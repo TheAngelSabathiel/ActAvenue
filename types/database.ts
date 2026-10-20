@@ -105,9 +105,26 @@ export interface TicketTier {
   quantity_available: number;
   quantity_held: number;
   is_discount_tier: boolean;
+  tier_type: TierType;
+  alias: string | null;
+  description: string | null;
+  require_id: boolean;
   discount_valid_from: string | null;
   discount_valid_until: string | null;
   created_at: string;
+}
+
+export type TierType = "regular" | "vip" | "discounted" | "special";
+
+export interface ProductionPartner {
+  id: string;
+  production_id: string;
+  category: "sponsor" | "media" | "organization";
+  sponsor_level: "co_presenter" | "major" | "minor" | "special_thanks" | null;
+  name: string;
+  url: string | null;
+  logo_url: string | null;
+  sort_order: number;
 }
 
 export interface PromoCode {
@@ -121,6 +138,7 @@ export interface PromoCode {
   valid_until: string | null;
   max_uses: number | null;
   times_used: number;
+  applicable_tier_types: TierType[] | null;
   created_at: string;
 }
 
@@ -139,6 +157,7 @@ export interface CartItem {
   performance_id: string;
   ticket_tier_id: string;
   quantity: number;
+  id_proof_path?: string | null;
   created_at: string;
 }
 
@@ -179,6 +198,7 @@ export interface ReservationItem {
   ticket_tier_id: string;
   quantity: number;
   unit_price: number;
+  id_proof_path?: string | null;
 }
 
 // ---- Composite view types used by the UI ----

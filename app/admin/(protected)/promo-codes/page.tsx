@@ -7,6 +7,7 @@ import { useToastOn } from "@/lib/use-toast-on";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ManilaDateTimeInput } from "@/components/manila-datetime-input";
+import { TIER_TYPES, tierTypeName } from "@/lib/tiers";
 import { useAdminAccess } from "@/components/admin/access-context";
 
 type PromoCode = {
@@ -17,6 +18,7 @@ type PromoCode = {
   valid_until: string | null;
   max_uses: number | null;
   times_used: number;
+  applicable_tier_types: string[] | null;
   production: { title: string } | null;
 };
 
@@ -67,6 +69,7 @@ export default function PromoCodesPage() {
         applies_to_production_id: formData.get("applies_to_production_id") || null,
         valid_until: formData.get("valid_until") || null,
         max_uses: formData.get("max_uses") ? Number(formData.get("max_uses")) : null,
+        applicable_tier_types: formData.getAll("tier_types"),
       }),
     });
     const data = await res.json();
@@ -136,6 +139,15 @@ export default function PromoCodesPage() {
           ))}
         </select>
         <input name="max_uses" type="number" placeholder="Max uses (optional)" className="border border-ink/20  px-3 py-2 text-sm" />
+        <fieldset className="sm:col-span-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <legend className="sr-only">Ticket types this code applies to</legend>
+          <span className="text-xs font-bold uppercase text-muted">Applies to</span>
+          {[...TIER_TYPES].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
+            <label key={t.value} className="flex items-center gap-1.5 text-sm">
+              <input type="checkbox" name="tier_types" value={t.value} defaultChecked /> {t.name}
+            </label>
+          ))}
+        </fieldset>
         <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold uppercase text-muted">Valid until (optional)</span>
           <ManilaDateTimeInput name="valid_until" defaultTime="23:59" ariaLabel="Valid until" />
@@ -158,6 +170,8 @@ export default function PromoCodesPage() {
                 {c.discount_type === "percent" ? `${c.discount_value}% off` : `₱${c.discount_value} off per ticket`}
                 {" · "}
                 {c.production?.title ?? "org-wide"}
+                {" · "}
+                {c.applicable_tier_types?.length ? c.applicable_tier_types.map(tierTypeName).join(", ") : "all ticket types"}
                 {" · "}
                 used {c.times_used}
                 {c.max_uses ? `/${c.max_uses}` : ""}
