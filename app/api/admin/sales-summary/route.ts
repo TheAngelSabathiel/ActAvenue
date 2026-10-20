@@ -5,7 +5,8 @@ import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admi
 
 type TierRow = { id: string; label: string; tier_type: string; price: number; tickets: number; gross: number; discount: number; revenue: number };
 type PerfRow = { id: string; label: string; datetime: string; venue: string; tickets: number; gross: number; discount: number; revenue: number; tiers: TierRow[] };
-type ProdRow = { id: string; title: string; tickets: number; gross: number; discount: number; revenue: number; performances: PerfRow[] };
+type Promo = { code: string; uses: number; discountGiven: number };
+type ProdRow = { id: string; title: string; tickets: number; gross: number; discount: number; revenue: number; performances: PerfRow[]; promos: Promo[] };
 
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
 const round = (n: number) => Math.round(n * 100) / 100;
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     .select(
       `id, total, discount_amount, booking_source, promo_uses, performance_id, production_id,
        reservation_items(quantity, unit_price, ticket_tier_id),
-       promo_code:promo_codes(code)`
+       promo_code:promo_codes(code, applies_to_production_id)`
     )
     .eq("payment_status", "confirmed");
   if (scope) query = query.in("production_id", scope);
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
   const perfMap = new Map<string, PerfRow>();
   const tierMap = new Map<string, TierRow>();
   for (const p of productions ?? []) {
-    const row: ProdRow = { id: p.id, title: p.title, tickets: 0, gross: 0, discount: 0, revenue: 0, performances: [] };
+    const row: ProdRow = { id: p.id, title: p.title, tickets: 0, gross: 0, discount: 0, revenue: 0, performances: [], promos: [] };
     const perfs = [...(p.performances ?? [])].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
     for (const perf of perfs) {
       const pr: PerfRow = { id: perf.id, label: perf.label, datetime: perf.datetime, venue: perf.venue, tickets: 0, gross: 0, discount: 0, revenue: 0, tiers: [] };
@@ -80,7 +81,8 @@ export async function GET(req: NextRequest) {
   let totalTickets = 0;
   let online = 0;
   let walkIn = 0;
-  const byPromo = new Map<string, { uses: number; discountGiven: number }>();
+  const byPromo = new Map<string, Promo>(); // codes that work for every production
+  const prodPromo = new Map<string, Map<string, Promo>>();
 
   for (const r of reservations ?? []) {
     totalRevenue += Number(r.total);
@@ -110,11 +112,15 @@ export async function GET(req: NextRequest) {
 
     const promo = one(r.promo_code);
     if (promo) {
-      // Usage counts tickets, not orders.
-      const entry = byPromo.get(promo.code) ?? { uses: 0, discountGiven: 0 };
+      // Usage counts tickets, not orders. Codes tied to one production sit under it;
+      // codes for all productions are kept as their own set.
+      const bucket = promo.applies_to_production_id
+        ? (prodPromo.get(r.production_id) ?? prodPromo.set(r.production_id, new Map()).get(r.production_id)!)
+        : byPromo;
+      const entry = bucket.get(promo.code) ?? { code: promo.code, uses: 0, discountGiven: 0 };
       entry.uses += (r.promo_uses as number | null) ?? ticketCount;
       entry.discountGiven += Number(r.discount_amount);
-      byPromo.set(promo.code, entry);
+      bucket.set(promo.code, entry);
     }
   }
 
@@ -123,8 +129,11 @@ export async function GET(req: NextRequest) {
     o.discount = round(o.discount);
     o.revenue = round(o.revenue);
   };
+  const promoList = (m?: Map<string, Promo>) =>
+    [...(m?.values() ?? [])].map((x) => ({ ...x, discountGiven: round(x.discountGiven) })).sort((a, b) => a.code.localeCompare(b.code));
   const out = [...prodMap.values()];
   for (const p of out) {
+    p.promos = promoList(prodPromo.get(p.id));
     fix(p);
     for (const pf of p.performances) {
       fix(pf);
@@ -142,6 +151,6 @@ export async function GET(req: NextRequest) {
       walkInBookings: walkIn,
     },
     productions: out,
-    byPromo: [...byPromo.entries()].map(([code, v]) => ({ code, uses: v.uses, discountGiven: round(v.discountGiven) })),
+    byPromo: promoList(byPromo),
   });
 }

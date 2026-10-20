@@ -15,7 +15,7 @@ type Totals = {
 };
 type Tier = { id: string; label: string; price: number; tickets: number; gross: number; discount: number; revenue: number };
 type Perf = { id: string; label: string; datetime: string; venue: string; tickets: number; gross: number; discount: number; revenue: number; tiers: Tier[] };
-type Prod = { id: string; title: string; tickets: number; gross: number; discount: number; revenue: number; performances: Perf[] };
+type Prod = { id: string; title: string; tickets: number; gross: number; discount: number; revenue: number; performances: Perf[]; promos: ByPromo[] };
 type ByPromo = { code: string; uses: number; discountGiven: number };
 type Production = { id: string; title: string };
 
@@ -90,10 +90,9 @@ export default function SalesSummaryPage() {
         rows.push([p.title, pf.label, formatDateTime(pf.datetime), "SHOW TOTAL", "", pf.tickets, pf.gross.toFixed(2), pf.discount.toFixed(2), pf.revenue.toFixed(2)]);
       }
       rows.push([p.title, "PRODUCTION TOTAL", "", "", "", p.tickets, p.gross.toFixed(2), p.discount.toFixed(2), p.revenue.toFixed(2)]);
+      p.promos.forEach((c) => rows.push([p.title, `PROMO ${c.code}`, "", "", "", c.uses, "", c.discountGiven.toFixed(2), ""]));
     }
-    rows.push([]);
-    rows.push(["Promo code", "Tickets using code", "Discount given"]);
-    byPromo.forEach((p) => rows.push([p.code, p.uses, p.discountGiven.toFixed(2)]));
+    byPromo.forEach((c) => rows.push(["All productions", `PROMO ${c.code}`, "", "", "", c.uses, "", c.discountGiven.toFixed(2), ""]));
     downloadCsv(`sales-summary-${manilaToday()}.csv`, rows);
   }
 
@@ -163,7 +162,8 @@ export default function SalesSummaryPage() {
                     <a href={exportUrl("participants", pf.id)} className="text-xs font-bold uppercase underline">Download participant list</a>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[560px]">
+                    <table className="w-full text-sm min-w-[560px] table-fixed">
+                      <colgroup><col className="w-[28%]" /><col className="w-[14%]" /><col className="w-[12%]" /><col className="w-[16%]" /><col className="w-[15%]" /><col className="w-[15%]" /></colgroup>
                       <thead>
                         <tr className="text-xs font-bold uppercase text-muted border-b border-ink/10">
                           <th className="py-1.5 font-normal text-left">Ticket type</th>
@@ -186,7 +186,8 @@ export default function SalesSummaryPage() {
                           </tr>
                         ))}
                         <tr className="font-extrabold">
-                          <td className="py-1.5" colSpan={2}>Show total</td>
+                          <td className="py-1.5">Show total</td>
+                          <td className="py-1.5" />
                           <td className="py-1.5 text-right tabular-nums">{pf.tickets}</td>
                           <td className="py-1.5 text-right tabular-nums">{peso(pf.gross)}</td>
                           <td className="py-1.5 text-right tabular-nums">{peso(pf.discount)}</td>
@@ -197,20 +198,18 @@ export default function SalesSummaryPage() {
                   </div>
                 </div>
               ))}
+              <PromoBlock title="Promo codes used" promos={p.promos} />
             </section>
           ))}
 
-          <div className="aa-card p-5 mt-6">
-            <h2 className="font-extrabold text-lg mb-1">Promo code usage</h2>
-            <p className="text-xs text-muted mb-3">One use per discounted ticket.</p>
-            {byPromo.length === 0 && <p className="text-sm text-muted">No promo codes used yet.</p>}
-            {byPromo.map((p) => (
-              <div key={p.code} className="flex justify-between text-sm py-1 border-t border-ink/10 first:border-t-0">
-                <span className="tabular-nums">{p.code}</span>
-                <span>{p.uses} ticket{p.uses !== 1 ? "s" : ""} · {peso(p.discountGiven)} given</span>
+          {byPromo.length > 0 && (
+            <section className="mb-10">
+              <div className="border-b-4 border-black pb-2 mb-4">
+                <h2 className="font-extrabold text-2xl">All-production codes</h2>
               </div>
-            ))}
-          </div>
+              <PromoBlock title="Promo codes used" promos={byPromo} />
+            </section>
+          )}
         </>
       )}
     </div>
@@ -222,6 +221,22 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
     <div className="aa-card p-4">
       <p className="text-xs font-bold uppercase text-muted mb-1">{label}</p>
       <p className="font-extrabold text-2xl">{value}</p>
+    </div>
+  );
+}
+
+function PromoBlock({ title, promos }: { title: string; promos: ByPromo[] }) {
+  return (
+    <div className="aa-card p-5 mb-4">
+      <h3 className="font-extrabold text-lg mb-1">{title}</h3>
+      <p className="text-xs text-muted mb-3">One use per discounted ticket.</p>
+      {promos.length === 0 && <p className="text-sm text-muted mb-0">No promo codes used.</p>}
+      {promos.map((p) => (
+        <div key={p.code} className="flex justify-between text-sm py-1 border-t border-ink/10 first:border-t-0">
+          <span className="tabular-nums">{p.code}</span>
+          <span>{p.uses} ticket{p.uses !== 1 ? "s" : ""} · {peso(p.discountGiven)} given</span>
+        </div>
+      ))}
     </div>
   );
 }
