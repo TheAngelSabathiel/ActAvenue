@@ -20,6 +20,7 @@ export function QuantityEditor({
 }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<string | null>(null);
 
   async function apply(item: Item) {
     const next = Number(draft[item.id]);
@@ -28,13 +29,16 @@ export function QuantityEditor({
     const mail = confirmed ? " The buyer will be emailed." : "";
     if (!confirm(`${word[0].toUpperCase()}${word.slice(1)} ${item.ticket_tier.label} from ${item.quantity} to ${next}? Availability is adjusted.${mail}`)) return;
     setBusy(item.id);
+    setBlocked(null);
     try {
       await api(`/api/admin/reservations/${reservationId}/items/${item.id}`, jsonInit("PATCH", { quantity: next }));
       toast.success(confirmed ? "Quantity updated. Buyer emailed." : "Quantity updated.");
       setDraft((d) => Object.fromEntries(Object.entries(d).filter(([k]) => k !== item.id)));
       onChanged();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not update.");
+      const msg = e instanceof Error ? e.message : "Could not update.";
+      toast.error(msg);
+      if (msg.includes("promo code")) setBlocked(msg);
     } finally {
       setBusy(null);
     }
@@ -42,6 +46,12 @@ export function QuantityEditor({
 
   return (
     <div className="mt-2 space-y-1">
+      {blocked && (
+        <p className="text-xs font-bold text-danger mb-1">
+          {blocked}{" "}
+          <a href="/admin/new-reservation" className="underline">Add a manual order</a>
+        </p>
+      )}
       {items.map((i) => {
         const value = draft[i.id] ?? String(i.quantity);
         const dirty = value !== String(i.quantity);

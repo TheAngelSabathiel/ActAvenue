@@ -190,6 +190,7 @@ export interface Reservation {
   checked_in_at: string | null;
   created_at: string;
   updated_at: string;
+  promo_uses?: number | null;
 }
 
 export interface ReservationItem {

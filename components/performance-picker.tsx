@@ -22,6 +22,7 @@ export function PerformancePicker({
   const [performances, setPerformances] = useState(initialPerformances);
   const [activeId, setActiveId] = useState(initialPerformances[0]?.id);
   const [added, setAdded] = useState<AddedItem | null>(null);
+  const [now] = useState(() => Date.now());
   const [qty, setQty] = useState<Record<string, number>>({});
   const [idFor, setIdFor] = useState<{ tierId: string; performanceId: string } | null>(null);
   const qtyOf = (tier: TicketTier & { remaining?: number }) => Math.min(Math.max(1, qty[tier.id] ?? 1), Math.max(1, tier.remaining ?? 1));
@@ -180,14 +181,20 @@ export function PerformancePicker({
               const s = status[tier.id] ?? "idle";
               const soldOut = tier.remaining <= 0;
               const low = !soldOut && tier.remaining <= 10;
+              const until = tier.discount_active && tier.discount_valid_until ? new Date(tier.discount_valid_until) : null;
+              const endsSoon = !!until && until.getTime() - now <= 3 * 24 * 3600 * 1000;
               return (
-                <div key={tier.id} className="aa-card aa-lift flex flex-col sm:flex-row">
+                <div key={tier.id} className={`aa-card flex flex-col sm:flex-row ${soldOut ? "opacity-60 grayscale pointer-events-none select-none" : "aa-lift"}`} aria-disabled={soldOut}>
                   <div className="flex-1 p-5">
                     <p className="font-black text-lg mb-1">{tier.label}</p>
                     {tier.description && <p className="text-sm mb-1 whitespace-pre-line">{tier.description}</p>}
                     {tier.require_id && <p className="text-xs text-muted mb-1">ID upload required (Student, PWD, Senior).</p>}
-                    {tier.discount_active && (
+                    {soldOut && <span className="aa-label bg-black text-white px-2 py-0.5 inline-block mr-1">Sold out</span>}
+                    {tier.discount_active && !soldOut && (
                       <span className="aa-label bg-accent px-2 py-0.5 inline-block">Limited-time price</span>
+                    )}
+                    {endsSoon && !soldOut && (
+                      <span className="aa-label bg-danger text-white px-2 py-0.5 inline-block ml-1">Ends soon · {formatDayShort(tier.discount_valid_until!)}</span>
                     )}
                     <p className={`text-sm mt-2 mb-0 ${low ? "text-danger font-bold" : "text-muted"}`}>
                       {soldOut ? "Sold out" : `${tier.remaining} left`}

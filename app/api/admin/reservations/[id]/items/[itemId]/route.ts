@@ -5,6 +5,8 @@ import { productionOfReservation } from "@/lib/admin-scope";
 import { holdTicketTier, releaseTicketTierHold } from "@/lib/inventory";
 import { isTransferred } from "@/lib/transfer";
 import { ensureTicketQrs } from "@/lib/tickets";
+import { calculatePricing, eligibleTicketCount } from "@/lib/pricing";
+import type { PromoCode, TicketTier } from "@/types/database";
 import { sendQuantityChangedEmail } from "@/lib/email/send";
 
 /** Change the quantity on one ticket line. Adjusts availability and emails the buyer. */
@@ -42,6 +44,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: `${item.scans_used} already scanned at the door. Quantity can't go below that.` }, { status: 409 });
   }
 
+  // A booking with a promo code keeps the code across the whole order. Work out
+  // the new discount before touching anything, so a code that can't cover the
+  // extra tickets stops the change cleanly.
+  const { data: allItems } = await db.from("reservation_items").select("id, quantity, unit_price, ticket_tier:ticket_tiers(*)").eq("reservation_id", id);
+  let promoPlan: { promo: PromoCode; discount: number; uses: number; ownUses: number } | null = null;
+  if (reservation.promo_code_id && Number(reservation.discount_amount) > 0) {
+    const { data: promo } = await db.from("promo_codes").select("*").eq("id", reservation.promo_code_id).maybeSingle();
+    if (promo) {
+      const ownUses = (reservation.promo_uses as number | null) ?? 0;
+      const lines = (allItems ?? []).map((i) => ({
+        ticket_tier: ({ ...(Array.isArray(i.ticket_tier) ? i.ticket_tier[0] : i.ticket_tier), price: Number(i.unit_price) }) as TicketTier,
+        quantity: i.id === itemId ? quantity : i.quantity,
+      }));
+      const bookedAt = new Date(reservation.created_at);
+      const pricing = calculatePricing(lines, { ...promo, times_used: Math.max(0, promo.times_used - ownUses) } as PromoCode, reservation.production_id, bookedAt);
+      const wanted = eligibleTicketCount(lines, promo as PromoCode, bookedAt);
+      if (quantity > from && pricing.promoUses < wanted) {
+        return NextResponse.json(
+          {
+            code: "promo_cannot_cover",
+            error: `The promo code ${promo.code} can't cover all ${wanted} tickets (${pricing.promoUses} covered). Ask the customer to make a new registration for the extra tickets, or add a new order manually.`,
+          },
+          { status: 409 }
+        );
+      }
+      promoPlan = { promo: promo as PromoCode, discount: pricing.discountAmount, uses: pricing.promoUses, ownUses };
+    }
+  }
+
   // Availability first. Nothing else changes if the show can't take more.
   const diff = quantity - from;
   if (diff > 0) {
@@ -67,13 +98,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Keep the order totals in line with the new quantities.
   const { data: all } = await db.from("reservation_items").select("quantity, unit_price").eq("reservation_id", id);
   const subtotal = (all ?? []).reduce((n, i) => n + i.quantity * Number(i.unit_price), 0);
-  const total = Math.max(0, subtotal - Number(reservation.discount_amount ?? 0));
+  const discount = promoPlan ? promoPlan.discount : Number(reservation.discount_amount ?? 0);
+  const total = Math.max(0, subtotal - discount);
   const { data: updated } = await db
     .from("reservations")
-    .update({ subtotal, total })
+    .update({ subtotal, total, discount_amount: discount, ...(promoPlan ? { promo_uses: promoPlan.uses } : {}) })
     .eq("id", id)
     .select()
     .single();
+
+  // Promo uses follow the tickets: one per discounted ticket.
+  if (promoPlan) {
+    const delta = promoPlan.uses - promoPlan.ownUses;
+    if (delta !== 0) {
+      const { data: fresh } = await db.from("promo_codes").select("times_used").eq("id", promoPlan.promo.id).single();
+      if (fresh) {
+        await db.from("promo_codes").update({ times_used: Math.max(0, fresh.times_used + delta) }).eq("id", promoPlan.promo.id);
+      }
+    }
+  }
 
   // The reservation is no longer fully admitted if the quantity went up.
   if (updated?.checked_in && diff > 0) {

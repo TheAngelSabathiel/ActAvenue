@@ -39,7 +39,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       .maybeSingle();
     if (promo && promo.times_used > 0) {
       // Give back every use this booking consumed (one per ticket for fixed-amount codes).
-      const back = Math.min(promo.times_used, promoUsesForDiscount(promo, reservation.discount_amount));
+      const back = Math.min(promo.times_used, (reservation.promo_uses ?? promoUsesForDiscount(promo, reservation.discount_amount)));
       await db.from("promo_codes").update({ times_used: promo.times_used - back }).eq("id", reservation.promo_code_id);
     }
   }

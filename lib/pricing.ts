@@ -26,34 +26,43 @@ export function isTierDiscountActive(tier: TicketTier, now = new Date()): boolea
 }
 
 /**
- * Percent codes take a percentage off the eligible subtotal and use the code once.
- * Fixed-amount codes take the amount off every eligible ticket (never more than
- * the ticket's price) and use the code once per discounted ticket. If the code
- * has fewer uses left than tickets, only that many tickets are discounted.
+ * A code discounts each eligible ticket on its own and uses up one use per
+ * discounted ticket, whoever ordered them. Percent codes take the percentage
+ * off each ticket; fixed codes take the amount off each ticket (never more
+ * than its price). If the code has fewer uses left than tickets, only that
+ * many tickets are discounted.
  */
 function promoDiscount(promo: PromoCode, regularLines: CartLineInput[]): { amount: number; uses: number } {
-  const subtotal = regularLines.reduce((sum, l) => sum + l.ticket_tier.price * l.quantity, 0);
-  if (subtotal <= 0) return { amount: 0, uses: 0 };
-
-  if (promo.discount_type === "percent") {
-    return { amount: Math.round(((subtotal * promo.discount_value) / 100) * 100) / 100, uses: 1 };
-  }
-
   let left = promo.max_uses === null ? Infinity : Math.max(0, promo.max_uses - promo.times_used);
   let amount = 0;
   let uses = 0;
   for (const l of regularLines) {
+    if (l.ticket_tier.price <= 0) continue;
     const n = Math.min(l.quantity, left);
-    amount += Math.min(promo.discount_value, l.ticket_tier.price) * n;
+    const each =
+      promo.discount_type === "percent"
+        ? (l.ticket_tier.price * promo.discount_value) / 100
+        : Math.min(promo.discount_value, l.ticket_tier.price);
+    amount += each * n;
     uses += n;
     left -= n;
   }
   return { amount: Math.round(amount * 100) / 100, uses };
 }
 
+/** Tickets in these lines that the code could discount (ignoring remaining uses). */
+export function eligibleTicketCount(lines: CartLineInput[], promo: PromoCode, now = new Date()): number {
+  const types = promo.applicable_tier_types;
+  return lines
+    .filter((l) => !isTierDiscountActive(l.ticket_tier, now))
+    .filter((l) => !types || !types.length || types.includes(l.ticket_tier.tier_type))
+    .filter((l) => l.ticket_tier.price > 0)
+    .reduce((n, l) => n + l.quantity, 0);
+}
+
 /** Uses of a fixed-amount code that a stored discount represents (for giving them back on delete). */
 export function promoUsesForDiscount(promo: Pick<PromoCode, "discount_type" | "discount_value">, discountAmount: number): number {
-  if (promo.discount_type === "percent" || promo.discount_value <= 0) return 1;
+  if (promo.discount_type === "percent" || promo.discount_value <= 0) return 1; // older bookings only; new ones store promo_uses
   return Math.max(1, Math.round(discountAmount / promo.discount_value));
 }
 

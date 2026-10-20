@@ -177,6 +177,7 @@ export async function POST(req: NextRequest) {
           buyer_email,
           buyer_phone,
           promo_code_id: plan.pricing.discountAmount > 0 ? promo?.id ?? null : null,
+          promo_uses: plan.pricing.discountAmount > 0 ? plan.pricing.promoUses : null,
           subtotal: plan.pricing.subtotal,
           discount_amount: plan.pricing.discountAmount,
           total: plan.pricing.total,

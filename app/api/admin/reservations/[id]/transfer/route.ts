@@ -114,6 +114,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       buyer_email: old.buyer_email,
       buyer_phone: old.buyer_phone,
       promo_code_id: old.promo_code_id,
+      promo_uses: old.promo_uses ?? null,
       subtotal: old.subtotal,
       discount_amount: old.discount_amount,
       total: old.total,
