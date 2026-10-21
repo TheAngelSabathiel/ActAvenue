@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getPlayDetail, type PlayShowing, type ShowingPerson } from "@/lib/data/plays";
 import { formatDate } from "@/lib/datetime";
 import { IMAGES } from "@/lib/images";
-import { PlayCover } from "@/components/play-cover";
+import { PlayPhotoFull } from "@/components/play-cover";
 
 function dateRange(s: PlayShowing) {
   if (!s.first) return "Dates to be announced";
@@ -89,9 +89,9 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
     <div className="aa-container py-16 space-y-12">
       <div>
         <Link href="/plays" className="aa-label text-muted hover:underline">All plays</Link>
-        <div className="grid gap-8 md:grid-cols-[320px_1fr] mt-4">
-          <div className="relative aspect-[4/3] bg-black/5">
-            <PlayCover title={play.title} photoUrl={play.photo_url} sizes="(min-width: 768px) 320px, 100vw" priority />
+        <div className="grid gap-8 md:grid-cols-[320px_1fr] items-start mt-4">
+          <div>
+            <PlayPhotoFull title={play.title} photoUrl={play.photo_url} sizes="(min-width: 768px) 320px, 100vw" priority />
           </div>
           <div>
             <h1 className="text-4xl mb-2">{play.title}</h1>
