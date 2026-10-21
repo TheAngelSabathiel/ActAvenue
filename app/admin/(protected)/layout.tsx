@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAccess, hasAnyAccess } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminShell } from "@/components/admin/admin-nav";
 import { ScannerGuard } from "@/components/admin/scanner-guard";
 import { AdminAccessProvider, type AdminAccess } from "@/components/admin/access-context";
 
@@ -77,15 +77,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <AdminAccessProvider value={value}>
-      <div className="min-h-screen bg-white">
-        <header className="bg-black text-white sticky top-0 z-40">
-          <AdminNav heading={heading} items={nav} />
-        </header>
+      <AdminShell heading={heading} items={nav}>
         <main className="aa-container !max-w-6xl py-6 sm:py-10">
           <ScannerGuard scannerOnly={scannerOnly} />
           {children}
         </main>
-      </div>
+      </AdminShell>
     </AdminAccessProvider>
   );
 }

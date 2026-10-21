@@ -1,129 +1,133 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 type Item = { href: string; label: string };
-const PIN_KEY = "aa-admin-nav-pinned";
+const KEY = "aa-admin-sidebar-collapsed";
+
+const ICONS: Record<string, string> = {
+  "/admin/reservations": "bi-ticket-perforated",
+  "/admin/organizations": "bi-building",
+  "/admin/productions": "bi-film",
+  "/admin/plays": "bi-journal-text",
+  "/admin/actors": "bi-people",
+  "/admin/promo-codes": "bi-percent",
+  "/admin/sales": "bi-graph-up",
+  "/admin/new-reservation": "bi-plus-square",
+  "/admin/checkin": "bi-check2-square",
+  "/admin/scan": "bi-qr-code-scan",
+  "/account/settings": "bi-person-circle",
+};
 
 /**
- * Computer: a thin strip with a small tab naming the current section. Hovering
- * or focusing it slides the full menu over the page, so nothing moves. Pin keeps
- * it open. Phones: a menu button, no sideways scroll.
+ * Phones: a top bar with a menu button. Computer: a left sidebar that can be
+ * collapsed to icons; the choice is remembered. Wraps the page content so it
+ * can make room for the sidebar.
  */
-export function AdminNav({ heading, items }: { heading: string; items: Item[] }) {
+export function AdminShell({ heading, items, children }: { heading: string; items: Item[]; children: React.ReactNode }) {
   const [openMobile, setOpenMobile] = useState(false);
-  const [hover, setHover] = useState(false);
-  const [pinned, setPinned] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const path = usePathname();
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wrap = useRef<HTMLElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpenMobile(false);
-    setHover(false);
   }, [path]);
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPinned(localStorage.getItem(PIN_KEY) === "1");
+      setCollapsed(localStorage.getItem(KEY) === "1");
     } catch {
       /* ignore */
     }
   }, []);
 
-  const current = items.find((n) => path === n.href || path.startsWith(`${n.href}/`));
-  const open = hover || pinned;
-
-  const show = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setHover(true);
-  };
-  const hideSoon = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setHover(false), 300);
-  };
-  function togglePin() {
-    const next = !pinned;
-    setPinned(next);
+  function toggle() {
+    const next = !collapsed;
+    setCollapsed(next);
     try {
-      localStorage.setItem(PIN_KEY, next ? "1" : "0");
+      localStorage.setItem(KEY, next ? "1" : "0");
     } catch {
       /* ignore */
     }
   }
 
-  const links = (cls: string) =>
-    items.map((n) => (
-      <Link key={n.href} href={n.href} className={`aa-nav-link ${cls} ${n === current ? "underline underline-offset-8 decoration-2" : ""}`}>
-        {n.label}
-      </Link>
-    ));
+  const isCurrent = (n: Item) => path === n.href || path.startsWith(`${n.href}/`);
 
   return (
-    <header ref={wrap} className="sticky top-0 z-40 text-white">
+    <div className="min-h-screen bg-white">
       {/* Phones */}
-      <nav className="md:hidden bg-black aa-container !max-w-6xl py-3">
-        <div className="flex items-center justify-between">
-          <span className="font-black tracking-[0.12em] text-sm">{heading}</span>
-          <button className="text-2xl leading-none p-1" aria-label="Toggle menu" aria-expanded={openMobile} onClick={() => setOpenMobile((v) => !v)}>
-            <i className={`bi ${openMobile ? "bi-x-lg" : "bi-list"}`} />
-          </button>
-        </div>
-        {openMobile && (
-          <div className="flex flex-col pt-2">
-            {links("py-2.5")}
-            <Link href="/" className="aa-nav-link py-2.5 opacity-75">View site</Link>
+      <header className="md:hidden sticky top-0 z-40 text-white">
+        <nav className="bg-black aa-container !max-w-6xl py-3">
+          <div className="flex items-center justify-between">
+            <span className="font-black tracking-[0.12em] text-sm">{heading}</span>
+            <button className="text-2xl leading-none p-1" aria-label="Toggle menu" aria-expanded={openMobile} onClick={() => setOpenMobile((v) => !v)}>
+              <i className={`bi ${openMobile ? "bi-x-lg" : "bi-list"}`} />
+            </button>
           </div>
-        )}
-      </nav>
+          {openMobile && (
+            <div className="flex flex-col pt-2">
+              {items.map((n) => (
+                <Link key={n.href} href={n.href} className={`aa-nav-link py-2.5 ${isCurrent(n) ? "underline underline-offset-8 decoration-2" : ""}`}>
+                  {n.label}
+                </Link>
+              ))}
+              <Link href="/" className="aa-nav-link py-2.5 opacity-75">View site</Link>
+            </div>
+          )}
+        </nav>
+      </header>
 
       {/* Computer */}
-      <div
-        className="hidden md:block relative"
-        onMouseEnter={show}
-        onMouseLeave={hideSoon}
-        onFocus={show}
-        onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hideSoon();
-        }}
+      <aside
+        className={`hidden md:flex fixed inset-y-0 left-0 z-40 flex-col bg-black text-white transition-[width] duration-200 ${collapsed ? "w-16" : "w-64"}`}
+        aria-label="Admin menu"
       >
-        <div className="h-2 bg-black" />
-        {!open && (
+        <div className={`flex items-center h-16 shrink-0 border-b border-white/15 ${collapsed ? "justify-center" : "justify-between px-5"}`}>
+          {!collapsed && <span className="font-black tracking-[0.12em] text-sm leading-tight">{heading}</span>}
           <button
             type="button"
-            onClick={show}
-            className="absolute left-6 top-2 bg-black text-white text-xs font-bold uppercase tracking-[0.1em] px-3 py-1.5 flex items-center gap-2"
-            aria-label="Open admin menu"
+            onClick={toggle}
+            className="text-xl leading-none p-2 hover:bg-white/10"
+            aria-label={collapsed ? "Expand menu" : "Collapse menu"}
+            aria-expanded={!collapsed}
+            title={collapsed ? "Expand menu" : "Collapse menu"}
           >
-            <i className="bi bi-list" />
-            {current?.label ?? "Menu"}
+            <i className={`bi ${collapsed ? "bi-layout-sidebar" : "bi-layout-sidebar-inset"}`} />
           </button>
-        )}
-        <nav
-          className={`${pinned ? "" : "absolute inset-x-0 top-0 shadow-lg"} bg-black transition-transform duration-200 ${
-            open ? "translate-y-0" : "-translate-y-full pointer-events-none"
-          }`}
-          aria-hidden={!open}
-        >
-          <div className="aa-container !max-w-6xl py-3 flex flex-wrap items-center gap-x-1 gap-y-0.5">
-            <span className="font-black tracking-[0.12em] mr-2 shrink-0">{heading}</span>
-            <button
-              type="button"
-              onClick={togglePin}
-              className="aa-nav-link shrink-0 !px-2 mr-2"
-              aria-pressed={pinned}
-              title={pinned ? "Let the menu hide again" : "Keep the menu open"}
-            >
-              <i className={`bi ${pinned ? "bi-pin-angle-fill" : "bi-pin-angle"}`} /> <span className="sr-only">{pinned ? "Pinned" : "Pin"}</span>
-            </button>
-            {links("whitespace-nowrap")}
-            <Link href="/" className="aa-nav-link shrink-0 whitespace-nowrap ml-auto opacity-75">View site</Link>
-          </div>
+        </div>
+        <nav className="flex-1 overflow-y-auto py-3">
+          {items.map((n) => {
+            const on = isCurrent(n);
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                title={collapsed ? n.label : undefined}
+                aria-current={on ? "page" : undefined}
+                className={`flex items-center gap-3 text-xs font-bold uppercase tracking-[0.08em] border-l-4 py-3 ${collapsed ? "justify-center px-0" : "px-5"} ${
+                  on ? "border-accent bg-white/10" : "border-transparent hover:bg-white/10"
+                }`}
+              >
+                <i className={`bi ${ICONS[n.href] ?? "bi-dot"} text-base leading-none`} />
+                {!collapsed && <span className="truncate">{n.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
-      </div>
-    </header>
+        <Link
+          href="/"
+          title={collapsed ? "View site" : undefined}
+          className={`flex items-center gap-3 text-xs font-bold uppercase tracking-[0.08em] py-4 border-t border-white/15 opacity-75 hover:opacity-100 ${collapsed ? "justify-center" : "px-5"}`}
+        >
+          <i className="bi bi-box-arrow-up-right text-base leading-none" />
+          {!collapsed && "View site"}
+        </Link>
+      </aside>
+
+      <div className={`transition-[padding] duration-200 ${collapsed ? "md:pl-16" : "md:pl-64"}`}>{children}</div>
+    </div>
   );
 }

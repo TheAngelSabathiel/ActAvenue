@@ -7,12 +7,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { IMAGES } from "@/lib/images";
+import { AuthModal, type AuthMode } from "@/components/auth/auth-modal";
 
 export function SiteHeader() {
   const [email, setEmail] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [staffLabel, setStaffLabel] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -52,6 +54,12 @@ export function SiteHeader() {
       alive = false;
     };
   }, [email]);
+
+  useEffect(() => {
+    const onOpen = (e: Event) => setAuthMode(((e as CustomEvent<AuthMode>).detail as AuthMode) ?? "signup");
+    window.addEventListener("aa-open-auth", onOpen);
+    return () => window.removeEventListener("aa-open-auth", onOpen);
+  }, []);
 
   useEffect(() => {
     const onCount = (e: Event) => setCartCount((e as CustomEvent<number>).detail ?? 0);
@@ -120,23 +128,26 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/account/login" className="aa-nav-link" onClick={close}>Sign In</Link>
-              <Link href="/account/signup" className="aa-btn aa-btn-sm aa-btn-outline md:ml-1 self-start md:self-auto" onClick={close}>Sign Up</Link>
+              <button type="button" className="aa-nav-link text-left" onClick={() => { close(); setAuthMode("login"); }}>Sign In</button>
+              <button type="button" className="aa-btn aa-btn-sm aa-btn-outline md:ml-1 self-start md:self-center" onClick={() => { close(); setAuthMode("signup"); }}>Sign Up</button>
             </>
           )}
-          <Link href="/cart" className="aa-btn aa-btn-sm md:ml-2 mt-2 md:mt-0 self-start" onClick={close}>
-            <i className="bi bi-cart3" /> Cart
-            {cartCount > 0 && (
-              <span
-                className="ml-1 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-white px-1.5 text-[11px] font-bold leading-none text-black"
-                aria-label={`${cartCount} in cart`}
-              >
-                {cartCount}
-              </span>
-            )}
-          </Link>
+          {(email || cartCount > 0) && (
+          <Link href="/cart" className="aa-btn aa-btn-sm md:ml-2 mt-2 md:mt-0 self-start md:self-center" onClick={close}>
+              <i className="bi bi-cart3" /> Cart
+              {cartCount > 0 && (
+                <span
+                  className="ml-1 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-white px-1.5 text-[11px] font-bold leading-none text-black"
+                  aria-label={`${cartCount} in cart`}
+                >
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          )}
         </nav>
       </div>
+      <AuthModal mode={authMode} onMode={setAuthMode} onClose={() => setAuthMode(null)} />
     </header>
   );
 }

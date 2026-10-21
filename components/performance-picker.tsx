@@ -20,7 +20,10 @@ export function PerformancePicker({
 }) {
   const { addItem } = useCart();
   const [performances, setPerformances] = useState(initialPerformances);
-  const [activeId, setActiveId] = useState(initialPerformances[0]?.id);
+  // With several dates nothing is preselected, so people choose on purpose.
+  const [activeId, setActiveId] = useState<string | undefined>(initialPerformances.length === 1 ? initialPerformances[0]?.id : undefined);
+  const [step1Open, setStep1Open] = useState(initialPerformances.length !== 1);
+  const [step2Open, setStep2Open] = useState(true);
   const [added, setAdded] = useState<AddedItem | null>(null);
   const [now] = useState(() => Date.now());
   const [qty, setQty] = useState<Record<string, number>>({});
@@ -147,36 +150,75 @@ export function PerformancePicker({
         </div>
       )}
 
-      <p className="aa-label text-muted mb-0">Step 1: choose your show date</p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {performances.map((p) => {
-          const on = activeId === p.id;
-          return (
-            <button
-              key={p.id}
-              onClick={() => setActiveId(p.id)}
-              aria-pressed={on}
-              className={`text-left border-2 border-black p-4 transition ${on ? "bg-black text-white" : "bg-white hover:bg-[#f2f2f2]"}`}
-            >
-              <span className="block text-xl font-black leading-tight">{formatDayShort(p.datetime)}</span>
-              <span className="block text-lg font-bold">{formatTime(p.datetime)}</span>
-              <span className={`block text-sm ${on ? "opacity-80" : "text-black/70"}`}>{p.venue}</span>
-              {on && <span className="aa-label mt-2 inline-block bg-accent text-black px-2 py-0.5">Selected</span>}
-            </button>
-          );
-        })}
+      <div>
+        <button
+          type="button"
+          onClick={() => setStep1Open((v) => !v)}
+          aria-expanded={step1Open}
+          className="w-full flex items-center justify-between gap-3 text-left border-b-2 border-black pb-2"
+        >
+          <span>
+            <span className="aa-label text-muted block mb-0">Step 1: choose your show date</span>
+            {!step1Open && active && (
+              <span className="font-black">{formatDayShort(active.datetime)} · {formatTime(active.datetime)}</span>
+            )}
+          </span>
+          <span className="aa-label mb-0 flex items-center gap-1 shrink-0">
+            {step1Open ? "Hide" : "Change"} <i className={`bi ${step1Open ? "bi-chevron-up" : "bi-chevron-down"}`} />
+          </span>
+        </button>
+        {step1Open && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 pt-4">
+            {performances.map((p) => {
+              const on = activeId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setActiveId(p.id);
+                    setStep1Open(false);
+                    setStep2Open(true);
+                  }}
+                  aria-pressed={on}
+                  className={`text-left border-2 border-black p-4 transition ${on ? "bg-black text-white" : "bg-white hover:bg-[#f2f2f2]"}`}
+                >
+                  <span className="block text-xl font-black leading-tight">{formatDayShort(p.datetime)}</span>
+                  <span className="block text-lg font-bold">{formatTime(p.datetime)}</span>
+                  <span className={`block text-sm ${on ? "opacity-80" : "text-black/70"}`}>{p.venue}</span>
+                  {on && <span className="aa-label mt-2 inline-block bg-accent text-black px-2 py-0.5">Selected</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {active && (
         <div className="space-y-4">
-          <div className="bg-black text-white p-5 border-l-[8px] border-accent">
-            <p className="aa-label opacity-75 mb-1">Step 2: you are booking</p>
-            <p className="text-2xl md:text-3xl font-black mb-1">{formatDayLong(active.datetime)}</p>
-            <p className="text-2xl md:text-3xl font-black mb-2">{formatTime(active.datetime)}</p>
-            <p className="text-lg mb-0"><i className="bi bi-geo-alt" /> {active.venue}</p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setStep2Open((v) => !v)}
+            aria-expanded={step2Open}
+            className="w-full text-left bg-black text-white p-5 border-l-[8px] border-accent flex items-start justify-between gap-3"
+          >
+            <span>
+              <span className="aa-label opacity-75 block mb-1">Step 2: you are booking</span>
+              {step2Open ? (
+                <>
+                  <span className="block text-2xl md:text-3xl font-black mb-1">{formatDayLong(active.datetime)}</span>
+                  <span className="block text-2xl md:text-3xl font-black mb-2">{formatTime(active.datetime)}</span>
+                  <span className="block text-lg"><i className="bi bi-geo-alt" /> {active.venue}</span>
+                </>
+              ) : (
+                <span className="block text-lg font-black">{formatDayShort(active.datetime)} · {formatTime(active.datetime)} · {active.venue}</span>
+              )}
+            </span>
+            <span className="aa-label mb-0 flex items-center gap-1 shrink-0 pt-1">
+              {step2Open ? "Hide tickets" : "Show tickets"} <i className={`bi ${step2Open ? "bi-chevron-up" : "bi-chevron-down"}`} />
+            </span>
+          </button>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          {step2Open && (<div className="grid gap-4 sm:grid-cols-2">
             {active.ticket_tiers.map((tier) => {
               const s = status[tier.id] ?? "idle";
               const soldOut = tier.remaining <= 0;
@@ -224,7 +266,7 @@ export function PerformancePicker({
                 </div>
               );
             })}
-          </div>
+          </div>)}
         </div>
       )}
     </div>

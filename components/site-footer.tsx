@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export const CONTACT_EMAIL = "actavenue@gmail.com";
 
 export const SOCIALS = [
@@ -29,17 +27,11 @@ export function SocialLinks({ className = "" }: { className?: string }) {
 
 export function SiteFooter() {
   return (
-    <footer className="bg-black text-white py-12 mt-auto">
+    <footer className="bg-black text-white py-10 mt-auto">
       <div className="aa-container text-center">
-        <h3 className="mb-4 tracking-[0.12em]">ACT AVENUE</h3>
-        <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-bold uppercase tracking-[0.08em] mb-6">
-          <Link href="/#now-showing" className="hover:underline">Shows</Link>
-          <Link href="/plays" className="hover:underline">Plays</Link>
-          <Link href="/actors" className="hover:underline">Cast &amp; Crew</Link>
-          <Link href="/account" className="hover:underline">My Tickets</Link>
-          <Link href="/cart" className="hover:underline">Cart</Link>
-        </nav>
-        <SocialLinks className="justify-center mb-4" />
+        <h3 className="mb-1 tracking-[0.12em]">ACT AVENUE</h3>
+        <p className="text-sm opacity-75 mb-5">Follow the stories behind the shows.</p>
+        <SocialLinks className="justify-center !text-3xl !gap-6 mb-5" />
         <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm opacity-75 hover:opacity-100">{CONTACT_EMAIL}</a>
         <p className="text-xs opacity-50 mt-6 mb-0">© 2026 Act Avenue | Developed by TheAngelSabathiel</p>
       </div>

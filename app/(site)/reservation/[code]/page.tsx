@@ -1,4 +1,5 @@
 import { isTransferred } from "@/lib/transfer";
+import { GuestSignupPrompt } from "@/components/guest-signup-prompt";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -129,6 +130,9 @@ export default async function ReservationStatusPage({
             Re-upload Payment Proof
           </a>
         )}
+      </div>
+      <div className="mt-6">
+        <GuestSignupPrompt />
       </div>
     </div>
   );

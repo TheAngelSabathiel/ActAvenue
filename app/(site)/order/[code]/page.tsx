@@ -1,5 +1,6 @@
 import { isTransferred } from "@/lib/transfer";
 import Link from "next/link";
+import { GuestSignupPrompt } from "@/components/guest-signup-prompt";
 import { notFound } from "next/navigation";
 import { formatDateTime } from "@/lib/datetime";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -54,6 +55,8 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
         <span className="uppercase tracking-[0.08em]">Order total</span>
         <span>₱{total.toFixed(2)}</span>
       </div>
+
+      <GuestSignupPrompt />
     </div>
   );
 }
