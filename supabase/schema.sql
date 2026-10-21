@@ -622,7 +622,7 @@ create table if not exists production_staff (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references profiles(id) on delete cascade,
   production_id uuid not null references productions(id) on delete cascade,
-  staff_role text not null check (staff_role in ('manager', 'foh')),
+  staff_role text not null check (staff_role in ('manager', 'foh', 'scanner')),
   created_at timestamptz not null default now(),
   unique (profile_id, production_id)
 );

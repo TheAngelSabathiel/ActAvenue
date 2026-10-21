@@ -1,5 +1,6 @@
 import type { createServiceClient } from "@/lib/supabase/service";
 import { generateQrPngBuffer } from "@/lib/qr";
+import { ticketQrText } from "@/lib/ticket-code";
 import type { ReservationItem, TicketTier } from "@/types/database";
 
 type Db = ReturnType<typeof createServiceClient>;
@@ -26,7 +27,7 @@ export async function ensureTicketQrs(db: Db, reservationId: string, referenceCo
       await db.from("reservation_items").update({ ticket_code: item.ticket_code }).eq("id", item.id);
     }
     if (!item.qr_code_url) {
-      const buffer = await generateQrPngBuffer(item.ticket_code);
+      const buffer = await generateQrPngBuffer(ticketQrText(item.ticket_code));
       const path = `qr-codes/${item.ticket_code}.png`;
       const { error } = await db.storage.from("e-tickets").upload(path, buffer, { contentType: "image/png", upsert: true });
       if (error) throw new Error(error.message);

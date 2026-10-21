@@ -43,7 +43,8 @@ export function SiteHeader() {
         if (!alive) return;
         if (d.isAdmin) setStaffLabel("Admin");
         else if ((d.assignments ?? []).some((a: { role: string }) => a.role === "manager")) setStaffLabel("Manage");
-        else if ((d.assignments ?? []).length > 0) setStaffLabel("FOH");
+        else if ((d.assignments ?? []).some((a: { role: string }) => a.role === "foh")) setStaffLabel("FOH");
+        else if ((d.assignments ?? []).length > 0) setStaffLabel("Scan");
         else setStaffLabel(null);
       })
       .catch(() => {});
@@ -112,7 +113,7 @@ export function SiteHeader() {
           <Link href="/#about" className="aa-nav-link" onClick={close}>About</Link>
           {email ? (
             <>
-              {staffLabel && <Link href="/admin/reservations" className="aa-nav-link" onClick={close}>{staffLabel}</Link>}
+              {staffLabel && <Link href={staffLabel === "Scan" ? "/admin/scan" : "/admin/reservations"} className="aa-nav-link" onClick={close}>{staffLabel}</Link>}
               <Link href="/account" className="aa-nav-link" onClick={close}>My Tickets</Link>
               <Link href="/account/settings" className="aa-nav-link" onClick={close}>My Profile</Link>
               <button onClick={handleSignOut} className="aa-nav-link text-left">Sign Out</button>

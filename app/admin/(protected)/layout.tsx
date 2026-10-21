@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getAccess, hasAnyAccess } from "@/lib/admin-auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { ScannerGuard } from "@/components/admin/scanner-guard";
 import { AdminAccessProvider, type AdminAccess } from "@/components/admin/access-context";
 
 type NavItem = { href: string; label: string };
@@ -16,6 +17,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/sales", label: "Sales" },
   { href: "/admin/new-reservation", label: "New reservation" },
   { href: "/admin/checkin", label: "Check-in" },
+  { href: "/admin/scan", label: "Scan" },
   { href: "/account/settings", label: "My profile" },
 ];
 
@@ -30,7 +32,7 @@ const ADMIN_NAV: NavItem[] = [
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const access = await getAccess();
-  if (!access || !hasAnyAccess(access)) redirect("/admin/login");
+  if (!access || !hasAnyAccess(access, "scanner")) redirect("/admin/login");
 
   const ids = Object.keys(access.assignments);
   let titles = new Map<string, string>();
@@ -46,19 +48,32 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   };
 
   const isManager = value.assignments.some((a) => a.role === "manager");
+  const scannerOnly = !access.isAdmin && value.assignments.every((a) => a.role === "scanner");
   const nav: NavItem[] = access.isAdmin
     ? ADMIN_NAV
-    : [
+    : scannerOnly
+      ? [
+          { href: "/admin/scan", label: "Scan" },
+          { href: "/account/settings", label: "My profile" },
+        ]
+      : [
         { href: "/admin/reservations", label: "Reservations" },
         ...(isManager ? [{ href: "/admin/productions", label: "My productions" }] : []),
         ...(isManager ? [{ href: "/admin/promo-codes", label: "Promo codes" }] : []),
         { href: "/admin/sales", label: "Sales" },
         { href: "/admin/new-reservation", label: "New reservation" },
         { href: "/admin/checkin", label: "Check-in" },
+        { href: "/admin/scan", label: "Scan" },
         { href: "/account/settings", label: "My profile" },
       ];
 
-  const heading = access.isAdmin ? "ACT AVENUE ADMIN" : isManager ? "ACT AVENUE MANAGER" : "ACT AVENUE FOH";
+  const heading = access.isAdmin
+    ? "ACT AVENUE ADMIN"
+    : isManager
+      ? "ACT AVENUE MANAGER"
+      : scannerOnly
+        ? "ACT AVENUE SCANNER"
+        : "ACT AVENUE FOH";
 
   return (
     <AdminAccessProvider value={value}>
@@ -76,7 +91,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           </nav>
         </header>
-        <main className="aa-container !max-w-6xl py-6 sm:py-10">{children}</main>
+        <main className="aa-container !max-w-6xl py-6 sm:py-10">
+          <ScannerGuard scannerOnly={scannerOnly} />
+          {children}
+        </main>
       </div>
     </AdminAccessProvider>
   );

@@ -3,8 +3,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
 
 /**
- * Give a Cast and Crew member Manager or FOH access to one production.
- * POST { profile_id, production_id, staff_role: "manager" | "foh" }.
+ * Give a Cast and Crew member Manager, FOH or Scanner access to one production.
+ * POST { profile_id, production_id, staff_role: "manager" | "foh" | "scanner" }.
  * Assigning again changes their role for that production.
  */
 export async function POST(req: NextRequest) {
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (authError) return authError;
 
   const { profile_id, production_id, staff_role } = await req.json().catch(() => ({}));
-  if (!profile_id || !production_id || !["manager", "foh"].includes(staff_role)) {
+  if (!profile_id || !production_id || !["manager", "foh", "scanner"].includes(staff_role)) {
     return NextResponse.json({ error: "Choose a production and a role." }, { status: 400 });
   }
 

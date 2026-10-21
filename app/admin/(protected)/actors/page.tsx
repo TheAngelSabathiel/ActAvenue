@@ -17,7 +17,7 @@ type Actor = {
   created_at: string;
   role: string;
   email: string | null;
-  staff: { id: string; production_id: string; title: string; staff_role: "manager" | "foh" }[];
+  staff: { id: string; production_id: string; title: string; staff_role: "manager" | "foh" | "scanner" }[];
 };
 
 type ProductionOption = { id: string; title: string };
@@ -32,7 +32,7 @@ export default function AdminActorsPage() {
   const [productions, setProductions] = useState<ProductionOption[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickProduction, setPickProduction] = useState("");
-  const [pickRole, setPickRole] = useState<"manager" | "foh">("manager");
+  const [pickRole, setPickRole] = useState<"manager" | "foh" | "scanner">("manager");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -70,7 +70,7 @@ export default function AdminActorsPage() {
     const data = await res.json().catch(() => ({}));
     setBusyId(null);
     if (res.ok) {
-      toast.success(`${a.display_name ?? "Account"} is now ${pickRole === "manager" ? "a Manager" : "FOH"} for that production.`);
+      toast.success(`${a.display_name ?? "Account"} is now ${pickRole === "manager" ? "a Manager" : pickRole === "scanner" ? "a Scanner" : "FOH"} for that production.`);
       setPickProduction("");
     } else toast.error(data.error ?? "Could not assign.");
     load();
@@ -323,7 +323,7 @@ export default function AdminActorsPage() {
                     {sortByName(actor.staff, (x) => x.title).map((x) => (
                       <span key={x.id} className="inline-flex items-center gap-2 bg-ink/5 px-2 py-1 text-xs">
                         <strong>{x.title}</strong>
-                        <span className="uppercase text-muted">{x.staff_role === "manager" ? "Manager" : "FOH"}</span>
+                        <span className="uppercase text-muted">{x.staff_role === "manager" ? "Manager" : x.staff_role === "scanner" ? "Scanner" : "FOH"}</span>
                         <button onClick={() => unassign(x.id)} aria-label="Remove access" className="font-bold text-danger">
                           Remove
                         </button>
@@ -344,11 +344,12 @@ export default function AdminActorsPage() {
                   </select>
                   <select
                     value={pickRole}
-                    onChange={(e) => setPickRole(e.target.value as "manager" | "foh")}
+                    onChange={(e) => setPickRole(e.target.value as "manager" | "foh" | "scanner")}
                     className="border border-ink/20 px-3 py-2 text-sm"
                   >
                     <option value="manager">Manager</option>
                     <option value="foh">FOH</option>
+                    <option value="scanner">Scanner</option>
                   </select>
                   <button
                     disabled={!pickProduction || busyId === actor.id}

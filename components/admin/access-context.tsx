@@ -2,7 +2,8 @@
 
 import { createContext, useContext } from "react";
 
-export type StaffRole = "manager" | "foh";
+export type StaffRole = "manager" | "foh" | "scanner";
+const RANK: Record<StaffRole, number> = { scanner: 0, foh: 1, manager: 2 };
 export interface AdminAccess {
   isAdmin: boolean;
   assignments: { production_id: string; title: string; role: StaffRole }[];
@@ -21,7 +22,9 @@ export function useAdminAccess() {
     if (access.isAdmin) return true;
     const a = access.assignments.find((x) => x.production_id === productionId);
     if (!a) return false;
-    return level === "foh" ? true : a.role === "manager";
+    return RANK[a.role] >= RANK[level];
   };
-  return { ...access, can };
+  /** Assigned only as a scanner somewhere, with nothing higher. */
+  const scannerOnly = !access.isAdmin && access.assignments.length > 0 && access.assignments.every((a) => a.role === "scanner");
+  return { ...access, can, scannerOnly };
 }

@@ -3,7 +3,13 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
-export type StaffRole = "manager" | "foh";
+/** Roles a person can hold on one production. */
+export type StaffRole = "manager" | "foh" | "scanner";
+/** Levels of access. scanner: anyone assigned. foh: Manager or FOH. manager: Manager only. */
+export type AccessLevel = StaffRole;
+
+const RANK: Record<StaffRole, number> = { scanner: 0, foh: 1, manager: 2 };
+const meets = (role: StaffRole, level: AccessLevel) => RANK[role] >= RANK[level];
 
 export interface Access {
   userId: string;
@@ -40,27 +46,27 @@ export async function getAccess(): Promise<Access | null> {
 }
 
 /**
- * "foh" level: a Manager or FOH of the production. "manager" level: a Manager
- * of the production. Admins pass everything.
+ * "scanner" level: anyone assigned to the production. "foh" level: a Manager or
+ * FOH. "manager" level: a Manager. Admins pass everything.
  */
-export function canAccess(access: Access | null, productionId: string | null | undefined, level: StaffRole): boolean {
+export function canAccess(access: Access | null, productionId: string | null | undefined, level: AccessLevel): boolean {
   if (!access) return false;
   if (access.isAdmin) return true;
   if (!productionId) return false;
   const role = access.assignments[productionId];
   if (!role) return false;
-  return level === "foh" ? true : role === "manager";
+  return meets(role, level);
 }
 
 /** Production ids this person can reach at the given level. null = all (admin). */
-export function accessibleProductionIds(access: Access, level: StaffRole): string[] | null {
+export function accessibleProductionIds(access: Access, level: AccessLevel): string[] | null {
   if (access.isAdmin) return null;
   return Object.entries(access.assignments)
-    .filter(([, role]) => level === "foh" || role === "manager")
+    .filter(([, role]) => meets(role, level))
     .map(([id]) => id);
 }
 
-export function hasAnyAccess(access: Access | null, level: StaffRole = "foh"): boolean {
+export function hasAnyAccess(access: Access | null, level: AccessLevel = "foh"): boolean {
   if (!access) return false;
   if (access.isAdmin) return true;
   const ids = accessibleProductionIds(access, level);
@@ -87,7 +93,7 @@ export async function requireStaff(): Promise<NextResponse | null> {
  */
 export async function requireProduction(
   productionId: string | null | undefined,
-  level: StaffRole
+  level: AccessLevel
 ): Promise<{ access: Access; error: null } | { access: null; error: NextResponse }> {
   const access = await getAccess();
   if (!access) return { access: null, error: unauthorized() };
@@ -97,7 +103,7 @@ export async function requireProduction(
 
 /** Any signed-in person with access at this level to at least one production (or admin). */
 export async function requireAnyAccess(
-  level: StaffRole
+  level: AccessLevel
 ): Promise<{ access: Access; error: null } | { access: null; error: NextResponse }> {
   const access = await getAccess();
   if (!access) return { access: null, error: unauthorized() };
