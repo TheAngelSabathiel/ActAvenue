@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { setPlayWriters } from "@/lib/play-writers";
 import { requireStaff } from "@/lib/admin-auth";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,11 +12,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const update: Record<string, unknown> = {};
   if (typeof body.title === "string" && body.title.trim()) update.title = body.title.trim();
   if (typeof body.description === "string") update.description = body.description.trim() || null;
-  if (Object.keys(update).length === 0) {
+  const writerIds: string[] | null = Array.isArray(body.writer_ids)
+    ? body.writer_ids.filter((x: unknown): x is string => typeof x === "string")
+    : null;
+  if (Object.keys(update).length === 0 && writerIds === null) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
   const db = createServiceClient();
+  if (writerIds !== null) {
+    try {
+      await setPlayWriters(db, id, writerIds);
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : "Could not save writers." }, { status: 500 });
+    }
+  }
+  if (Object.keys(update).length === 0) return NextResponse.json({ ok: true });
   const { data, error } = await db.from("plays").update(update).eq("id", id).select().single();
   if (error) {
     const msg = error.code === "23505" ? "A play with that title already exists." : error.message;

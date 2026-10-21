@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { STAFF_ROLES } from "@/lib/member-roles";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { cleanBioStyle } from "@/lib/bio-style";
 import { SOCIALS, normalizeSocial } from "@/lib/social-links";
 
 /**
@@ -24,6 +25,11 @@ export async function POST(req: NextRequest) {
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
+  }
+
+  // Bio formatting: only known options are ever stored.
+  if (["bio_size", "bio_align", "bio_font", "bio_color"].some((k) => k in body)) {
+    Object.assign(update, cleanBioStyle(body));
   }
 
   // Optional contact and social links: each is cleaned into a safe https link

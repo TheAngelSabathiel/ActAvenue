@@ -2,10 +2,40 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import type { Play } from "@/types/database";
 
-export async function listPlays(): Promise<Play[]> {
+export interface PlayWriter {
+  id: string;
+  name: string;
+  /** Has a public profile page to link to. */
+  listed: boolean;
+}
+
+/** Writers per play id. Empty if the writers table is not set up yet. */
+export async function getPlayWriters(playIds: string[]): Promise<Map<string, PlayWriter[]>> {
+  const out = new Map<string, PlayWriter[]>();
+  if (!playIds.length) return out;
+  const { data, error } = await createServiceClient()
+    .from("play_writers")
+    .select("play_id, sort_order, profile:profiles(id, display_name, is_public, is_approved)")
+    .in("play_id", playIds)
+    .order("sort_order", { ascending: true });
+  if (error) return out;
+  for (const r of data ?? []) {
+    const p = Array.isArray(r.profile) ? r.profile[0] : r.profile;
+    if (!p) continue;
+    const list = out.get(r.play_id) ?? [];
+    list.push({ id: p.id, name: p.display_name ?? "Writer", listed: !!(p.is_public && p.is_approved) });
+    out.set(r.play_id, list);
+  }
+  return out;
+}
+
+export async function listPlays(): Promise<(Play & { writers: PlayWriter[] })[]> {
   const supabase = await createClient();
   const { data } = await supabase.from("plays").select("*");
-  return (data ?? []).sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
+  const writers = await getPlayWriters((data ?? []).map((p) => p.id));
+  return (data ?? [])
+    .map((p) => ({ ...p, writers: writers.get(p.id) ?? [] }))
+    .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
 }
 
 export interface ShowingPerson {
@@ -34,6 +64,7 @@ export interface PlayShowing {
 
 export interface PlayDetail {
   play: Play;
+  writers: PlayWriter[];
   current: PlayShowing[];
   past: PlayShowing[];
 }
@@ -102,6 +133,7 @@ export async function getPlayDetail(id: string): Promise<PlayDetail | null> {
   const byDate = (a: PlayShowing, b: PlayShowing) => (a.first ?? "").localeCompare(b.first ?? "");
   return {
     play,
+    writers: (await getPlayWriters([id])).get(id) ?? [],
     current: showings.filter((s) => s.isCurrent).sort(byDate),
     past: showings.filter((s) => !s.isCurrent).sort((a, b) => byDate(b, a)),
   };

@@ -30,7 +30,7 @@ export function SiteFooter() {
     <footer className="bg-black text-white py-10 mt-auto">
       <div className="aa-container text-center">
         <h3 className="mb-1 tracking-[0.12em]">ACT AVENUE</h3>
-        <p className="text-sm opacity-75 mb-5">Follow the stories behind the shows.</p>
+        <p className="text-sm opacity-75 mb-5">Ang Paborito Mong Tambayan.</p>
         <SocialLinks className="justify-center !text-3xl !gap-6 mb-5" />
         <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm opacity-75 hover:opacity-100">{CONTACT_EMAIL}</a>
         <p className="text-xs opacity-50 mt-6 mb-0">© 2026 Act Avenue | Developed by TheAngelSabathiel</p>

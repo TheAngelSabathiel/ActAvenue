@@ -26,6 +26,9 @@ export default async function PlaysPage() {
             </div>
             <div className="p-5">
               <p className="font-black text-lg mb-0">{play.title}</p>
+              {play.writers.length > 0 && (
+                <p className="aa-label text-muted mt-1 mb-0">By {play.writers.map((w) => w.name).join(", ")}</p>
+              )}
               {play.description && <p className="text-xs text-muted line-clamp-2 mt-1 mb-0">{play.description}</p>}
             </div>
           </Link>

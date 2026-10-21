@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { creditWriters } from "@/lib/play-writers";
 import { requireProduction } from "@/lib/admin-auth";
 
 /** Plays this production stages, in display order. */
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const msg = error.code === "23505" ? "That play is already in this production." : error.message;
     return NextResponse.json({ error: msg }, { status: error.code === "23505" ? 409 : 500 });
   }
+  // Staging a play credits its writers in this production.
+  await creditWriters(db, { playId: playId!, productionId: id });
   return NextResponse.json({ ok: true, play_id: playId });
 }
 

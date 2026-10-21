@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { IMAGES } from "@/lib/images";
 import { createClient } from "@/lib/supabase/client";
+import { BioEditor } from "@/components/bio-editor";
+import { cleanBioStyle } from "@/lib/bio-style";
 import { validateImageFile } from "@/lib/upload";
 import { SOCIALS, socialText, type SocialKey } from "@/lib/social-links";
 
@@ -17,6 +19,10 @@ type Profile = {
   role: "admin" | "organizer" | "actor" | "public";
   display_name: string | null;
   bio: string | null;
+  bio_size?: string | null;
+  bio_align?: string | null;
+  bio_font?: string | null;
+  bio_color?: string | null;
   photo_url: string | null;
   resume_url: string | null;
   reel_url: string | null;
@@ -305,6 +311,7 @@ function ProfilePhotoSection({ profile, onSaved }: { profile: Profile; onSaved: 
 function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: () => void }) {
   const [displayName, setDisplayName] = useState(profile.display_name ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
+  const [bioStyle, setBioStyle] = useState(() => cleanBioStyle(profile));
   const [resumeUrl, setResumeUrl] = useState(profile.resume_url ?? "");
   const [reelUrl, setReelUrl] = useState(profile.reel_url ?? "");
   const [socials, setSocials] = useState<Record<SocialKey, string>>(() => {
@@ -334,6 +341,7 @@ function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: 
       body: JSON.stringify({
         display_name: displayName,
         bio,
+        ...bioStyle,
         resume_url: resumeUrl || null,
         reel_url: reelUrl || null,
         is_public: isPublic,
@@ -365,13 +373,7 @@ function ActorProfileSection({ profile, onSaved }: { profile: Profile; onSaved: 
           placeholder="Display name (shown publicly)"
           className="w-full border border-ink/20  px-3 py-2 text-sm"
         />
-        <textarea
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          placeholder="Short bio"
-          rows={4}
-          className="w-full border border-ink/20  px-3 py-2 text-sm"
-        />
+        <BioEditor bio={bio} onBio={setBio} style={bioStyle} onStyle={setBioStyle} />
         <input
           value={resumeUrl}
           onChange={(e) => setResumeUrl(e.target.value)}

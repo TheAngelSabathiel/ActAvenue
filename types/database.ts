@@ -21,6 +21,10 @@ export interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  bio_size: "small" | "medium" | "large";
+  bio_align: "justify" | "left" | "center";
+  bio_font: "default" | "playfair" | "lora" | "courier" | "caveat";
+  bio_color: "default" | "charcoal" | "crimson" | "navy" | "forest" | "plum";
   photo_url: string | null;
   resume_url: string | null;
   reel_url: string | null;
@@ -59,6 +63,7 @@ export interface ProductionCredit {
 export interface Play {
   id: string;
   title: string;
+  writers?: { id: string; name: string; listed: boolean }[];
   description: string | null;
   photo_url: string | null;
   sort_order: number;

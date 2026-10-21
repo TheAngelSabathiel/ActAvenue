@@ -23,6 +23,10 @@ create table profiles (
   avatar_url text,
   -- Actor/production-member profile fields — populated when role = 'actor'.
   bio text,
+  bio_size text not null default 'small' check (bio_size in ('small','medium','large')),
+  bio_align text not null default 'justify' check (bio_align in ('justify','left','center')),
+  bio_font text not null default 'default' check (bio_font in ('default','playfair','lora','courier','caveat')),
+  bio_color text not null default 'default' check (bio_color in ('default','charcoal','crimson','navy','forest','plum')),
   photo_url text,
   resume_url text,
   reel_url text,
@@ -269,6 +273,17 @@ create table production_plays (
 );
 create index production_plays_play_idx on production_plays (play_id);
 
+-- Writers of a play (optional, several allowed). Adding one to a play that a
+-- production stages credits them in that production automatically.
+create table play_writers (
+  play_id uuid not null references plays (id) on delete cascade,
+  profile_id uuid not null references profiles (id) on delete cascade,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now(),
+  primary key (play_id, profile_id)
+);
+create index play_writers_profile_idx on play_writers (profile_id);
+
 -- section: 'artistic' (writers, directors, actors grouped by play; choreographers and dancers in their own group) or
 -- 'production' (production and crew, ordered by sort_order).
 -- is_discredited hides a credit publicly without deleting it.
@@ -342,6 +357,7 @@ alter table reservation_items enable row level security;
 alter table actor_photos enable row level security;
 alter table production_credits enable row level security;
 alter table plays enable row level security;
+alter table play_writers enable row level security;
 alter table production_plays enable row level security;
 
 -- Helper: is the current user staff (admin/organizer)?
@@ -454,6 +470,10 @@ create policy "public read production credits"
   on production_credits for select
   using (not is_discredited or is_staff());
 
+create policy "public read play_writers" on play_writers for select using (true);
+create policy "staff manage play_writers" on play_writers for all using (is_staff()) with check (is_staff());
+grant select on play_writers to anon, authenticated;
+grant all on play_writers to service_role;
 create policy "public read plays" on plays for select using (true);
 create policy "staff manage plays" on plays for all using (is_staff()) with check (is_staff());
 create policy "public read production_plays" on production_plays for select using (true);

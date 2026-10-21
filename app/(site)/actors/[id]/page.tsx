@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { bioPresentation } from "@/lib/bio-style";
 import Image from "next/image";
 import Link from "next/link";
 import { getPublicActor, type ActorProfileWithDetails } from "@/lib/data/actors";
@@ -77,7 +78,7 @@ export default async function ActorProfilePage({ params }: { params: Promise<{ i
           className="h-40 w-40 object-cover mx-auto mb-6 border-2 border-black"
         />
         <h1 className="text-3xl mb-4">{actor.display_name ?? "Cast member"}</h1>
-        {actor.bio && <p className="mb-0 text-justify hyphens-auto whitespace-pre-line" lang="en">{actor.bio}</p>}
+        {actor.bio && (() => { const b = bioPresentation(actor); return <p className={`mb-0 ${b.className}`} style={b.style} lang="en">{actor.bio}</p>; })()}
         <SocialLinksList values={actor} />
 
         {(actor.resume_url || actor.reel_url) && (

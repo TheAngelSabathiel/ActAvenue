@@ -11,10 +11,52 @@ import { SaveBar } from "@/components/save-bar";
 import { api, fileInit, jsonInit } from "@/lib/api-call";
 import type { Play } from "@/types/database";
 
+type Person = { id: string; display_name: string | null; email?: string | null };
+type AdminPlay = Play & { play_writers?: { profile_id: string; sort_order: number }[] };
+
+const personName = (p: Person) => p.display_name || p.email || "Unnamed account";
+
+function WriterPicker({ people, value, onChange }: { people: Person[]; value: string[]; onChange: (ids: string[]) => void }) {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const options = people
+    .filter((p) => !value.includes(p.id))
+    .sort((a, b) => personName(a).localeCompare(personName(b), undefined, { sensitivity: "base" }));
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-bold uppercase text-muted">Writers (optional)</label>
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {value.map((id) => (
+            <span key={id} className="inline-flex items-center gap-2 bg-black text-white text-xs font-bold px-2.5 py-1">
+              {byId.get(id) ? personName(byId.get(id)!) : "Unknown"}
+              <button type="button" aria-label="Remove writer" onClick={() => onChange(value.filter((x) => x !== id))}>
+                <i className="bi bi-x-lg" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <select
+        value=""
+        onChange={(e) => e.target.value && onChange([...value, e.target.value])}
+        className={`${field} w-full max-w-xs`}
+        aria-label="Add a writer"
+      >
+        <option value="">{value.length ? "Add another writer" : "Add a writer"}</option>
+        {options.map((p) => (
+          <option key={p.id} value={p.id}>{personName(p)}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 const field = "border border-ink/20 px-3 py-2 text-sm";
 
 export default function AdminPlaysPage() {
-  const [plays, setPlays] = useState<Play[] | null>(null);
+  const [plays, setPlays] = useState<AdminPlay[] | null>(null);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [writerIds, setWriterIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   useToastOn(message, "error");
   const [title, setTitle] = useState("");
@@ -23,6 +65,12 @@ export default function AdminPlaysPage() {
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/plays");
     setPlays((await res.json()).plays ?? []);
+    try {
+      const r = await fetch("/api/admin/actors?group=all");
+      setPeople((await r.json()).actors ?? []);
+    } catch {
+      /* writers picker stays empty */
+    }
   }, []);
 
   useEffect(() => {
@@ -35,7 +83,7 @@ export default function AdminPlaysPage() {
     const res = await fetch("/api/admin/plays", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description }),
+      body: JSON.stringify({ title, description, writer_ids: writerIds }),
     });
     const data = await res.json();
     if (!res.ok) return setMessage(data.error);
@@ -43,6 +91,7 @@ export default function AdminPlaysPage() {
     toast.success("Play added.");
     setTitle("");
     setDescription("");
+    setWriterIds([]);
     load();
   }
 
@@ -67,12 +116,15 @@ export default function AdminPlaysPage() {
           <label className="block text-xs font-bold uppercase text-muted mb-1">Description (optional)</label>
           <input value={description} onChange={(e) => setDescription(e.target.value)} className={`${field} w-full`} />
         </div>
+        <div className="w-full">
+          <WriterPicker people={people} value={writerIds} onChange={setWriterIds} />
+        </div>
         <button className="px-4 py-2 bg-black text-paper text-sm font-bold uppercase">Add play</button>
       </form>
 
       <div className="space-y-3">
         {plays.map((p) => (
-          <PlayCard key={p.id} play={p} onChange={load} onError={setMessage} />
+          <PlayCard key={p.id} play={p} people={people} onChange={load} onError={setMessage} />
         ))}
         {plays.length === 0 && <p className="text-sm text-muted">No plays yet.</p>}
       </div>
@@ -80,18 +132,22 @@ export default function AdminPlaysPage() {
   );
 }
 
-function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => void; onError: (m: string | null) => void }) {
+function PlayCard({ play, people, onChange, onError }: { play: AdminPlay; people: Person[]; onChange: () => void; onError: (m: string | null) => void }) {
   const [title, setTitle] = useState(play.title);
   const [description, setDescription] = useState(play.description ?? "");
   const [photo, setPhoto] = useState<ImageDraft>(EMPTY_IMAGE);
+  const savedWriters = (play.play_writers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order).map((w) => w.profile_id);
+  const [writers, setWriters] = useState<string[]>(savedWriters);
   const [saving, setSaving] = useState(false);
 
-  const dirty = title !== play.title || description !== (play.description ?? "") || imageDirty(photo);
+  const writersDirty = writers.join(",") !== savedWriters.join(",");
+  const dirty = title !== play.title || description !== (play.description ?? "") || imageDirty(photo) || writersDirty;
 
   function discard() {
     setTitle(play.title);
     setDescription(play.description ?? "");
     setPhoto(EMPTY_IMAGE);
+    setWriters(savedWriters);
   }
 
   async function save() {
@@ -101,7 +157,8 @@ function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => voi
     try {
       if (photo.file) await api(`/api/admin/plays/${play.id}/media`, fileInit(photo.file));
       else if (photo.removed) await api(`/api/admin/plays/${play.id}/media`, { method: "DELETE" });
-      const patch: Record<string, string> = {};
+      const patch: Record<string, string | string[]> = {};
+      if (writersDirty) patch.writer_ids = writers;
       if (title !== play.title) patch.title = title;
       if (description !== (play.description ?? "")) patch.description = description;
       if (Object.keys(patch).length) await api(`/api/admin/plays/${play.id}`, jsonInit("PATCH", patch));
@@ -139,6 +196,7 @@ function PlayCard({ play, onChange, onError }: { play: Play; onChange: () => voi
         <div className="flex-1 min-w-56 space-y-2">
           <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${field} w-full font-bold`} aria-label="Title" />
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Description" className={`${field} w-full`} />
+          <WriterPicker people={people} value={writers} onChange={setWriters} />
         </div>
         <button onClick={remove} className="text-xs font-bold uppercase text-danger/70 hover:text-danger self-start">
           Delete

@@ -83,7 +83,7 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const detail = await getPlayDetail(id);
   if (!detail) notFound();
-  const { play, current, past } = detail;
+  const { play, writers, current, past } = detail;
 
   return (
     <div className="aa-container py-16 space-y-12">
@@ -96,6 +96,17 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
           <div>
             <h1 className="text-4xl mb-2">{play.title}</h1>
             <hr className="aa-divider" />
+            {writers.length > 0 && (
+              <p className="mb-3">
+                <span className="aa-label text-muted mr-3">{writers.length > 1 ? "Writers" : "Writer"}</span>
+                {writers.map((w, i) => (
+                  <span key={w.id}>
+                    {i > 0 && ", "}
+                    {w.listed ? <Link href={`/actors/${w.id}`} className="font-bold underline">{w.name}</Link> : <span className="font-bold">{w.name}</span>}
+                  </span>
+                ))}
+              </p>
+            )}
             {play.description && <p className="whitespace-pre-line mb-0">{play.description}</p>}
           </div>
         </div>
