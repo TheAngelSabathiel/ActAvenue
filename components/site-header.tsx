@@ -119,7 +119,10 @@ export function SiteHeader() {
               <button onClick={handleSignOut} className="aa-nav-link text-left">Sign Out</button>
             </>
           ) : (
-            <Link href="/account/login" className="aa-nav-link" onClick={close}>Sign In</Link>
+            <>
+              <Link href="/account/login" className="aa-nav-link" onClick={close}>Sign In</Link>
+              <Link href="/account/signup" className="aa-btn aa-btn-sm aa-btn-outline md:ml-1 self-start md:self-auto" onClick={close}>Sign Up</Link>
+            </>
           )}
           <Link href="/cart" className="aa-btn aa-btn-sm md:ml-2 mt-2 md:mt-0 self-start" onClick={close}>
             <i className="bi bi-cart3" /> Cart

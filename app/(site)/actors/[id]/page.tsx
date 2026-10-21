@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getPublicActor, type ActorProfileWithDetails } from "@/lib/data/actors";
 import { IMAGES } from "@/lib/images";
+import { PhotoGallery } from "@/components/photo-gallery";
 import { SocialLinksList } from "@/components/social-icons";
 import { CREDIT_TYPE_RANK, CREDIT_TYPE_LABEL, type CreditType } from "@/lib/credits";
 
@@ -95,13 +96,7 @@ export default async function ActorProfilePage({ params }: { params: Promise<{ i
         <section>
           <h2 className="text-xl mb-2">Gallery</h2>
           <hr className="aa-divider" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {actor.actor_photos.map((photo) => (
-              <div key={photo.id} className="relative aspect-[3/4] overflow-hidden bg-soft">
-                <Image src={photo.photo_url} alt={photo.caption ?? ""} fill sizes="200px" className="object-cover" />
-              </div>
-            ))}
-          </div>
+          <PhotoGallery photos={actor.actor_photos} name={actor.display_name ?? "Cast and crew"} />
         </section>
       )}
 
