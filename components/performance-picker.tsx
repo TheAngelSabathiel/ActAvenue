@@ -2,7 +2,7 @@
 
 import { toast } from "@/lib/toast";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart, CartError } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
 import { formatDayLong, formatDayShort, formatTime } from "@/lib/datetime";
@@ -30,6 +30,7 @@ export function PerformancePicker({
   const [idFor, setIdFor] = useState<{ tierId: string; performanceId: string } | null>(null);
   const qtyOf = (tier: TicketTier & { remaining?: number }) => Math.min(Math.max(1, qty[tier.id] ?? 1), Math.max(1, tier.remaining ?? 1));
   const [idFile, setIdFile] = useState<File | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Record<string, "idle" | "adding" | "added" | "error">>({});
 
   // Live remaining-quantity counts: subscribe to ticket_tiers changes so
@@ -162,13 +163,30 @@ export function PerformancePicker({
             <p className="mb-0">{ID_INSTRUCTION}</p>
             <p className="text-xs text-muted mb-0">Photo or PDF, up to 8 MB. Only our team can see it.</p>
             <input
+              ref={fileInput}
               type="file"
               accept="image/*,application/pdf"
-              onChange={(e) => setIdFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm"
+              onChange={(e) => {
+                setIdFile(e.target.files?.[0] ?? null);
+                e.target.value = "";
+              }}
+              className="hidden"
               aria-label="Upload ID"
             />
-            {idFile && <p className="text-sm font-bold mb-0"><i className="bi bi-check-circle" /> {idFile.name}</p>}
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              className="w-full border-2 border-dashed border-black p-5 text-center hover:bg-[#f2f2f2]"
+            >
+              <i className={`bi ${idFile ? "bi-arrow-repeat" : "bi-upload"} text-2xl block mb-1`} />
+              <span className="aa-label block mb-0">{idFile ? "Replace file" : "Choose file"}</span>
+            </button>
+            {idFile && (
+              <p className="text-sm font-bold mb-0 flex items-center justify-between gap-2">
+                <span className="truncate"><i className="bi bi-check-circle" /> {idFile.name}</span>
+                <button type="button" onClick={() => setIdFile(null)} className="underline shrink-0">Remove</button>
+              </p>
+            )}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 className="aa-btn flex-1"
