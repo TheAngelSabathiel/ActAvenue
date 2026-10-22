@@ -6,7 +6,7 @@ import { LoginForm, SignupForm } from "@/components/auth/auth-forms";
 export type AuthMode = "login" | "signup";
 
 /**
- * Sign in / sign up lightbox. Pans down from the top on open and back up when
+ * Sign in / sign up box, centered over a dimmed page. Slides down on open and back up when
  * closed with X, the backdrop or Escape.
  */
 export function AuthModal({ mode, onMode, onClose }: { mode: AuthMode | null; onMode: (m: AuthMode) => void; onClose: () => void }) {
@@ -44,14 +44,14 @@ export function AuthModal({ mode, onMode, onClose }: { mode: AuthMode | null; on
   const m = mode ?? last;
 
   return (
-    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label={m === "login" ? "Sign in" : "Create account"}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={m === "login" ? "Sign in" : "Create account"}>
       <div
-        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${shown ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 ${shown ? "opacity-100" : "opacity-0"}`}
         onClick={onClose}
       />
       <div
-        className={`relative mx-auto mt-0 w-full max-w-md bg-white border-x-2 border-b-2 border-black shadow-2xl transition-transform duration-300 ease-out max-h-screen overflow-y-auto ${
-          shown ? "translate-y-0" : "-translate-y-full"
+        className={`relative w-full max-w-md bg-white border-2 border-black shadow-2xl transition-all duration-300 ease-out max-h-[calc(100dvh-2rem)] overflow-y-auto ${
+          shown ? "translate-y-0 opacity-100" : "-translate-y-24 opacity-0"
         }`}
       >
         <button type="button" onClick={onClose} aria-label="Close" className="absolute right-3 top-3 text-2xl leading-none p-1">
