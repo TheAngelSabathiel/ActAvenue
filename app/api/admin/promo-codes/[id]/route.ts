@@ -4,8 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { canAccess, requireProduction } from "@/lib/admin-auth";
 import { productionOfPromo } from "@/lib/admin-scope";
+import { withRefresh } from "@/lib/refresh-public";
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfPromo(id), "manager");
   if (gate.error) return gate.error;
@@ -46,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ promo_code: data });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfPromo(id), "manager");
   if (gate.error) return gate.error;
@@ -55,3 +56,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withRefresh(handlePATCH);
+export const DELETE = withRefresh(handleDELETE);

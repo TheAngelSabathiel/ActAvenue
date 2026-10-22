@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 const KINDS = {
   poster: { column: "poster_url", folder: "posters" },
@@ -10,7 +11,7 @@ const KINDS = {
 } as const;
 
 // POST /api/admin/productions/[id]/media  (form field "file", "kind" = poster | banner | gcash_qr | bank_qr)
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(id, "manager");
   if (gate.error) return gate.error;
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 // DELETE /api/admin/productions/[id]/media?kind=poster|banner
 // Clears the image so the site falls back to the default placeholder.
 // The old file stays in storage (no hard deletes).
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(id, "manager");
   if (gate.error) return gate.error;
@@ -76,3 +77,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ production: data });
 }
+
+export const POST = withRefresh(handlePOST);
+export const DELETE = withRefresh(handleDELETE);

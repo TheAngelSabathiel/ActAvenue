@@ -4,8 +4,9 @@ import { requireProduction } from "@/lib/admin-auth";
 import { ensureTicketQrs } from "@/lib/tickets";
 import { sendApprovedEmail, sendBookingReceivedEmail } from "@/lib/email/send";
 import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
+import { withRefresh } from "@/lib/refresh-public";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const {
     performance_id,
     buyer_name,
@@ -192,3 +193,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ reservation });
 }
+
+export const POST = withRefresh(handlePOST);

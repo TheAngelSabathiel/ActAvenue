@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateImageFile, safeFileName } from "@/lib/upload";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { withRefresh } from "@/lib/refresh-public";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
 }
 
 /** Clears the main profile photo. The old file stays in storage. */
-export async function DELETE() {
+async function handleDELETE() {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -56,3 +57,6 @@ export async function DELETE() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ profile: data });
 }
+
+export const POST = withRefresh(handlePOST);
+export const DELETE = withRefresh(handleDELETE);

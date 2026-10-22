@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateImageFile, safeFileName } from "@/lib/upload";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { withRefresh } from "@/lib/refresh-public";
 
 const MAX_GALLERY_PHOTOS = 8;
 
@@ -23,7 +24,7 @@ export async function GET() {
   return NextResponse.json({ photos: data });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -75,3 +76,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ photo: data });
 }
+
+export const POST = withRefresh(handlePOST);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { setPlayWriters } from "@/lib/play-writers";
 import { requireAnyAccess, requireStaff } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 /** The full catalog of Act Avenue plays, A to Z. */
 export async function GET() {
@@ -18,7 +19,7 @@ export async function GET() {
   return NextResponse.json({ plays: data });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -45,3 +46,5 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ play: data });
 }
+
+export const POST = withRefresh(handlePOST);

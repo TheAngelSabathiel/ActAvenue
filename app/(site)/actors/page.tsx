@@ -3,6 +3,9 @@ import Link from "next/link";
 import { listPublicActors } from "@/lib/data/actors";
 import { IMAGES } from "@/lib/images";
 
+// Saved by the CDN for a minute; admin edits refresh it right away.
+export const revalidate = 60;
+
 export default async function ActorsDirectoryPage() {
   const actors = await listPublicActors();
 

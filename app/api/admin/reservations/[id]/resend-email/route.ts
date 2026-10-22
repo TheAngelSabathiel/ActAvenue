@@ -4,8 +4,9 @@ import { requireProduction } from "@/lib/admin-auth";
 import { productionOfReservation } from "@/lib/admin-scope";
 import { ensureTicketQrs } from "@/lib/tickets";
 import { sendApprovedEmail, sendBookingReceivedEmail, sendRejectedEmail } from "@/lib/email/send";
+import { withRefresh } from "@/lib/refresh-public";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfReservation(id), "foh");
   if (gate.error) return gate.error;
@@ -61,3 +62,5 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json({ ok: true, resent_for_status: reservation.payment_status });
 }
+
+export const POST = withRefresh(handlePOST);

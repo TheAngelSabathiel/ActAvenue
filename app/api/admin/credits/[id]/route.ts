@@ -3,9 +3,10 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfCredit } from "@/lib/admin-scope";
 import { CREDIT_TYPES, isDanceType } from "@/lib/credits";
+import { withRefresh } from "@/lib/refresh-public";
 
 /** Edit a credit: role text, play, type, or discredit/restore. */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfCredit(id), "manager");
   if (gate.error) return gate.error;
@@ -41,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ credit: data });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfCredit(id), "manager");
   if (gate.error) return gate.error;
@@ -50,3 +51,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withRefresh(handlePATCH);
+export const DELETE = withRefresh(handleDELETE);

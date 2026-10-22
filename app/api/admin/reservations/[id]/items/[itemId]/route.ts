@@ -8,9 +8,10 @@ import { ensureTicketQrs } from "@/lib/tickets";
 import { calculatePricing, eligibleTicketCount } from "@/lib/pricing";
 import type { PromoCode, TicketTier } from "@/types/database";
 import { sendQuantityChangedEmail } from "@/lib/email/send";
+import { withRefresh } from "@/lib/refresh-public";
 
 /** Change the quantity on one ticket line. Adjusts availability and emails the buyer. */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; itemId: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; itemId: string }> }) {
   const { id, itemId } = await params;
   const gate = await requireProduction(await productionOfReservation(id), "foh");
   if (gate.error) return gate.error;
@@ -139,3 +140,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json({ ok: true, emailed });
 }
+
+export const PATCH = withRefresh(handlePATCH);

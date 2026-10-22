@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cleanTypes } from "@/lib/tiers";
 import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 export async function GET() {
   const gate = await requireAnyAccess("manager");
@@ -22,7 +23,7 @@ export async function GET() {
   return NextResponse.json({ promo_codes: data });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const gate = await requireAnyAccess("manager");
   if (gate.error) return gate.error;
 
@@ -83,3 +84,5 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ promo_code: data });
 }
+
+export const POST = withRefresh(handlePOST);

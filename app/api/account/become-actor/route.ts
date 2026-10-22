@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { withRefresh } from "@/lib/refresh-public";
 
 /**
  * The only self-service role transition: public -> actor. The target role
@@ -9,7 +10,7 @@ import { createServiceClient } from "@/lib/supabase/service";
  * what a client sends. Promoting to admin/organizer always stays a manual
  * SQL step (see SETUP.md).
  */
-export async function POST() {
+async function handlePOST() {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -41,3 +42,5 @@ export async function POST() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ role: updated.role });
 }
+
+export const POST = withRefresh(handlePOST);

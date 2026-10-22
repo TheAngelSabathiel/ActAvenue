@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { withRefresh } from "@/lib/refresh-public";
 
 /**
  * Deleting an auth.users row requires the admin API (service-role key) -
@@ -14,7 +15,7 @@ import { createServiceClient } from "@/lib/supabase/service";
  * on delete set null in schema.sql) - booking/attendance history is
  * preserved, same as the app's no-hard-deletes philosophy everywhere else.
  */
-export async function POST() {
+async function handlePOST() {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -41,3 +42,5 @@ export async function POST() {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withRefresh(handlePOST);

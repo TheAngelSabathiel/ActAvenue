@@ -5,6 +5,7 @@ import { requireAnyAccess } from "@/lib/admin-auth";
 import { POST as approve } from "@/app/api/admin/reservations/[id]/approve/route";
 import { POST as reject } from "@/app/api/admin/reservations/[id]/reject/route";
 import { POST as reopen } from "@/app/api/admin/reservations/[id]/reopen/route";
+import { withRefresh } from "@/lib/refresh-public";
 
 // One payment covers a whole order, so staff can approve, reject or reopen
 // every booking in it at once. Each booking still goes through the same
@@ -16,7 +17,7 @@ const FROM_STATUS = {
   reopen: ["rejected", "expired"],
 } as const;
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string; action: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ code: string; action: string }> }) {
   // Each booking is access-checked against its own production by the
   // single-reservation handlers below.
   const gate = await requireAnyAccess("foh");
@@ -55,3 +56,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
   }
   return NextResponse.json({ ok: true, count: results.length });
 }
+
+export const POST = withRefresh(handlePOST);

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { PlayCover } from "@/components/play-cover";
 import { listPlays } from "@/lib/data/plays";
 
+// Saved by the CDN for a minute; admin edits refresh it right away.
+export const revalidate = 60;
+
 export const metadata = { title: "Plays" };
 
 export default async function PlaysPage() {

@@ -35,11 +35,16 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // Only routes that need the signed-in session. Public pages skip this so the
+  // CDN can serve them without waiting on a session check.
   matcher: [
-    /*
-     * Run on everything except static assets and image optimization files,
-     * so admin pages/API routes always get a fresh session.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/admin/:path*",
+    "/api/:path*",
+    "/account/:path*",
+    "/checkout/:path*",
+    "/cart/:path*",
+    "/reservation/:path*",
+    "/order/:path*",
+    "/t/:path*",
   ],
 };

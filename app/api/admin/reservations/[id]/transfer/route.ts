@@ -6,6 +6,7 @@ import { ensureTicketQrs } from "@/lib/tickets";
 import { sendTransferEmail } from "@/lib/email/send";
 import { holdTicketTier, releaseTicketTierHold, releaseTicketTierHolds } from "@/lib/inventory";
 import { TRANSFER_PREFIX } from "@/lib/transfer";
+import { withRefresh } from "@/lib/refresh-public";
 
 /**
  * Moves a confirmed booking to another show of the same production.
@@ -15,7 +16,7 @@ import { TRANSFER_PREFIX } from "@/lib/transfer";
  * every line. The booking gets a new reference code and QR, the old booking is
  * marked Rejected (its QR stops working) and its seats are released.
  */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfReservation(id), "manager");
   if (gate.error) return gate.error;
@@ -189,3 +190,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ reservation: created, emailed });
 }
+
+export const POST = withRefresh(handlePOST);

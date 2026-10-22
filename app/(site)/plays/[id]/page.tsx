@@ -6,6 +6,13 @@ import { formatDate } from "@/lib/datetime";
 import { IMAGES } from "@/lib/images";
 import { PlayPhotoFull } from "@/components/play-cover";
 
+// Saved by the CDN for a minute; admin edits refresh it right away.
+export const revalidate = 60;
+// No pages built ahead of time; each is built on first visit, then saved.
+export function generateStaticParams() {
+  return [];
+}
+
 function dateRange(s: PlayShowing) {
   if (!s.first) return "Dates to be announced";
   const a = formatDate(s.first);

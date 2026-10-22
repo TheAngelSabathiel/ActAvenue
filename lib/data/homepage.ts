@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Production } from "@/types/database";
 
 export async function listPublishedProductions(): Promise<Production[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const ordered = await supabase
     .from("productions")
     .select("*")

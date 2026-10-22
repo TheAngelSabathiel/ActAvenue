@@ -43,6 +43,32 @@ export function PerformancePicker({
     if (tierIds.size === 0) return;
 
     const supabase = createClient();
+
+    // The page may come from the CDN cache, so read the live counts once on load.
+    supabase
+      .from("ticket_tiers")
+      .select("id, quantity_available, quantity_held, is_discount_tier, discount_valid_from, discount_valid_until")
+      .in("id", [...tierIds])
+      .then(({ data }) => {
+        if (!data) return;
+        const fresh = new Map(data.map((t) => [t.id as string, t]));
+        setPerformances((prev) =>
+          prev.map((perf) => ({
+            ...perf,
+            ticket_tiers: perf.ticket_tiers.map((tier) => {
+              const f = fresh.get(tier.id);
+              if (!f) return tier;
+              const merged = { ...tier, ...f };
+              return {
+                ...merged,
+                remaining: merged.quantity_available - merged.quantity_held,
+                discount_active: isTierDiscountActive(merged as TicketTier),
+              };
+            }),
+          }))
+        );
+      });
+
     const channel = supabase
       .channel("ticket-tier-availability")
       .on(

@@ -3,6 +3,7 @@ import { MEMBER_ROLES } from "@/lib/member-roles";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
 import { sendActorTakenDownEmail } from "@/lib/email/send";
+import { withRefresh } from "@/lib/refresh-public";
 
 /**
  * Takes an actor profile's public listing down. Only clears is_approved -
@@ -11,7 +12,7 @@ import { sendActorTakenDownEmail } from "@/lib/email/send";
  * the first place, and if an admin later re-approves, the actor doesn't
  * have to re-opt-in.
  */
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -40,3 +41,5 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json({ profile: data });
 }
+
+export const POST = withRefresh(handlePOST);

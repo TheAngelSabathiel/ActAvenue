@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Play } from "@/types/database";
 
 export interface PlayWriter {
@@ -30,7 +30,7 @@ export async function getPlayWriters(playIds: string[]): Promise<Map<string, Pla
 }
 
 export async function listPlays(): Promise<(Play & { writers: PlayWriter[] })[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("plays").select("*");
   const writers = await getPlayWriters((data ?? []).map((p) => p.id));
   return (data ?? [])

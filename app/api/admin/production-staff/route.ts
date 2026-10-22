@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 /**
  * Give a Cast and Crew member Manager, FOH or Scanner access to one production.
  * POST { profile_id, production_id, staff_role: "manager" | "foh" | "scanner" }.
  * Assigning again changes their role for that production.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -31,3 +32,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ staff: data });
 }
+
+export const POST = withRefresh(handlePOST);

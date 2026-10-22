@@ -4,13 +4,14 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cleanBioStyle } from "@/lib/bio-style";
 import { SOCIALS, normalizeSocial } from "@/lib/social-links";
+import { withRefresh } from "@/lib/refresh-public";
 
 /**
  * Updates the caller's own profile fields. Deliberately whitelists columns
  * - role and is_approved are never accepted from the request body, both as defense in depth and because the DB-level column grants
  * (see schema.sql) would reject them anyway.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -62,3 +63,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ profile: data });
 }
+
+export const POST = withRefresh(handlePOST);

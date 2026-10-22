@@ -8,6 +8,13 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { SocialLinksList } from "@/components/social-icons";
 import { CREDIT_TYPE_RANK, CREDIT_TYPE_LABEL, type CreditType } from "@/lib/credits";
 
+// Saved by the CDN for a minute; admin edits refresh it right away.
+export const revalidate = 60;
+// No pages built ahead of time; each is built on first visit, then saved.
+export function generateStaticParams() {
+  return [];
+}
+
 type Credits = ActorProfileWithDetails["production_credits"];
 
 type Line = { id: string; label: string; detail: string };

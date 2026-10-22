@@ -1,10 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { createServiceClient } from "@/lib/supabase/service";
 import { MEMBER_ROLES } from "@/lib/member-roles";
 import type { ActorPhoto, Profile, ProductionCredit } from "@/types/database";
 
 export async function listPublicActors(): Promise<Profile[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   // is_approved required alongside is_public - see the moderation section
   // in schema.sql. RLS enforces this too; the explicit filters here are
   // just for clarity/query efficiency, not the actual security boundary.
@@ -27,7 +27,7 @@ export interface ActorProfileWithDetails extends Profile {
 }
 
 export async function getPublicActor(id: string): Promise<ActorProfileWithDetails | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")

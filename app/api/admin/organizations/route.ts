@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 export async function GET() {
   const authError = await requireStaff();
@@ -16,7 +17,7 @@ export async function GET() {
   return NextResponse.json({ organizations: data });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -33,3 +34,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ organization: data });
 }
+
+export const POST = withRefresh(handlePOST);

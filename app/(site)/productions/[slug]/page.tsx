@@ -7,6 +7,13 @@ import { PartnersSection } from "@/components/partners-section";
 import { getPartners } from "@/lib/data/partners";
 import { IMAGES } from "@/lib/images";
 
+// Saved by the CDN for a minute; admin edits refresh it right away.
+export const revalidate = 60;
+// No pages built ahead of time; each is built on first visit, then saved.
+export function generateStaticParams() {
+  return [];
+}
+
 export default async function ProductionPage({
   params,
 }: {

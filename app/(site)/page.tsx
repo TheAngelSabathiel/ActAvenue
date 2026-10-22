@@ -5,6 +5,9 @@ import { ProductionCarousel } from "@/components/production-carousel";
 import { ScrollButton } from "@/components/scroll-button";
 import { CONTACT_EMAIL, SocialLinks } from "@/components/site-footer";
 
+// Saved by the CDN for a minute; admin edits refresh it right away.
+export const revalidate = 60;
+
 const STEPS = [
   { icon: "bi-ticket-perforated", title: "Pick a show", text: "Choose a date and your seats." },
   { icon: "bi-phone", title: "Send payment", text: "Upload your proof at checkout." },
@@ -74,10 +77,10 @@ export default async function HomePage() {
             <h2 className="text-2xl mb-3">About</h2>
             <p className="text-lg">
               Founded in 2019, <strong>ACT AVENUE</strong>, is a young, fast-running,
-and multi-awarded theater group in the country today.
-We aim to promote the value of arts and cultural
-performances by providing an <strong>avenue</strong> and a <strong>safe space</strong> for artists where they can freely discover and
-hone their full potential.
+              and multi-awarded theater group in the country today.
+              We aim to promote the value of arts and cultural
+              performances by providing an <strong>avenue</strong> and a <strong>safe space</strong> for artists where they can freely discover and
+              hone their full potential.
             </p>
           </div>
           <div id="contact">

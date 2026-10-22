@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { creditWriters } from "@/lib/play-writers";
 import { requireProduction } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 /** Plays this production stages, in display order. */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 /** Assign a catalog play ({ play_id }) or create one on the spot ({ title }) and assign it. */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(id, "manager");
   if (gate.error) return gate.error;
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 /** Removes the play from this production. Its credits here become "no specific play". */
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(id, "manager");
   if (gate.error) return gate.error;
@@ -81,3 +82,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withRefresh(handlePOST);
+export const DELETE = withRefresh(handleDELETE);

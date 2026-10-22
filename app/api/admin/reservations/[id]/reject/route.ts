@@ -4,8 +4,9 @@ import { requireProduction } from "@/lib/admin-auth";
 import { productionOfReservation } from "@/lib/admin-scope";
 import { sendRejectedEmail } from "@/lib/email/send";
 import { releaseTicketTierHold } from "@/lib/inventory";
+import { withRefresh } from "@/lib/refresh-public";
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfReservation(id), "foh");
   if (gate.error) return gate.error;
@@ -76,3 +77,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ reservation: updated });
 }
+
+export const POST = withRefresh(handlePOST);

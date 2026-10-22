@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { accessibleProductionIds, requireAnyAccess, requireStaff } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 function slugify(title: string) {
   return title
@@ -29,7 +30,7 @@ export async function GET() {
   return NextResponse.json({ productions: data });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -60,3 +61,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ production: data });
 }
+
+export const POST = withRefresh(handlePOST);

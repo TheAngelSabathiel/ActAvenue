@@ -3,8 +3,9 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfPartner } from "@/lib/admin-scope";
 import { cleanUrl, PARTNER_CATEGORIES, SPONSOR_LEVELS } from "@/lib/partners";
+import { withRefresh } from "@/lib/refresh-public";
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfPartner(id), "manager");
   if (gate.error) return gate.error;
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ partner: data });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfPartner(id), "manager");
   if (gate.error) return gate.error;
@@ -48,3 +49,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withRefresh(handlePATCH);
+export const DELETE = withRefresh(handleDELETE);

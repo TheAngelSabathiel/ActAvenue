@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateImageFile, safeFileName } from "@/lib/upload";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { withRefresh } from "@/lib/refresh-public";
 
 async function checkOwnership(db: ReturnType<typeof createServiceClient>, photoId: string, userId: string) {
   const { data: photo } = await db.from("actor_photos").select("profile_id").eq("id", photoId).maybeSingle();
@@ -17,7 +18,7 @@ async function checkOwnership(db: ReturnType<typeof createServiceClient>, photoI
 }
 
 /** Used to reorder a gallery - sets this photo's sort_order directly. */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -45,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ photo: data });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -64,7 +65,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 }
 
 /** Replaces the image of an existing gallery photo, keeping its position and caption. */
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authClient = await createServerClient();
   const {
     data: { user },
@@ -100,3 +101,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ photo: data });
 }
+
+export const PATCH = withRefresh(handlePATCH);
+export const DELETE = withRefresh(handleDELETE);
+export const PUT = withRefresh(handlePUT);

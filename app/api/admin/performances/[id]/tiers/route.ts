@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfPerformance } from "@/lib/admin-scope";
 import { isTierType, tierDisplayName, tierTypeName } from "@/lib/tiers";
+import { withRefresh } from "@/lib/refresh-public";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({ tiers: data });
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfPerformance(id), "manager");
   if (gate.error) return gate.error;
@@ -74,3 +75,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ tier: data });
 }
+
+export const POST = withRefresh(handlePOST);

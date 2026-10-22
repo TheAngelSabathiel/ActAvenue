@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 /** Sets the landing page carousel order. POST { ids: string[] } first to last. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -24,3 +25,5 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withRefresh(handlePOST);

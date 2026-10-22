@@ -4,13 +4,14 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { productionOfReservation } from "@/lib/admin-scope";
 import { releaseTicketTierHold } from "@/lib/inventory";
+import { withRefresh } from "@/lib/refresh-public";
 
 /**
  * Permanently deletes a reservation of any status (for test tickets and
  * cleanup). Seats it still holds (pending or confirmed) go back on sale, and
  * a promo use it consumed is given back. Its items are removed with it.
  */
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await requireProduction(await productionOfReservation(id), "manager");
   if (gate.error) return gate.error;
@@ -46,3 +47,5 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withRefresh(handleDELETE);

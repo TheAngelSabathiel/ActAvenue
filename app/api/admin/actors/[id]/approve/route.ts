@@ -3,8 +3,9 @@ import { MEMBER_ROLES } from "@/lib/member-roles";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
 import { sendActorApprovedEmail } from "@/lib/email/send";
+import { withRefresh } from "@/lib/refresh-public";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -34,3 +35,5 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json({ profile: data });
 }
+
+export const POST = withRefresh(handlePOST);

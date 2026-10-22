@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isTierDiscountActive } from "@/lib/pricing";
 import type { ProductionWithPerformances, TicketTier } from "@/types/database";
@@ -22,7 +22,7 @@ export interface PublicPlay {
 export async function getProductionBySlug(
   slug: string
 ): Promise<(ProductionWithPerformances & { credits: ProductionCreditWithActor[]; plays: PublicPlay[] }) | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: production } = await supabase
     .from("productions")

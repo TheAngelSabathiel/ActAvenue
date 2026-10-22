@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
+import { withRefresh } from "@/lib/refresh-public";
 
 /**
  * Moves an account between Audience and Cast and Crew.
  * Only touches plain 'actor' and 'public' accounts. Admin and organizer
  * roles are never changed here.
  */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -32,3 +33,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withRefresh(handlePOST);

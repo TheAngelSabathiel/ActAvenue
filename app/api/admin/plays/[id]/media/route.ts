@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireStaff } from "@/lib/admin-auth";
 import { safeFileName } from "@/lib/upload";
+import { withRefresh } from "@/lib/refresh-public";
 
 const MAX = 5 * 1024 * 1024;
 
 // POST /api/admin/plays/[id]/media  (form field "file") sets the display photo.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 // DELETE clears the photo so the site shows the placeholder.
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireStaff();
   if (authError) return authError;
 
@@ -41,3 +42,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ play: data });
 }
+
+export const POST = withRefresh(handlePOST);
+export const DELETE = withRefresh(handleDELETE);
