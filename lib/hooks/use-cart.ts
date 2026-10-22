@@ -5,6 +5,14 @@ import { toast } from "@/lib/toast";
 import { useCallback, useEffect, useState } from "react";
 import type { CartItemWithDetails } from "@/types/database";
 
+export class CartError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
 export function useCart() {
   const [items, setItems] = useState<CartItemWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +54,7 @@ export function useCart() {
       }
       const res = await fetch("/api/cart", init);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not add to cart");
+      if (!res.ok) throw new CartError(data.error ?? "Could not add to cart", data.code);
       await refresh();
     },
     [refresh]

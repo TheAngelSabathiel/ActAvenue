@@ -3,7 +3,7 @@
 import { toast } from "@/lib/toast";
 
 import { useEffect, useState } from "react";
-import { useCart } from "@/lib/hooks/use-cart";
+import { useCart, CartError } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
 import { formatDayLong, formatDayShort, formatTime } from "@/lib/datetime";
 import { ID_INSTRUCTION } from "@/lib/tiers";
@@ -47,7 +47,7 @@ export function PerformancePicker({
     // The page may come from the CDN cache, so read the live counts once on load.
     supabase
       .from("ticket_tiers")
-      .select("id, quantity_available, quantity_held, is_discount_tier, discount_valid_from, discount_valid_until")
+      .select("*")
       .in("id", [...tierIds])
       .then(({ data }) => {
         if (!data) return;
@@ -131,6 +131,13 @@ export function PerformancePicker({
         venue: perf?.venue,
       });
     } catch (err) {
+      // The ticket needs an ID we do not have yet: ask for it instead of failing.
+      if (err instanceof CartError && err.code === "id_required") {
+        setStatus((s) => ({ ...s, [tierId]: "idle" }));
+        setIdFile(null);
+        setIdFor({ tierId, performanceId });
+        return;
+      }
       setStatus((s) => ({ ...s, [tierId]: "error" }));
       toast.error(err instanceof Error ? err.message : "Could not add to cart.");
     }
@@ -150,8 +157,10 @@ export function PerformancePicker({
       {idFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setIdFor(null)} role="presentation">
           <div role="dialog" aria-modal="true" className="aa-card w-full max-w-md p-8 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <p className="aa-label text-muted mb-0">ID required</p>
+            <p className="aa-label text-muted mb-0">Step 3: upload your ID</p>
+            <p className="font-black text-xl mb-0">Discounted ticket</p>
             <p className="mb-0">{ID_INSTRUCTION}</p>
+            <p className="text-xs text-muted mb-0">Photo or PDF, up to 8 MB. Only our team can see it.</p>
             <input
               type="file"
               accept="image/*,application/pdf"
@@ -159,6 +168,7 @@ export function PerformancePicker({
               className="block w-full text-sm"
               aria-label="Upload ID"
             />
+            {idFile && <p className="text-sm font-bold mb-0"><i className="bi bi-check-circle" /> {idFile.name}</p>}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 className="aa-btn flex-1"
@@ -256,7 +266,9 @@ export function PerformancePicker({
                   <div className="flex-1 p-5">
                     <p className="font-black text-lg mb-1">{tier.label}</p>
                     {tier.description && <p className="text-sm mb-1 whitespace-pre-line">{tier.description}</p>}
-                    {tier.require_id && <p className="text-xs text-muted mb-1">ID upload required (Student, PWD, Senior).</p>}
+                    {tier.require_id && (
+                      <p className="text-sm font-bold mb-1"><i className="bi bi-person-vcard" /> ID required (Student, PWD, Senior). You upload it when you add this ticket.</p>
+                    )}
                     {soldOut && <span className="aa-label bg-black text-white px-2 py-0.5 inline-block mr-1">Sold out</span>}
                     {tier.discount_active && !soldOut && (
                       <span className="aa-label bg-accent px-2 py-0.5 inline-block">Limited-time price</span>
@@ -283,7 +295,7 @@ export function PerformancePicker({
                       onClick={() => startAdd(tier, active.id)}
                       className="aa-btn aa-btn-sm w-full"
                     >
-                      {soldOut ? "Sold out" : s === "adding" ? "Adding..." : qtyOf(tier) > 1 ? `Add ${qtyOf(tier)} to cart` : "Add to cart"}
+                      {soldOut ? "Sold out" : s === "adding" ? "Adding..." : tier.require_id ? "Upload ID and add" : qtyOf(tier) > 1 ? `Add ${qtyOf(tier)} to cart` : "Add to cart"}
                     </button>
                     {s === "error" && (
                       <p className="text-danger text-xs font-bold mb-0">Could not add. Try again.</p>
