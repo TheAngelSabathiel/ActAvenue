@@ -173,14 +173,12 @@ export function PerformancePicker({
               className="hidden"
               aria-label="Upload ID"
             />
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              className="w-full border-2 border-dashed border-black p-5 text-center hover:bg-[#f2f2f2]"
-            >
-              <i className={`bi ${idFile ? "bi-arrow-repeat" : "bi-upload"} text-2xl block mb-1`} />
-              <span className="aa-label block mb-0">{idFile ? "Replace file" : "Choose file"}</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => fileInput.current?.click()} className="aa-btn aa-btn-outline aa-btn-sm shrink-0">
+                <i className={`bi ${idFile ? "bi-arrow-repeat" : "bi-upload"}`} /> {idFile ? "Replace file" : "Choose file"}
+              </button>
+              {!idFile && <span className="text-sm text-muted">No file chosen</span>}
+            </div>
             {idFile && (
               <p className="text-sm font-bold mb-0 flex items-center justify-between gap-2">
                 <span className="truncate"><i className="bi bi-check-circle" /> {idFile.name}</span>
