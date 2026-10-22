@@ -102,7 +102,7 @@ export default async function ReservationStatusPage({
                     {item.quantity === 1 ? "Admits 1 person." : `Admits ${item.quantity} people. This QR scans ${item.quantity} times.`}
                   </p>
                   <div className="flex justify-center">
-                    <Image src={qr} alt={`QR code for ${item.ticket_tier.label}`} width={220} height={220} className="border-2 border-black" />
+                    <Image src={qr} alt={`QR code for ${item.ticket_tier.label}`} width={220} height={220} unoptimized className="border-2 border-black" />
                   </div>
                 </div>
               );

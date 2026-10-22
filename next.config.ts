@@ -19,6 +19,12 @@ const supabaseHost = supabaseHostname();
 
 const nextConfig: NextConfig = {
   images: {
+    // Fewer sizes and one format means fewer image transformations on Vercel
+    // (the free tier allows 5,000 a month), and a long cache means each is made once.
+    formats: ["image/webp"],
+    minimumCacheTTL: 60 * 60 * 24 * 31,
+    deviceSizes: [640, 828, 1080, 1920],
+    imageSizes: [64, 128, 256, 384],
     remotePatterns: [
       // Covers the actual project host from env when set at build time.
       ...(supabaseHost
