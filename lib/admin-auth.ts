@@ -115,5 +115,5 @@ export async function requireAnyAccess(
 export async function requireAdminPage() {
   const access = await getAccess();
   if (!access) redirect("/admin/login");
-  if (!access.isAdmin) redirect("/admin/reservations");
+  if (!access.isAdmin) redirect("/admin/dashboard");
 }

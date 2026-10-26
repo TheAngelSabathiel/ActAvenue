@@ -121,7 +121,7 @@ export function SiteHeader() {
           <Link href="/#about" className="aa-nav-link" onClick={close}>About</Link>
           {email ? (
             <>
-              {staffLabel && <Link href={staffLabel === "Scan" ? "/admin/scan" : "/admin/reservations"} className="aa-nav-link" onClick={close}>{staffLabel}</Link>}
+              {staffLabel && <Link href={staffLabel === "Scan" ? "/admin/scan" : "/admin/dashboard"} className="aa-nav-link" onClick={close}>{staffLabel}</Link>}
               <Link href="/account" className="aa-nav-link" onClick={close}>My Tickets</Link>
               <Link href="/account/settings" className="aa-nav-link" onClick={close}>My Profile</Link>
               <button onClick={handleSignOut} className="aa-nav-link text-left">Sign Out</button>

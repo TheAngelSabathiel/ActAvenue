@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
     }
 
     toast.success("Signed in.");
-    router.push("/admin/reservations");
+    router.push("/admin");
     router.refresh();
   }
 
