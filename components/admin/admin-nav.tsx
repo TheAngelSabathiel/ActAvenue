@@ -133,7 +133,10 @@ export function AdminShell({ heading, items, children }: { heading: string; item
               <div key={n.href}>
                 {newGroup && i > 0 && collapsed && <div className="mx-3 my-2 border-t border-white/15" />}
                 {newGroup && !collapsed && (
-                  <p className={`aa-label opacity-50 px-5 mb-1 ${i > 0 ? "mt-4" : "mt-1"}`}>{n.group}</p>
+                  <div className={`flex items-center gap-3 px-5 mb-1 ${i > 0 ? "mt-6" : "mt-1"}`}>
+                    <span className="text-[11px] font-black uppercase tracking-[0.22em] text-accent whitespace-nowrap">{n.group}</span>
+                    <span className="h-px flex-1 bg-white/20" />
+                  </div>
                 )}
               <Link
                 href={n.href}
