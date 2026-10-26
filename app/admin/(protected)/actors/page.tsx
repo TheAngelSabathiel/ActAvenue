@@ -5,7 +5,9 @@ import { toast } from "@/lib/toast";
 import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { sortByName } from "@/lib/sort";
+import { formatDate } from "@/lib/datetime";
 import Image from "next/image";
+import Link from "next/link";
 
 type Actor = {
   id: string;
@@ -17,18 +19,27 @@ type Actor = {
   created_at: string;
   role: string;
   email: string | null;
+  orders: number;
   staff: { id: string; production_id: string; title: string; staff_role: "manager" | "foh" | "scanner" }[];
 };
 
 type ProductionOption = { id: string; title: string };
 
 const TABS = ["pending", "members", "audience"] as const;
-const TAB_LABEL = { pending: "Pending review", members: "Cast and Crew", audience: "Audience accounts" } as const;
+type Tab = (typeof TABS)[number];
+const TAB_LABEL: Record<Tab, string> = { pending: "Pending review", members: "Cast and Crew", audience: "Audience accounts" };
+const PAGE = 30;
+
+const groupOf = (a: Actor): Tab => (a.role === "public" ? "audience" : a.is_public && !a.is_approved ? "pending" : "members");
+// Pending people are also cast and crew, so they stay in that tab's count.
+const inTab = (a: Actor, t: Tab) => (t === "members" ? a.role !== "public" : groupOf(a) === t);
 
 export default function AdminActorsPage() {
-  const [actors, setActors] = useState<Actor[]>([]);
-  const [tab, setTab] = useState<(typeof TABS)[number]>("pending");
+  const [all, setAll] = useState<Actor[]>([]);
+  const [tab, setTab] = useState<Tab | null>(null);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<"name" | "newest">("name");
+  const [limit, setLimit] = useState(PAGE);
   const [productions, setProductions] = useState<ProductionOption[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickProduction, setPickProduction] = useState("");
@@ -38,14 +49,18 @@ export default function AdminActorsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
 
+  // One request loads every account. Tabs, search and counts are worked out here,
+  // so switching tabs is instant.
   const load = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/admin/actors?group=${tab}`);
-    const data = await res.json();
-    setActors(data.actors ?? []);
+    const res = await fetch("/api/admin/actors?group=all");
+    const data = await res.json().catch(() => ({}));
+    const list: Actor[] = data.actors ?? [];
+    setAll(list);
     setSelected(new Set());
     setLoading(false);
-  }, [tab]);
+    // First load: open on Pending only when something is waiting.
+    setTab((t) => t ?? (list.some((a) => groupOf(a) === "pending") ? "pending" : "members"));
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -125,7 +140,7 @@ export default function AdminActorsPage() {
   // currently approved. Silently no-ops on selections that don't apply,
   // rather than erroring, since a mixed selection is a normal thing to have.
   async function bulkAct(action: "approve" | "reject") {
-    const targets = actors.filter((a) => {
+    const targets = all.filter((a) => {
       if (!selected.has(a.id)) return false;
       return action === "approve" ? a.is_public && !a.is_approved : a.is_approved;
     });
@@ -140,102 +155,141 @@ export default function AdminActorsPage() {
     load();
   }
 
+  const counts: Record<Tab, number> = {
+    pending: all.filter((a) => inTab(a, "pending")).length,
+    members: all.filter((a) => inTab(a, "members")).length,
+    audience: all.filter((a) => inTab(a, "audience")).length,
+  };
   const q = search.trim().toLowerCase();
-  const shown = q
-    ? actors.filter((a) => `${a.display_name ?? ""} ${a.email ?? ""}`.toLowerCase().includes(q))
-    : actors;
+  // Searching looks across every group, so you do not need to know where someone is.
+  const pool = q
+    ? all.filter((a) => `${a.display_name ?? ""} ${a.email ?? ""}`.toLowerCase().includes(q))
+    : all.filter((a) => inTab(a, tab ?? "members"));
+  const sorted = [...pool].sort((a, b) =>
+    sort === "newest"
+      ? b.created_at.localeCompare(a.created_at)
+      : (a.display_name ?? a.email ?? "").localeCompare(b.display_name ?? b.email ?? "", undefined, { sensitivity: "base" })
+  );
+  const shown = sorted.slice(0, limit);
 
-  const selectableIds = shown
-    .filter((a) => (a.is_public && !a.is_approved) || a.is_approved)
-    .map((a) => a.id);
-  const selectedApprovable = actors.filter((a) => selected.has(a.id) && a.is_public && !a.is_approved).length;
-  const selectedTakeDownable = actors.filter((a) => selected.has(a.id) && a.is_approved).length;
+  const selectableIds = shown.map((a) => a.id);
+  const sel = all.filter((a) => selected.has(a.id));
+  const selectedApprovable = sel.filter((a) => a.role !== "public" && a.is_public && !a.is_approved).length;
+  const selectedTakeDownable = sel.filter((a) => a.is_approved).length;
+  const selectedAddable = sel.filter((a) => a.role === "public").length;
+
+  async function bulkAdd() {
+    const targets = sel.filter((a) => a.role === "public");
+    if (!targets.length) return;
+    setBulkBusy(true);
+    const results = await Promise.all(
+      targets.map((a) =>
+        fetch(`/api/admin/actors/${a.id}/membership`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ member: true }),
+        })
+      )
+    );
+    setBulkBusy(false);
+    const failed = results.filter((r) => !r.ok).length;
+    if (failed) toast.error(`${failed} of ${targets.length} failed.`);
+    else toast.success(`${targets.length} added to Cast and Crew.`);
+    load();
+  }
+
+  if (loading) return <Spinner className="!py-12" />;
 
   return (
     <div>
-      <h1 className="font-extrabold text-3xl mb-6">Cast and Crew</h1>
+      <h1 className="font-extrabold text-3xl mb-2">People</h1>
       <p className="text-sm text-muted mb-6">
-        Profiles only appear at <code>/actors</code> once the member has opted in
-        (&quot;show my profile publicly&quot; in their settings) <em>and</em> you&apos;ve approved
-        them here. Approving or taking down also emails them. Audience accounts are kept
-        separate. Add one to Cast and Crew any time, or just credit them on a production.
+        Cast and crew show on the public site once they opt in and you approve. Audience accounts are people who booked tickets.
       </p>
 
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <div className="flex flex-wrap gap-2">
           {TABS.map((t) => (
             <button
               key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5  text-xs font-bold uppercase tracking-wide border ${
-                tab === t ? "bg-danger text-paper border-danger" : "border-ink/20 text-ink/60"
+              onClick={() => {
+                setTab(t);
+                setLimit(PAGE);
+                setSelected(new Set());
+                setSearch("");
+              }}
+              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide border ${
+                tab === t && !q ? "bg-black text-white border-black" : "border-ink/20 text-ink/60 hover:border-black"
               }`}
             >
-              {TAB_LABEL[t]}
+              {TAB_LABEL[t]} <span className="tabular-nums opacity-75">({counts[t]})</span>
             </button>
           ))}
         </div>
 
         {selected.size > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs tabular-nums text-muted">{selected.size} selected</span>
             {selectedApprovable > 0 && (
-              <button
-                onClick={() => bulkAct("approve")}
-                disabled={bulkBusy}
-                className="px-3 py-1.5  bg-green-700 text-white text-xs font-bold uppercase disabled:opacity-50"
-              >
-                Approve selected ({selectedApprovable})
+              <button onClick={() => bulkAct("approve")} disabled={bulkBusy} className="px-3 py-1.5 bg-green-700 text-white text-xs font-bold uppercase disabled:opacity-50">
+                Approve ({selectedApprovable})
               </button>
             )}
             {selectedTakeDownable > 0 && (
-              <button
-                onClick={() => bulkAct("reject")}
-                disabled={bulkBusy}
-                className="px-3 py-1.5  bg-danger text-white text-xs font-bold uppercase disabled:opacity-50"
-              >
-                Take down selected ({selectedTakeDownable})
+              <button onClick={() => bulkAct("reject")} disabled={bulkBusy} className="px-3 py-1.5 bg-danger text-white text-xs font-bold uppercase disabled:opacity-50">
+                Take down ({selectedTakeDownable})
+              </button>
+            )}
+            {selectedAddable > 0 && (
+              <button onClick={bulkAdd} disabled={bulkBusy} className="px-3 py-1.5 bg-black text-white text-xs font-bold uppercase disabled:opacity-50">
+                Add to Cast and Crew ({selectedAddable})
               </button>
             )}
           </div>
         )}
       </div>
 
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search by name or email..."
-        className="border border-ink/20 px-3 py-2 text-sm w-full sm:w-72 mb-4"
-      />
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setLimit(PAGE);
+          }}
+          placeholder="Search everyone by name or email..."
+          className="border border-ink/20 px-3 py-2 text-sm w-full sm:w-80"
+        />
+        <select value={sort} onChange={(e) => setSort(e.target.value as "name" | "newest")} className="border border-ink/20 px-3 py-2 text-sm" aria-label="Sort">
+          <option value="name">A to Z</option>
+          <option value="newest">Newest first</option>
+        </select>
+      </div>
 
-      {loading && <Spinner className="!py-12" />}
-
-      {!loading && selectableIds.length > 0 && (
+      {shown.length > 0 && (
         <label className="flex items-center gap-2 text-xs font-bold uppercase text-muted mb-3">
           <input
             type="checkbox"
-            checked={selected.size === selectableIds.length}
+            checked={selected.size === selectableIds.length && selectableIds.length > 0}
             onChange={() => toggleSelectAll(selectableIds)}
           />
-          Select all
+          Select all shown
         </label>
       )}
 
       <div className="space-y-3">
         {shown.map((actor) => {
-          const selectable = (actor.is_public && !actor.is_approved) || actor.is_approved;
+          const group = groupOf(actor);
           return (
             <div key={actor.id} className="aa-card p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                {selectable && (
-                  <input
-                    type="checkbox"
-                    checked={selected.has(actor.id)}
-                    onChange={() => toggleSelected(actor.id)}
-                    className="shrink-0"
-                  />
-                )}
+                <input
+                  type="checkbox"
+                  checked={selected.has(actor.id)}
+                  onChange={() => toggleSelected(actor.id)}
+                  className="shrink-0"
+                  aria-label={`Select ${actor.display_name ?? actor.email ?? "account"}`}
+                />
                 {actor.photo_url ? (
                   <Image src={actor.photo_url} alt="" width={56} height={56} className=" object-cover shrink-0" />
                 ) : (
@@ -245,6 +299,11 @@ export default function AdminActorsPage() {
                   <p className="font-extrabold text-lg truncate">{actor.display_name ?? "No name yet"}</p>
                   {actor.email && <p className="text-xs text-muted truncate">{actor.email}</p>}
                   {actor.bio && <p className="text-xs text-muted line-clamp-1">{actor.bio}</p>}
+                  <p className="text-xs text-muted mb-0">
+                    Joined {formatDate(actor.created_at)}
+                    {actor.orders > 0 ? ` · ${actor.orders} booking${actor.orders === 1 ? "" : "s"}` : ""}
+                    {q ? ` · ${TAB_LABEL[group === "pending" ? "members" : group]}` : ""}
+                  </p>
                   <span
                     className={`inline-block mt-1 px-2 py-0.5  text-xs font-bold uppercase ${
                       !actor.is_public
@@ -257,7 +316,7 @@ export default function AdminActorsPage() {
                     {actor.role === "public"
                       ? "Audience"
                       : !actor.is_public
-                        ? "Not requesting listing"
+                        ? "Private profile"
                         : actor.is_approved
                           ? "Live"
                           : "Pending review"}
@@ -301,7 +360,17 @@ export default function AdminActorsPage() {
                     Production access{actor.staff.length > 0 ? ` (${actor.staff.length})` : ""}
                   </button>
                 )}
-                {actor.role === "actor" && tab === "members" && (
+                {actor.is_approved && (
+                  <Link
+                    href={`/actors/${actor.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full px-3 py-1.5 border border-ink/30 text-ink/70 text-xs font-bold uppercase text-center"
+                  >
+                    View profile
+                  </Link>
+                )}
+                {actor.role === "actor" && (
                   <button
                     disabled={busyId === actor.id}
                     onClick={() => setMember(actor, false)}
@@ -365,7 +434,7 @@ export default function AdminActorsPage() {
           );
         })}
 
-        {!loading && shown.length === 0 && (
+        {shown.length === 0 && (
           <p className="text-muted text-sm">
             {q
               ? "No matches."
@@ -375,6 +444,11 @@ export default function AdminActorsPage() {
                   ? "No cast or crew yet."
                   : "No audience accounts."}
           </p>
+        )}
+        {sorted.length > shown.length && (
+          <button onClick={() => setLimit((n) => n + PAGE)} className="aa-btn aa-btn-outline aa-btn-sm w-full sm:w-auto">
+            Show more ({sorted.length - shown.length} left)
+          </button>
         )}
       </div>
     </div>

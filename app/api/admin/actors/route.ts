@@ -3,6 +3,22 @@ import { MEMBER_ROLES } from "@/lib/member-roles";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireAnyAccess } from "@/lib/admin-auth";
 
+// Account emails live in auth and take several calls to list. Keep them for a
+// minute so switching tabs and refreshing stays fast.
+let emailCache: { at: number; map: Map<string, string> } | null = null;
+async function loadEmails(db: ReturnType<typeof createServiceClient>) {
+  if (emailCache && Date.now() - emailCache.at < 60_000) return emailCache.map;
+  const map = new Map<string, string>();
+  for (let page = 1; page <= 10; page++) {
+    const { data: list } = await db.auth.admin.listUsers({ page, perPage: 1000 });
+    const users = list?.users ?? [];
+    for (const u of users) if (u.email) map.set(u.id, u.email);
+    if (users.length < 1000) break;
+  }
+  emailCache = { at: Date.now(), map };
+  return map;
+}
+
 /**
  * Lists accounts for the Cast and Crew admin page and the credit picker.
  * ?group=pending  members who asked to be listed and await approval
@@ -50,23 +66,27 @@ export async function GET(req: NextRequest) {
   }
 
   // Emails live in auth, not profiles. Attach them so unnamed accounts can be told apart.
-  const emails = new Map<string, string>();
-  try {
-    if (!isAdmin) throw new Error("skip");
-    for (let page = 1; page <= 10; page++) {
-      const { data: list } = await db.auth.admin.listUsers({ page, perPage: 1000 });
-      const users = list?.users ?? [];
-      for (const u of users) if (u.email) emails.set(u.id, u.email);
-      if (users.length < 1000) break;
+  let emails = new Map<string, string>();
+  if (isAdmin) {
+    try {
+      emails = await loadEmails(db);
+    } catch (err) {
+      console.error("Could not load account emails:", err);
     }
-  } catch (err) {
-    if (isAdmin) console.error("Could not load account emails:", err);
+  }
+
+  // How many bookings each account has made (admin view only).
+  const orders = new Map<string, number>();
+  if (isAdmin) {
+    const { data: rows } = await db.from("reservations").select("profile_id").not("profile_id", "is", null);
+    for (const r of rows ?? []) orders.set(r.profile_id as string, (orders.get(r.profile_id as string) ?? 0) + 1);
   }
 
   const actors = (data ?? []).map((p) => ({
     ...p,
     bio: isAdmin ? p.bio : null,
     email: emails.get(p.id) ?? null,
+    orders: orders.get(p.id) ?? 0,
     staff: staffByProfile.get(p.id) ?? [],
   }));
   return NextResponse.json({ actors });

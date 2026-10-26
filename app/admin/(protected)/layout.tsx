@@ -5,23 +5,23 @@ import { AdminShell } from "@/components/admin/admin-nav";
 import { ScannerGuard } from "@/components/admin/scanner-guard";
 import { AdminAccessProvider, type AdminAccess } from "@/components/admin/access-context";
 
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; group?: string };
 
 const ADMIN_NAV: NavItem[] = [
-  { href: "/admin/dashboard", label: "Dashboard" },
-  { href: "/admin/reservations", label: "Reservations" },
-  { href: "/admin/new-reservation", label: "New reservation" },
-  { href: "/admin/sales", label: "Sales" },
-  { href: "/admin/checkin", label: "Check-in" },
-  { href: "/admin/scan", label: "Scan" },
-  { href: "/admin/checkin-report", label: "Check-in report" },
-  { href: "/admin/productions", label: "Productions" },
-  { href: "/admin/plays", label: "Plays" },
-  { href: "/admin/actors", label: "Cast and Crew" },
-  { href: "/admin/organizations", label: "Organizations" },
-  { href: "/admin/promo-codes", label: "Promo codes" },
-  { href: "/admin/mailing-list", label: "Mailing list" },
-  { href: "/account/settings", label: "My profile" },
+  { href: "/admin/dashboard", label: "Dashboard", group: "Overview" },
+  { href: "/admin/reservations", label: "Reservations", group: "Bookings" },
+  { href: "/admin/new-reservation", label: "New reservation", group: "Bookings" },
+  { href: "/admin/sales", label: "Sales", group: "Bookings" },
+  { href: "/admin/promo-codes", label: "Promo codes", group: "Bookings" },
+  { href: "/admin/scan", label: "Scan", group: "At the door" },
+  { href: "/admin/checkin", label: "Manual check-in", group: "At the door" },
+  { href: "/admin/checkin-report", label: "Check-in report", group: "At the door" },
+  { href: "/admin/productions", label: "Productions", group: "Shows" },
+  { href: "/admin/plays", label: "Plays", group: "Shows" },
+  { href: "/admin/organizations", label: "Organizations", group: "Shows" },
+  { href: "/admin/actors", label: "People", group: "Community" },
+  { href: "/admin/mailing-list", label: "Mailing list", group: "Community" },
+  { href: "/account/settings", label: "My profile", group: "Account" },
 ];
 
 /**
@@ -60,16 +60,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           { href: "/account/settings", label: "My profile" },
         ]
       : [
-        { href: "/admin/dashboard", label: "Dashboard" },
-        { href: "/admin/reservations", label: "Reservations" },
-        { href: "/admin/new-reservation", label: "New reservation" },
-        { href: "/admin/sales", label: "Sales" },
-        { href: "/admin/checkin", label: "Check-in" },
-        { href: "/admin/scan", label: "Scan" },
-        ...(isManager ? [{ href: "/admin/checkin-report", label: "Check-in report" }] : []),
-        ...(isManager ? [{ href: "/admin/productions", label: "My productions" }] : []),
-        ...(isManager ? [{ href: "/admin/promo-codes", label: "Promo codes" }] : []),
-        { href: "/account/settings", label: "My profile" },
+        { href: "/admin/dashboard", label: "Dashboard", group: "Overview" },
+        { href: "/admin/reservations", label: "Reservations", group: "Bookings" },
+        { href: "/admin/new-reservation", label: "New reservation", group: "Bookings" },
+        { href: "/admin/sales", label: "Sales", group: "Bookings" },
+        ...(isManager ? [{ href: "/admin/promo-codes", label: "Promo codes", group: "Bookings" }] : []),
+        { href: "/admin/scan", label: "Scan", group: "At the door" },
+        { href: "/admin/checkin", label: "Manual check-in", group: "At the door" },
+        ...(isManager ? [{ href: "/admin/checkin-report", label: "Check-in report", group: "At the door" }] : []),
+        ...(isManager ? [{ href: "/admin/productions", label: "My productions", group: "Shows" }] : []),
+        { href: "/account/settings", label: "My profile", group: "Account" },
       ];
 
   const heading = access.isAdmin

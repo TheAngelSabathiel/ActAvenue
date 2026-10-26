@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type Item = { href: string; label: string };
+type Item = { href: string; label: string; group?: string };
 const KEY = "aa-admin-sidebar-collapsed";
 
 const ICONS: Record<string, string> = {
@@ -72,10 +72,15 @@ export function AdminShell({ heading, items, children }: { heading: string; item
           </div>
           {openMobile && (
             <div className="flex flex-col pt-2">
-              {items.map((n) => (
-                <Link key={n.href} href={n.href} className={`aa-nav-link py-2.5 ${isCurrent(n) ? "underline underline-offset-8 decoration-2" : ""}`}>
-                  {n.label}
-                </Link>
+              {items.map((n, i) => (
+                <div key={n.href}>
+                  {n.group && n.group !== items[i - 1]?.group && (
+                    <p className="aa-label opacity-60 mt-3 mb-0 px-3">{n.group}</p>
+                  )}
+                  <Link href={n.href} className={`aa-nav-link py-2.5 ${isCurrent(n) ? "underline underline-offset-8 decoration-2" : ""}`}>
+                    {n.label}
+                  </Link>
+                </div>
               ))}
               <Link href="/" className="aa-nav-link py-2.5 opacity-75">View site</Link>
             </div>
@@ -102,11 +107,16 @@ export function AdminShell({ heading, items, children }: { heading: string; item
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto py-3">
-          {items.map((n) => {
+          {items.map((n, i) => {
             const on = isCurrent(n);
+            const newGroup = !!n.group && n.group !== items[i - 1]?.group;
             return (
+              <div key={n.href}>
+                {newGroup && i > 0 && collapsed && <div className="mx-3 my-2 border-t border-white/15" />}
+                {newGroup && !collapsed && (
+                  <p className={`aa-label opacity-50 px-5 mb-1 ${i > 0 ? "mt-4" : "mt-1"}`}>{n.group}</p>
+                )}
               <Link
-                key={n.href}
                 href={n.href}
                 title={collapsed ? n.label : undefined}
                 aria-current={on ? "page" : undefined}
@@ -117,6 +127,7 @@ export function AdminShell({ heading, items, children }: { heading: string; item
                 <i className={`bi ${ICONS[n.href] ?? "bi-dot"} text-base leading-none`} />
                 {!collapsed && <span className="truncate">{n.label}</span>}
               </Link>
+              </div>
             );
           })}
         </nav>
