@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { logScan } from "@/lib/scan-log";
 import { accessibleProductionIds, canAccess, requireAnyAccess } from "@/lib/admin-auth";
 
 // GET /api/checkin?q=<reference code or name>&performance_id=<id>
@@ -127,6 +128,16 @@ export async function POST(req: NextRequest) {
     .eq("id", reservation.id)
     .select()
     .single();
+
+  await logScan(db, {
+    reservation_id: reservation.id,
+    performance_id: reservation.performance_id,
+    production_id: reservation.production_id,
+    ticket_code: item.ticket_code ?? null,
+    admitted: count,
+    source: "manual",
+    scanned_by: gate.access.userId,
+  });
 
   return NextResponse.json({ reservation: updated ?? reservation, item: updatedItem, admitted: count });
 }

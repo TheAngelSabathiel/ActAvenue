@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
+import { cache } from "react";
+import type { Metadata } from "next";
+import { shareMetadata } from "@/lib/share-meta";
 import { bioPresentation } from "@/lib/bio-style";
 import Image from "next/image";
 import Link from "next/link";
-import { getPublicActor, type ActorProfileWithDetails } from "@/lib/data/actors";
+import { getPublicActor as fetchActor, type ActorProfileWithDetails } from "@/lib/data/actors";
 import { IMAGES } from "@/lib/images";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { SocialLinksList } from "@/components/social-icons";
@@ -66,6 +69,20 @@ function RoleGroup({ heading, lines }: { heading: string; lines: Line[] }) {
       </ul>
     </div>
   );
+}
+
+const getPublicActor = cache(fetchActor);
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const a = await getPublicActor(id);
+  if (!a) return {};
+  return shareMetadata({
+    title: a.display_name ?? "Cast and crew",
+    description: a.bio || "Act Avenue cast and crew.",
+    image: a.photo_url,
+    path: `/actors/${id}`,
+  });
 }
 
 export default async function ActorProfilePage({ params }: { params: Promise<{ id: string }> }) {

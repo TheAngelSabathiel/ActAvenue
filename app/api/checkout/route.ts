@@ -3,6 +3,7 @@ import { getOrCreateCart } from "@/lib/cart-session";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { calculatePricing } from "@/lib/pricing";
+import { subscribe } from "@/lib/mailing";
 import { sendBookingReceivedEmail } from "@/lib/email/send";
 import { holdTicketTier, incrementPromoUsage, releaseTicketTierHolds } from "@/lib/inventory";
 import type { TicketTier } from "@/types/database";
@@ -258,6 +259,15 @@ export async function POST(req: NextRequest) {
         .in("id", createdIds);
     } catch (err) {
       console.error("Failed to send booking-received email:", err);
+    }
+
+    // Buyer ticked the box to hear about future shows. Never blocks the booking.
+    if (formData.get("subscribe") === "on") {
+      try {
+        await subscribe(db, { email: buyer_email, name: buyer_name, source: "checkout" });
+      } catch (err) {
+        console.error("Could not add buyer to mailing list:", err);
+      }
     }
 
     return NextResponse.json({

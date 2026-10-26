@@ -1,3 +1,5 @@
+import { SubscribeForm } from "@/components/subscribe-form";
+
 export const CONTACT_EMAIL = "actavenue@gmail.com";
 
 export const SOCIALS = [
@@ -31,7 +33,8 @@ export function SiteFooter() {
       <div className="aa-container text-center">
         <h3 className="mb-1 tracking-[0.12em]">ACT AVENUE</h3>
         <p className="text-sm opacity-75 mb-5">Ang Paborito Mong Tambayan.</p>
-        <SocialLinks className="justify-center !text-3xl !gap-6 mb-5" />
+        <SocialLinks className="justify-center !text-3xl !gap-6 mb-6" />
+        <div className="mb-6"><SubscribeForm /></div>
         <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm opacity-75 hover:opacity-100">{CONTACT_EMAIL}</a>
         <p className="text-xs opacity-50 mt-6 mb-0">© 2026 Act Avenue | Developed by TheAngelSabathiel</p>
       </div>

@@ -8,6 +8,7 @@ import { AdminAccessProvider, type AdminAccess } from "@/components/admin/access
 type NavItem = { href: string; label: string };
 
 const ADMIN_NAV: NavItem[] = [
+  { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/reservations", label: "Reservations" },
   { href: "/admin/organizations", label: "Organizations" },
   { href: "/admin/productions", label: "Productions" },
@@ -18,6 +19,8 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/new-reservation", label: "New reservation" },
   { href: "/admin/checkin", label: "Check-in" },
   { href: "/admin/scan", label: "Scan" },
+  { href: "/admin/checkin-report", label: "Check-in report" },
+  { href: "/admin/mailing-list", label: "Mailing list" },
   { href: "/account/settings", label: "My profile" },
 ];
 
@@ -57,6 +60,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           { href: "/account/settings", label: "My profile" },
         ]
       : [
+        { href: "/admin/dashboard", label: "Dashboard" },
         { href: "/admin/reservations", label: "Reservations" },
         ...(isManager ? [{ href: "/admin/productions", label: "My productions" }] : []),
         ...(isManager ? [{ href: "/admin/promo-codes", label: "Promo codes" }] : []),
@@ -64,6 +68,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/new-reservation", label: "New reservation" },
         { href: "/admin/checkin", label: "Check-in" },
         { href: "/admin/scan", label: "Scan" },
+        ...(isManager ? [{ href: "/admin/checkin-report", label: "Check-in report" }] : []),
         { href: "/account/settings", label: "My profile" },
       ];
 

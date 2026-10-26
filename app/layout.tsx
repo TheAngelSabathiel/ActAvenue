@@ -11,9 +11,20 @@ import "./globals.css";
 import { IMAGES } from "@/lib/images";
 import { Toaster } from "@/components/toaster";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.actavenue.org";
+
 export const metadata: Metadata = {
-  title: "Act Avenue",
+  metadataBase: new URL(siteUrl),
+  title: { default: "Act Avenue", template: "%s | Act Avenue" },
   description: "Reserve tickets for upcoming Act Avenue productions.",
+  openGraph: {
+    type: "website",
+    siteName: "Act Avenue",
+    title: "Act Avenue",
+    description: "Reserve tickets for upcoming Act Avenue productions.",
+    images: [{ url: IMAGES.logo, alt: "Act Avenue" }],
+  },
+  twitter: { card: "summary", title: "Act Avenue", images: [IMAGES.logo] },
   icons: {
     icon: [{ url: IMAGES.logo, type: "image/png" }],
     shortcut: IMAGES.logo,

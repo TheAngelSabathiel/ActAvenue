@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { getPlayDetail, type PlayShowing, type ShowingPerson } from "@/lib/data/plays";
+import { cache } from "react";
+import type { Metadata } from "next";
+import { getPlayDetail as fetchPlay, type PlayShowing, type ShowingPerson } from "@/lib/data/plays";
+import { shareMetadata } from "@/lib/share-meta";
 import { formatDate } from "@/lib/datetime";
 import { IMAGES } from "@/lib/images";
 import { PlayPhotoFull } from "@/components/play-cover";
@@ -84,6 +87,21 @@ function Showing({ s }: { s: PlayShowing }) {
       )}
     </div>
   );
+}
+
+const getPlayDetail = cache(fetchPlay);
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const d = await getPlayDetail(id);
+  if (!d) return {};
+  const by = d.writers.length ? `By ${d.writers.map((w) => w.name).join(", ")}. ` : "";
+  return shareMetadata({
+    title: d.play.title,
+    description: `${by}${d.play.description ?? ""}`,
+    image: d.play.photo_url,
+    path: `/plays/${id}`,
+  });
 }
 
 export default async function PlayPage({ params }: { params: Promise<{ id: string }> }) {

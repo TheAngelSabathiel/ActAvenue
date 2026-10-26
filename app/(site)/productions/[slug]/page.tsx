@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { getProductionBySlug } from "@/lib/data/productions";
+import { cache } from "react";
+import type { Metadata } from "next";
+import { getProductionBySlug as fetchProduction } from "@/lib/data/productions";
+import { shareMetadata } from "@/lib/share-meta";
+import { ShareButton } from "@/components/share-button";
 import { CreditsDisplay } from "@/components/credits-display";
 import { PerformancePicker } from "@/components/performance-picker";
 import { PartnersSection } from "@/components/partners-section";
@@ -12,6 +16,21 @@ export const revalidate = 60;
 // No pages built ahead of time; each is built on first visit, then saved.
 export function generateStaticParams() {
   return [];
+}
+
+// One lookup per request, shared by the page and its link preview.
+const getProductionBySlug = cache(fetchProduction);
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const p = await getProductionBySlug(slug);
+  if (!p) return {};
+  return shareMetadata({
+    title: p.title,
+    description: p.description || `Tickets for ${p.title}.`,
+    image: p.banner_url ?? p.poster_url,
+    path: `/productions/${p.slug}`,
+  });
 }
 
 export default async function ProductionPage({
@@ -48,6 +67,9 @@ export default async function ProductionPage({
           <div>
             <p className="aa-label opacity-75 mb-2">Act Avenue</p>
             <h1 className="text-4xl md:text-6xl text-white">{production.title}</h1>
+            <div className="mt-5">
+              <ShareButton title={production.title} path={`/productions/${production.slug}`} />
+            </div>
           </div>
         </div>
       </section>

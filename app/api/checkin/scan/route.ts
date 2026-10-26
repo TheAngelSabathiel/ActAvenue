@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { canAccess, requireAnyAccess } from "@/lib/admin-auth";
 import { inScanWindow, parseScanned } from "@/lib/ticket-code";
+import { logScan } from "@/lib/scan-log";
 import { formatDateTime } from "@/lib/datetime";
 
 type Line = { id: string; quantity: number; scans_used: number | null; ticket_tier: { label: string } | { label: string }[] | null };
@@ -125,6 +126,19 @@ export async function POST(req: NextRequest) {
   const { data: every } = await db.from("reservation_items").select("quantity, scans_used").eq("reservation_id", reservation.id);
   if ((every ?? []).every((i) => (i.scans_used ?? 0) >= i.quantity)) {
     await db.from("reservations").update({ checked_in: true, checked_in_at: new Date().toISOString() }).eq("id", reservation.id);
+  }
+
+  if (admitted > 0) {
+    await logScan(db, {
+      reservation_id: reservation.id,
+      performance_id: reservation.performance_id,
+      production_id: reservation.production_id,
+      ticket_code: code,
+      admitted,
+      source: "scan",
+      override: !!body.override && !!perf && !inScanWindow(perf.datetime).ok,
+      scanned_by: gate.access.userId,
+    });
   }
 
   return NextResponse.json({

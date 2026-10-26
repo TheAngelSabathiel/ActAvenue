@@ -8,6 +8,9 @@ type Item = { href: string; label: string };
 const KEY = "aa-admin-sidebar-collapsed";
 
 const ICONS: Record<string, string> = {
+  "/admin/dashboard": "bi-speedometer2",
+  "/admin/checkin-report": "bi-clipboard-data",
+  "/admin/mailing-list": "bi-envelope-paper",
   "/admin/reservations": "bi-ticket-perforated",
   "/admin/organizations": "bi-building",
   "/admin/productions": "bi-film",

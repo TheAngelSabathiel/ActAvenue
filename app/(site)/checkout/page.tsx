@@ -175,6 +175,10 @@ function CheckoutForm() {
 
         {error && <p className="text-sm text-danger font-bold mb-0">{error}</p>}
 
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="subscribe" className="mt-1" />
+          Email me about upcoming Act Avenue shows. You can unsubscribe anytime.
+        </label>
         <button type="submit" disabled={submitting || items.length === 0} className="aa-btn aa-btn-lg w-full">
           {submitting ? "Submitting..." : "Submit Booking"}
         </button>

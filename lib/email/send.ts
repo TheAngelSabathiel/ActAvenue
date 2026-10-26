@@ -339,3 +339,19 @@ If you have questions, feel free to reach out to us directly.
 - Act Avenue team`,
   });
 }
+
+export type BulkMessage = { to: string; subject: string; html: string; text: string; headers?: Record<string, string> };
+
+/** Sends announcements in batches of 100. Returns how many were accepted. */
+export async function sendBulkEmails(messages: BulkMessage[]): Promise<number> {
+  let sent = 0;
+  for (let i = 0; i < messages.length; i += 100) {
+    const chunk = messages.slice(i, i + 100);
+    const { error } = await getResend().batch.send(
+      chunk.map((m) => ({ from: FROM, to: m.to, subject: m.subject, html: m.html, text: m.text, headers: m.headers }))
+    );
+    if (error) throw new Error(error.message);
+    sent += chunk.length;
+  }
+  return sent;
+}
