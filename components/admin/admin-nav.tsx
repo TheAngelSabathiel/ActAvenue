@@ -71,7 +71,7 @@ export function AdminShell({ heading, items, children }: { heading: string; item
             </button>
           </div>
           {openMobile && (
-            <div className="flex flex-col pt-3 pb-2 max-h-[calc(100vh-4rem)] overflow-y-auto">
+            <div className="aa-scroll flex flex-col pt-3 pb-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
               {items.map((n, i) => {
                 const on = isCurrent(n);
                 const newGroup = !!n.group && n.group !== items[i - 1]?.group;
@@ -125,7 +125,7 @@ export function AdminShell({ heading, items, children }: { heading: string; item
             <i className={`bi ${collapsed ? "bi-layout-sidebar" : "bi-layout-sidebar-inset"}`} />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto py-3">
+        <nav className="aa-scroll flex-1 overflow-y-auto py-3">
           {items.map((n, i) => {
             const on = isCurrent(n);
             const newGroup = !!n.group && n.group !== items[i - 1]?.group;
