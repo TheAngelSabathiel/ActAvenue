@@ -47,7 +47,7 @@ export function ManilaDateTimeInput({
         value={date}
         required={required}
         onChange={(e) => emit(e.target.value, time)}
-        className={box}
+        className={`${box} min-w-0 flex-1 basis-32 max-w-[11rem]`}
         aria-label={ariaLabel ? `${ariaLabel} (date)` : "Date"}
       />
       <input
@@ -56,7 +56,7 @@ export function ManilaDateTimeInput({
         step={300}
         disabled={!date}
         onChange={(e) => emit(date, e.target.value)}
-        className={`${box} disabled:opacity-50`}
+        className={`${box} min-w-0 flex-1 basis-28 max-w-[9rem] disabled:opacity-50`}
         aria-label={ariaLabel ? `${ariaLabel} (time)` : "Time"}
       />
       <span className="text-xs font-bold uppercase text-muted">PHT</span>

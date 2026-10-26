@@ -108,13 +108,13 @@ export default function PromoCodesPage() {
         </p>
       )}
 
-      <form action={createCode} className="aa-card p-5 mb-8 grid sm:grid-cols-2 gap-3">
+      <form action={createCode} className="aa-card p-5 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0">
         {isAdmin && (
         <select
           value={orgId}
           onChange={(e) => setOrgId(e.target.value)}
           required
-          className="border border-ink/20  px-3 py-2 text-sm sm:col-span-2"
+          className="w-full border border-ink/20 px-3 py-2 text-sm sm:col-span-2"
         >
           <option value="">Select organization...</option>
           {sortByName(organizations, (o) => o.name).map((o) => (
@@ -124,13 +124,13 @@ export default function PromoCodesPage() {
           ))}
         </select>
         )}
-        <input name="code" placeholder="CODE" required className="border border-ink/20  px-3 py-2 text-sm uppercase" />
-        <select name="discount_type" className="border border-ink/20  px-3 py-2 text-sm">
+        <input name="code" placeholder="CODE" required className="w-full border border-ink/20 px-3 py-2 text-sm uppercase" />
+        <select name="discount_type" className="w-full border border-ink/20 px-3 py-2 text-sm">
           <option value="percent">Percent off</option>
           <option value="fixed">Fixed amount off per ticket</option>
         </select>
-        <input name="discount_value" type="number" step="0.01" placeholder="Value" required className="border border-ink/20  px-3 py-2 text-sm" />
-        <select name="applies_to_production_id" required={!isAdmin} className={`border border-ink/20  px-3 py-2 text-sm ${isAdmin ? "" : "sm:col-span-2"}`}>
+        <input name="discount_value" type="number" step="0.01" placeholder="Value" required className="w-full border border-ink/20 px-3 py-2 text-sm" />
+        <select name="applies_to_production_id" required={!isAdmin} className={`w-full border border-ink/20 px-3 py-2 text-sm ${isAdmin ? "" : "sm:col-span-2"}`}>
           {isAdmin ? <option value="">Applies org-wide</option> : <option value="">Select production...</option>}
           {sortByName(productions, (p) => p.title).map((p) => (
             <option key={p.id} value={p.id}>
@@ -138,7 +138,7 @@ export default function PromoCodesPage() {
             </option>
           ))}
         </select>
-        <input name="max_uses" type="number" placeholder="Max uses (optional)" className="border border-ink/20  px-3 py-2 text-sm" />
+        <input name="max_uses" type="number" placeholder="Max uses (optional)" className="w-full border border-ink/20 px-3 py-2 text-sm" />
         <fieldset className="sm:col-span-2 flex flex-wrap items-center gap-x-4 gap-y-1">
           <legend className="sr-only">Ticket types this code applies to</legend>
           <span className="text-xs font-bold uppercase text-muted">Applies to</span>
@@ -148,7 +148,7 @@ export default function PromoCodesPage() {
             </label>
           ))}
         </fieldset>
-        <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
+        <div className="sm:col-span-2 flex flex-col items-start gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 [&>*]:max-w-full">
           <span className="text-xs font-bold uppercase text-muted">Valid until (optional)</span>
           <ManilaDateTimeInput name="valid_until" defaultTime="23:59" ariaLabel="Valid until" />
         </div>
