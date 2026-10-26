@@ -71,18 +71,37 @@ export function AdminShell({ heading, items, children }: { heading: string; item
             </button>
           </div>
           {openMobile && (
-            <div className="flex flex-col pt-2">
-              {items.map((n, i) => (
-                <div key={n.href}>
-                  {n.group && n.group !== items[i - 1]?.group && (
-                    <p className="aa-label opacity-60 mt-3 mb-0 px-3">{n.group}</p>
-                  )}
-                  <Link href={n.href} className={`aa-nav-link py-2.5 ${isCurrent(n) ? "underline underline-offset-8 decoration-2" : ""}`}>
-                    {n.label}
-                  </Link>
-                </div>
-              ))}
-              <Link href="/" className="aa-nav-link py-2.5 opacity-75">View site</Link>
+            <div className="flex flex-col pt-3 pb-2 max-h-[calc(100vh-4rem)] overflow-y-auto">
+              {items.map((n, i) => {
+                const on = isCurrent(n);
+                const newGroup = !!n.group && n.group !== items[i - 1]?.group;
+                return (
+                  <div key={n.href}>
+                    {newGroup && (
+                      <div className={`flex items-center gap-3 ${i > 0 ? "mt-6" : "mt-1"} mb-1`}>
+                        <span className="text-[11px] font-black uppercase tracking-[0.22em] text-accent whitespace-nowrap">{n.group}</span>
+                        <span className="h-px flex-1 bg-white/20" />
+                      </div>
+                    )}
+                    <Link
+                      href={n.href}
+                      aria-current={on ? "page" : undefined}
+                      className={`flex items-center gap-3 border-l-2 pl-4 py-2.5 ml-1 text-sm font-bold uppercase tracking-[0.08em] ${
+                        on ? "border-accent bg-white/10" : "border-white/15 text-white/85"
+                      }`}
+                    >
+                      <i className={`bi ${ICONS[n.href] ?? "bi-dot"} text-base leading-none opacity-80`} />
+                      {n.label}
+                    </Link>
+                  </div>
+                );
+              })}
+              <div className="mt-6 border-t border-white/20 pt-1">
+                <Link href="/" className="flex items-center gap-3 pl-5 py-2.5 text-sm font-bold uppercase tracking-[0.08em] text-white/75">
+                  <i className="bi bi-box-arrow-up-right text-base leading-none" />
+                  View site
+                </Link>
+              </div>
             </div>
           )}
         </nav>
