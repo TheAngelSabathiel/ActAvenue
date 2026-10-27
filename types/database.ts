@@ -65,7 +65,7 @@ export interface Play {
   title: string;
   writers?: { id: string; name: string; listed: boolean }[];
   description: string | null;
-  /** One-line hook, shown under the title and used for sharing. */
+  /** One-line tagline, shown under the title and used for sharing. */
   logline?: string | null;
   photo_url: string | null;
   sort_order: number;

@@ -116,7 +116,7 @@ export default function AdminPlaysPage() {
           <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`${field} w-64`} />
         </div>
         <div className="w-full">
-          <label className="block text-xs font-bold uppercase text-muted mb-1">Logline (optional, one line)</label>
+          <label className="block text-xs font-bold uppercase text-muted mb-1">Tagline (optional, one line)</label>
           <input value={logline} onChange={(e) => setLogline(e.target.value)} maxLength={200} className={`${field} w-full`} />
         </div>
         <div className="flex-1 min-w-56">
@@ -205,7 +205,7 @@ function PlayCard({ play, people, onChange, onError }: { play: AdminPlay; people
         </div>
         <div className="flex-1 min-w-56 space-y-2">
           <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${field} w-full font-bold`} aria-label="Title" />
-          <input value={logline} onChange={(e) => setLogline(e.target.value)} maxLength={200} placeholder="Logline (one line hook for sharing)" className={`${field} w-full italic`} aria-label="Logline" />
+          <input value={logline} onChange={(e) => setLogline(e.target.value)} maxLength={200} placeholder="Tagline (one line hook for sharing)" className={`${field} w-full italic`} aria-label="Tagline" />
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Description" className={`${field} w-full`} />
           <WriterPicker people={people} value={writers} onChange={setWriters} />
           <div className="flex flex-wrap gap-2 pt-2">
