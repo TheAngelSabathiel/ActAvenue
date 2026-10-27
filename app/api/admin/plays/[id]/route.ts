@@ -13,6 +13,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   const update: Record<string, unknown> = {};
   if (typeof body.title === "string" && body.title.trim()) update.title = body.title.trim();
   if (typeof body.description === "string") update.description = body.description.trim() || null;
+  if (typeof body.logline === "string") update.logline = body.logline.trim().slice(0, 200) || null;
   const writerIds: string[] | null = Array.isArray(body.writer_ids)
     ? body.writer_ids.filter((x: unknown): x is string => typeof x === "string")
     : null;

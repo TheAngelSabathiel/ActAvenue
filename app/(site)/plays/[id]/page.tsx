@@ -8,6 +8,7 @@ import { shareMetadata } from "@/lib/share-meta";
 import { formatDate } from "@/lib/datetime";
 import { IMAGES } from "@/lib/images";
 import { PlayPhotoFull } from "@/components/play-cover";
+import { ShareButton, CopyLinkButton } from "@/components/share-button";
 
 // Saved by the CDN for a minute; admin edits refresh it right away.
 export const revalidate = 60;
@@ -98,7 +99,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const by = d.writers.length ? `By ${d.writers.map((w) => w.name).join(", ")}. ` : "";
   return shareMetadata({
     title: d.play.title,
-    description: `${by}${d.play.description ?? ""}`,
+    description: d.play.logline ? `${d.play.logline} ${by}`.trim() : `${by}${d.play.description ?? ""}`,
     image: d.play.photo_url,
     path: `/plays/${id}`,
   });
@@ -120,6 +121,11 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
           </div>
           <div>
             <h1 className="text-4xl mb-2">{play.title}</h1>
+            {play.logline && <p className="text-xl italic mb-3">{play.logline}</p>}
+            <div className="flex flex-wrap gap-2 mb-2">
+              <ShareButton title={play.title} text={play.logline} path={`/plays/${play.id}`} />
+              <CopyLinkButton path={`/plays/${play.id}`} />
+            </div>
             <hr className="aa-divider" />
             {writers.length > 0 && (
               <p className="mb-3">

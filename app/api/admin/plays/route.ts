@@ -23,14 +23,18 @@ async function handlePOST(req: NextRequest) {
   const authError = await requireStaff();
   if (authError) return authError;
 
-  const { title, description, writer_ids } = await req.json();
+  const { title, description, logline, writer_ids } = await req.json();
   if (!title || !String(title).trim()) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
   const db = createServiceClient();
   const { data, error } = await db
     .from("plays")
-    .insert({ title: String(title).trim(), description: description ? String(description).trim() : null })
+    .insert({
+      title: String(title).trim(),
+      description: description ? String(description).trim() : null,
+      ...(logline && String(logline).trim() ? { logline: String(logline).trim().slice(0, 200) } : {}),
+    })
     .select()
     .single();
   if (error) {

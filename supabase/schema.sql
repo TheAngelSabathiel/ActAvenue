@@ -258,6 +258,7 @@ create table plays (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   description text,
+  logline text,
   photo_url text,
   sort_order int not null default 0,
   created_at timestamptz not null default now()
