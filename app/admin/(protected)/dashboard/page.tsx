@@ -26,14 +26,22 @@ const peso = (n: number) => `₱${n.toLocaleString("en-PH", { minimumFractionDig
 const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
 const dayLabel = (d: string) => new Date(`${d}T00:00:00+08:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric", timeZone: "Asia/Manila" });
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="aa-card p-4">
+function Stat({ label, value, sub, href }: { label: string; value: string; sub?: string; href?: string }) {
+  const body = (
+    <>
       <p className="aa-label text-muted mb-1">{label}</p>
       <p className="text-2xl font-black mb-0">{value}</p>
       {sub && <p className="text-xs text-muted mb-0">{sub}</p>}
-    </div>
+    </>
   );
+  if (href) {
+    return (
+      <Link href={href} className="aa-card p-4 block hover:border-black transition-colors">
+        {body}
+      </Link>
+    );
+  }
+  return <div className="aa-card p-4">{body}</div>;
 }
 
 function SeatBar({ sold, pending, capacity }: { sold: number; pending: number; capacity: number }) {
@@ -108,7 +116,7 @@ export default function DashboardPage() {
       {data?.performances && t && (
         <>
           {pending > 0 && (
-            <Link href="/admin/reservations" className="aa-card p-4 flex items-center justify-between border-l-[8px] border-accent">
+            <Link href="/admin/reservations?status=pending_review" className="aa-card p-4 flex items-center justify-between border-l-[8px] border-accent">
               <span className="font-bold"><i className="bi bi-hourglass-split" /> {pending} booking{pending === 1 ? "" : "s"} waiting for payment review</span>
               <span className="aa-label mb-0">Review <i className="bi bi-arrow-right" /></span>
             </Link>
@@ -117,7 +125,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Stat label="Revenue" value={peso(t.revenue)} sub="Confirmed bookings" />
             <Stat label="Tickets sold" value={`${t.sold}`} sub={`${pct(t.sold, t.capacity)}% of ${t.capacity} seats`} />
-            <Stat label="Pending" value={`${t.pending}`} sub="Awaiting payment review" />
+            <Stat label="Pending" value={`${t.pending}`} sub="Awaiting payment review" href="/admin/reservations?status=pending_review" />
             <Stat label="Online / walk-in" value={`${t.online} / ${t.walkIn}`} sub="Tickets by source" />
           </div>
 
