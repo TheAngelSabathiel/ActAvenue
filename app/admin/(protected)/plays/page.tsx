@@ -208,12 +208,12 @@ function PlayCard({ play, people, onChange, onError }: { play: AdminPlay; people
           <input value={logline} onChange={(e) => setLogline(e.target.value)} maxLength={200} placeholder="Logline (one line hook for sharing)" className={`${field} w-full italic`} aria-label="Logline" />
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Description" className={`${field} w-full`} />
           <WriterPicker people={people} value={writers} onChange={setWriters} />
-        </div>
-        <div className="flex flex-col items-end gap-2 self-start">
-          <CopyLinkButton path={`/plays/${play.id}`} className="aa-btn aa-btn-light aa-btn-sm" />
-          <button onClick={remove} className="text-xs font-bold uppercase text-danger/70 hover:text-danger">
-            Delete
-          </button>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <CopyLinkButton path={`/plays/${play.id}`} className="aa-btn aa-btn-outline aa-btn-sm" />
+            <button type="button" onClick={remove} className="aa-btn aa-btn-outline aa-btn-sm !text-danger !border-danger">
+              <i className="bi bi-trash" /> Delete
+            </button>
+          </div>
         </div>
       </div>
       <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={discard} />
