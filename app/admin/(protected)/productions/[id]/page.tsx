@@ -97,6 +97,7 @@ export default function ProductionEditorPage() {
         require_id: formData.get("require_id") === "on",
         price: Number(formData.get("price")),
         quantity_available: Number(formData.get("quantity_available")),
+        pool_tier_id: formData.get("pool_tier_id") || null,
         is_discount_tier: isDiscount,
         discount_valid_from: isDiscount ? formData.get("discount_valid_from") || null : null,
         discount_valid_until: isDiscount ? formData.get("discount_valid_until") || null : null,

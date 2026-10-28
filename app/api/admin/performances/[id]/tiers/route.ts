@@ -5,6 +5,7 @@ import { requireProduction } from "@/lib/admin-auth";
 import { productionOfPerformance } from "@/lib/admin-scope";
 import { isTierType, tierDisplayName, tierTypeName } from "@/lib/tiers";
 import { withRefresh } from "@/lib/refresh-public";
+import { checkPoolLink } from "@/lib/tier-pool";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -31,6 +32,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
     require_id,
     price,
     quantity_available,
+    pool_tier_id,
     is_discount_tier,
     discount_valid_from,
     discount_valid_until,
@@ -44,6 +46,13 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const db = createServiceClient();
+  const poolId = typeof pool_tier_id === "string" && pool_tier_id ? pool_tier_id : null;
+  if (poolId) {
+    const bad = await checkPoolLink(db, id, null, poolId);
+    if (bad) return NextResponse.json({ error: bad }, { status: 400 });
+  }
+  // A tier that shares seats uses its quantity as an optional cap (0 or empty means no cap).
+  const cap = Number(quantity_available) || 0;
   const { data: clash } = await db
     .from("ticket_tiers")
     .select("id")
@@ -64,7 +73,9 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
       description: typeof description === "string" && description.trim() ? description.trim() : null,
       require_id: tier_type === "discounted" && !!require_id,
       price,
-      quantity_available,
+      quantity_available: poolId ? cap : quantity_available,
+      pool_tier_id: poolId,
+      pool_capped: !!poolId && cap > 0,
       is_discount_tier: !!is_discount_tier,
       discount_valid_from: toIsoManila(discount_valid_from),
       discount_valid_until: toIsoManila(discount_valid_until),

@@ -1,6 +1,7 @@
 import { createPublicClient } from "@/lib/supabase/public";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isTierDiscountActive } from "@/lib/pricing";
+import { applyRemaining } from "@/lib/tiers";
 import type { ProductionWithPerformances, TicketTier } from "@/types/database";
 
 export interface ProductionCreditWithActor {
@@ -41,9 +42,8 @@ export async function getProductionBySlug(
 
   const performancesWithAvailability = (performances ?? []).map((perf) => ({
     ...perf,
-    ticket_tiers: (perf.ticket_tiers ?? []).map((tier: TicketTier) => ({
+    ticket_tiers: applyRemaining((perf.ticket_tiers ?? []) as TicketTier[]).map((tier) => ({
       ...tier,
-      remaining: tier.quantity_available - tier.quantity_held,
       discount_active: isTierDiscountActive(tier),
     })),
   }));

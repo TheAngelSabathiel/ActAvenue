@@ -29,3 +29,33 @@ export function cleanTypes(v: unknown): TierType[] | null {
   const list = [...new Set(v.filter(isTierType))];
   return list.length === 0 || list.length === TIER_TYPES.length ? null : list;
 }
+
+export type StockTier = {
+  id: string;
+  quantity_available: number;
+  quantity_held: number;
+  pool_tier_id?: string | null;
+  pool_capped?: boolean | null;
+};
+
+/**
+ * Seats left for a tier. A tier with no link has its own stock. Tiers linked to
+ * a main tier share its total, and a linked tier with a cap is also held to it.
+ * `all` is every tier of the same show.
+ */
+export function tierRemaining(t: StockTier, all: StockTier[]): number {
+  const rootId = t.pool_tier_id ?? t.id;
+  const root = rootId === t.id ? t : all.find((x) => x.id === rootId);
+  if (!root) return Math.max(0, t.quantity_available - t.quantity_held);
+  const members = all.filter((x) => x.id === rootId || x.pool_tier_id === rootId);
+  if (!members.some((m) => m.id === t.id)) members.push(t);
+  const used = members.reduce((n, m) => n + m.quantity_held, 0);
+  const poolLeft = root.quantity_available - used;
+  const ownLeft = t.pool_tier_id && t.pool_capped ? t.quantity_available - t.quantity_held : Infinity;
+  return Math.max(0, Math.min(poolLeft, ownLeft));
+}
+
+/** Adds `remaining` to every tier of one show. */
+export function applyRemaining<T extends StockTier>(tiers: T[]): (T & { remaining: number })[] {
+  return tiers.map((t) => ({ ...t, remaining: tierRemaining(t, tiers) }));
+}

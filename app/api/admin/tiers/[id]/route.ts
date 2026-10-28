@@ -5,6 +5,7 @@ import { requireProduction } from "@/lib/admin-auth";
 import { productionOfTier } from "@/lib/admin-scope";
 import { isTierType, tierDisplayName, tierTypeName } from "@/lib/tiers";
 import { withRefresh } from "@/lib/refresh-public";
+import { checkPoolLink } from "@/lib/tier-pool";
 
 async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,6 +19,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     "require_id",
     "price",
     "quantity_available",
+    "pool_tier_id",
     "is_discount_tier",
     "discount_valid_from",
     "discount_valid_until",
@@ -53,6 +55,23 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: `This show already has a ${tierTypeName(type)} tier.` }, { status: 409 });
     }
   }
+  if ("pool_tier_id" in update || "quantity_available" in update) {
+    const poolId = ("pool_tier_id" in update ? update.pool_tier_id : current.pool_tier_id) as string | null;
+    if (poolId) {
+      if ("pool_tier_id" in update && poolId !== current.pool_tier_id) {
+        const bad = await checkPoolLink(db, current.performance_id, id, poolId);
+        if (bad) return NextResponse.json({ error: bad }, { status: 400 });
+      }
+      // Sharing seats: the quantity is an optional cap (0 or empty means no cap).
+      const cap = Number("quantity_available" in update ? update.quantity_available : current.pool_capped ? current.quantity_available : 0) || 0;
+      update.pool_tier_id = poolId;
+      update.quantity_available = cap;
+      update.pool_capped = cap > 0;
+    } else {
+      update.pool_tier_id = null;
+      update.pool_capped = false;
+    }
+  }
   if (type !== "discounted") update.require_id = false;
   const alias = "alias" in update ? (update.alias as string | null) : current.alias;
   update.label = tierDisplayName({ tier_type: type, alias });
@@ -73,6 +92,17 @@ async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ i
   const gate = await requireProduction(await productionOfTier(id), "manager");
   if (gate.error) return gate.error;
   const db = createServiceClient();
+
+  const { count: linked } = await db
+    .from("ticket_tiers")
+    .select("id", { count: "exact", head: true })
+    .eq("pool_tier_id", id);
+  if (linked && linked > 0) {
+    return NextResponse.json(
+      { error: "Other tiers draw seats from this one. Unlink or delete them first." },
+      { status: 409 }
+    );
+  }
 
   const { count } = await db
     .from("reservation_items")

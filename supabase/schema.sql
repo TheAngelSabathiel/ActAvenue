@@ -107,6 +107,10 @@ create table ticket_tiers (
   alias text,
   description text,
   require_id boolean not null default false,
+  -- Draws its seats from another tier on the same show (the pool). pool_capped
+  -- means this tier also has its own cap (quantity_available).
+  pool_tier_id uuid references ticket_tiers (id) on delete set null,
+  pool_capped boolean not null default false,
   discount_valid_from timestamptz,
   discount_valid_until timestamptz,
   created_at timestamptz not null default now()
@@ -570,14 +574,40 @@ security definer
 as $$
 declare
   v_tier ticket_tiers;
+  v_root ticket_tiers;
+  v_root_id uuid;
+  v_used int;
 begin
-  select * into v_tier from ticket_tiers where id = p_tier_id for update;
+  select coalesce(pool_tier_id, id) into v_root_id from ticket_tiers where id = p_tier_id;
   if not found then
     raise exception 'ticket_tier_not_found';
   end if;
-  if (v_tier.quantity_available - v_tier.quantity_held) < p_quantity then
+
+  select * into v_root from ticket_tiers where id = v_root_id for update;
+  if not found then
+    raise exception 'ticket_tier_not_found';
+  end if;
+  select * into v_tier from ticket_tiers where id = p_tier_id for update;
+
+  -- Linked to a different pool while we waited for the lock: ask the buyer to retry.
+  if coalesce(v_tier.pool_tier_id, v_tier.id) <> v_root_id then
     raise exception 'insufficient_availability';
   end if;
+
+  -- Own cap (only for a tier that draws from a pool and has a cap set).
+  if v_tier.pool_tier_id is not null and v_tier.pool_capped
+     and (v_tier.quantity_available - v_tier.quantity_held) < p_quantity then
+    raise exception 'insufficient_availability';
+  end if;
+
+  -- Shared pool: the main tier's total minus everything held or sold across the pool.
+  select coalesce(sum(quantity_held), 0) into v_used
+  from ticket_tiers
+  where id = v_root_id or pool_tier_id = v_root_id;
+  if (v_root.quantity_available - v_used) < p_quantity then
+    raise exception 'insufficient_availability';
+  end if;
+
   update ticket_tiers
   set quantity_held = quantity_held + p_quantity
   where id = p_tier_id

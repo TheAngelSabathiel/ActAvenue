@@ -116,6 +116,10 @@ export interface TicketTier {
   alias: string | null;
   description: string | null;
   require_id: boolean;
+  /** Draws its seats from this tier (same show). */
+  pool_tier_id?: string | null;
+  /** Has its own cap inside the pool (quantity_available). */
+  pool_capped?: boolean;
   discount_valid_from: string | null;
   discount_valid_until: string | null;
   created_at: string;

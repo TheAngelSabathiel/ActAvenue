@@ -1,3 +1,4 @@
+import { remainingForTier } from "@/lib/tier-stock";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOrCreateCart } from "@/lib/cart-session";
@@ -30,8 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Re-check availability when raising quantity, same guard as adding a new
   // item - otherwise a buyer could bump quantity past what's left in the
   // cart UI and only discover the problem at checkout.
-  const remaining =
-    existing.ticket_tier.quantity_available - existing.ticket_tier.quantity_held;
+  const remaining = await remainingForTier(db, existing.ticket_tier);
   if (quantity > remaining) {
     return NextResponse.json(
       { error: `Only ${remaining} left for this tier.` },

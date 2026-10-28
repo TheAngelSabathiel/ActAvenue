@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart, CartError } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
 import { formatDayLong, formatDayShort, formatTime } from "@/lib/datetime";
-import { ID_INSTRUCTION } from "@/lib/tiers";
+import { ID_INSTRUCTION, applyRemaining } from "@/lib/tiers";
 import { isTierDiscountActive } from "@/lib/pricing";
 import { AddedToCartModal, type AddedItem } from "@/components/added-to-cart-modal";
 import type { PerformanceWithTiers, TicketTier } from "@/types/database";
@@ -56,16 +56,13 @@ export function PerformancePicker({
         setPerformances((prev) =>
           prev.map((perf) => ({
             ...perf,
-            ticket_tiers: perf.ticket_tiers.map((tier) => {
-              const f = fresh.get(tier.id);
-              if (!f) return tier;
-              const merged = { ...tier, ...f };
-              return {
-                ...merged,
-                remaining: merged.quantity_available - merged.quantity_held,
-                discount_active: isTierDiscountActive(merged as TicketTier),
-              };
-            }),
+            // Seats left are worked out per show, because linked tiers share a pool.
+            ticket_tiers: applyRemaining(
+              perf.ticket_tiers.map((tier) => {
+                const f = fresh.get(tier.id);
+                return f ? { ...tier, ...f } : tier;
+              })
+            ).map((tier) => ({ ...tier, discount_active: isTierDiscountActive(tier as TicketTier) })),
           }))
         );
       });
@@ -80,20 +77,26 @@ export function PerformancePicker({
           if (!tierIds.has(updated.id)) return;
 
           setPerformances((prev) =>
-            prev.map((perf) => ({
-              ...perf,
-              ticket_tiers: perf.ticket_tiers.map((tier) =>
-                tier.id === updated.id
-                  ? {
-                      ...tier,
-                      quantity_available: updated.quantity_available,
-                      quantity_held: updated.quantity_held,
-                      remaining: updated.quantity_available - updated.quantity_held,
-                      discount_active: isTierDiscountActive(updated),
-                    }
-                  : tier
-              ),
-            }))
+            prev.map((perf) => {
+              if (!perf.ticket_tiers.some((t) => t.id === updated.id)) return perf;
+              return {
+                ...perf,
+                ticket_tiers: applyRemaining(
+                  perf.ticket_tiers.map((tier) =>
+                    tier.id === updated.id
+                      ? {
+                          ...tier,
+                          quantity_available: updated.quantity_available,
+                          quantity_held: updated.quantity_held,
+                          pool_tier_id: updated.pool_tier_id ?? null,
+                          pool_capped: updated.pool_capped ?? false,
+                          discount_active: isTierDiscountActive(updated),
+                        }
+                      : tier
+                  )
+                ),
+              };
+            })
           );
         }
       )

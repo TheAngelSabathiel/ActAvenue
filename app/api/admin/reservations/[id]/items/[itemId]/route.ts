@@ -1,3 +1,4 @@
+import { remainingForTier } from "@/lib/tier-stock";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
@@ -80,7 +81,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     const { error } = await holdTicketTier(db, item.ticket_tier_id, diff);
     if (error) {
       const message = error.message.includes("insufficient_availability")
-        ? `Only ${item.ticket_tier.quantity_available - item.ticket_tier.quantity_held} left for ${item.ticket_tier.label} on this show.`
+        ? `Only ${await remainingForTier(db, item.ticket_tier)} left for ${item.ticket_tier.label} on this show.`
         : error.message;
       return NextResponse.json({ error: message }, { status: 409 });
     }

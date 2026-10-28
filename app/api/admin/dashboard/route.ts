@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   const { data: production } = await db
     .from("productions")
-    .select("id, title, performances(id, label, datetime, venue, ticket_tiers(id, label, quantity_available, quantity_held, price))")
+    .select("id, title, performances(id, label, datetime, venue, ticket_tiers(id, label, quantity_available, quantity_held, price, pool_tier_id, pool_capped))")
     .eq("id", productionId)
     .single();
   if (!production) return NextResponse.json({ error: "Production not found." }, { status: 404 });
@@ -96,9 +96,10 @@ export async function GET(req: NextRequest) {
   const performances = (production.performances ?? [])
     .slice()
     .sort((a: { datetime: string }, b: { datetime: string }) => a.datetime.localeCompare(b.datetime))
-    .map((p: { id: string; label: string; datetime: string; venue: string; ticket_tiers: { id: string; label: string; quantity_available: number; price: number }[] }) => {
+    .map((p: { id: string; label: string; datetime: string; venue: string; ticket_tiers: { id: string; label: string; quantity_available: number; price: number; pool_tier_id?: string | null; pool_capped?: boolean }[] }) => {
       const a = agg(p.id);
-      const capacity = p.ticket_tiers.reduce((n, t) => n + t.quantity_available, 0);
+      // Linked tiers share their main tier's seats, so only unlinked tiers add to capacity.
+      const capacity = p.ticket_tiers.filter((t) => !t.pool_tier_id).reduce((n, t) => n + t.quantity_available, 0);
       const started = new Date(p.datetime).getTime() <= now;
       return {
         id: p.id,
@@ -115,7 +116,7 @@ export async function GET(req: NextRequest) {
         noShows: started ? Math.max(0, a.sold - a.admitted) : null,
         tiers: p.ticket_tiers.map((t) => ({
           label: t.label,
-          capacity: t.quantity_available,
+          capacity: t.pool_tier_id ? (t.pool_capped ? t.quantity_available : (p.ticket_tiers.find((x) => x.id === t.pool_tier_id)?.quantity_available ?? 0)) : t.quantity_available,
           sold: tier.get(t.id)?.sold ?? 0,
           pending: tier.get(t.id)?.pending ?? 0,
         })),

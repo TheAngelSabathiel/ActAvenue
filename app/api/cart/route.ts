@@ -1,3 +1,4 @@
+import { remainingForTier } from "@/lib/tier-stock";
 import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateCart } from "@/lib/cart-session";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ticket tier not found" }, { status: 404 });
   }
 
-  const remaining = tier.quantity_available - tier.quantity_held;
+  const remaining = await remainingForTier(db, tier);
   if (quantity > remaining) {
     return NextResponse.json(
       { error: `Only ${remaining} left for this tier.` },

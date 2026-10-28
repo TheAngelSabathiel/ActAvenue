@@ -6,7 +6,7 @@ import { SaveBar } from "@/components/save-bar";
 import { api, jsonInit } from "@/lib/api-call";
 import { fromManilaInput, toManilaInput } from "@/lib/datetime";
 import { toast } from "@/lib/toast";
-import { TIER_TYPES, tierTypeName, ID_INSTRUCTION } from "@/lib/tiers";
+import { TIER_TYPES, tierTypeName, ID_INSTRUCTION, tierRemaining } from "@/lib/tiers";
 import type { TierType } from "@/types/database";
 
 const TYPE_OPTIONS = [...TIER_TYPES].sort((a, b) => a.name.localeCompare(b.name));
@@ -21,6 +21,8 @@ export type Tier = {
   price: number;
   quantity_available: number;
   quantity_held: number;
+  pool_tier_id?: string | null;
+  pool_capped?: boolean;
   is_discount_tier: boolean;
   discount_valid_from: string | null;
   discount_valid_until: string | null;
@@ -41,7 +43,10 @@ type TierDraft = {
   description: string;
   require_id: boolean;
   price: string;
+  /** Total for its own stock, or the cap when it shares seats (blank = shared total only). */
   quantity_available: string;
+  /** Main tier this one draws seats from, or empty for its own stock. */
+  pool_tier_id: string;
   is_discount_tier: boolean;
   from: string;
   until: string;
@@ -62,7 +67,8 @@ const toDraft = (perf: Performance): Draft => ({
         description: t.description ?? "",
         require_id: t.require_id,
         price: String(t.price),
-        quantity_available: String(t.quantity_available),
+        quantity_available: t.pool_tier_id && !t.pool_capped ? "" : String(t.quantity_available),
+        pool_tier_id: t.pool_tier_id ?? "",
         is_discount_tier: t.is_discount_tier,
         from: t.discount_valid_from ? toManilaInput(t.discount_valid_from) : "",
         until: t.discount_valid_until ? toManilaInput(t.discount_valid_until) : "",
@@ -89,6 +95,7 @@ export function PerformanceCard({
 }) {
   const [d, setD] = useState<Draft>(() => toDraft(perf));
   const [saving, setSaving] = useState(false);
+  const [addPool, setAddPool] = useState("");
   const base = toDraft(perf);
 
   const perfChanges: Record<string, unknown> = {};
@@ -107,7 +114,10 @@ export function PerformanceCard({
       if (a.description !== b.description) c.description = a.description;
       if (a.require_id !== b.require_id) c.require_id = a.require_id;
       if (a.price !== b.price) c.price = Number(a.price);
-      if (a.quantity_available !== b.quantity_available) c.quantity_available = Number(a.quantity_available);
+      if (a.quantity_available !== b.quantity_available || a.pool_tier_id !== b.pool_tier_id) {
+        c.quantity_available = Number(a.quantity_available) || 0;
+        c.pool_tier_id = a.pool_tier_id || null;
+      }
       if (a.is_discount_tier !== b.is_discount_tier) c.is_discount_tier = a.is_discount_tier;
       if (a.from !== b.from) c.discount_valid_from = a.from ? fromManilaInput(a.from) : null;
       if (a.until !== b.until) c.discount_valid_until = a.until ? fromManilaInput(a.until) : null;
@@ -167,11 +177,39 @@ export function PerformanceCard({
                   <input value={td.alias} onChange={(e) => setTier(t.id, { alias: e.target.value })} placeholder={`Display name (default ${tierTypeName(td.tier_type)})`} className="border border-ink/20 px-2 py-1 text-sm" aria-label="Tier display name" />
                 </div>
                 <input type="number" step="0.01" value={td.price} onChange={(e) => setTier(t.id, { price: e.target.value })} className="border border-ink/20 px-2 py-1 text-sm w-24 tabular-nums" aria-label="Price" />
-                <input type="number" value={td.quantity_available} onChange={(e) => setTier(t.id, { quantity_available: e.target.value })} className="border border-ink/20 px-2 py-1 text-sm w-24 tabular-nums" aria-label="Quantity available" title="Total quantity available" />
+                <input
+                  type="number"
+                  value={td.quantity_available}
+                  onChange={(e) => setTier(t.id, { quantity_available: e.target.value })}
+                  className="border border-ink/20 px-2 py-1 text-sm w-24 tabular-nums"
+                  aria-label={td.pool_tier_id ? "Cap (optional)" : "Quantity available"}
+                  placeholder={td.pool_tier_id ? "No cap" : undefined}
+                  title={td.pool_tier_id ? "Cap for this tier inside the shared seats. Leave blank to use only the shared total." : "Total quantity available"}
+                />
                 <button onClick={() => onDeleteTier(t.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger">
                   Delete
                 </button>
               </div>
+              {(() => {
+                const hasLinked = perf.ticket_tiers.some((x) => (d.tiers[x.id] ?? base.tiers[x.id]).pool_tier_id === t.id);
+                const mains = perf.ticket_tiers.filter((x) => x.id !== t.id && !(d.tiers[x.id] ?? base.tiers[x.id]).pool_tier_id);
+                if (hasLinked) {
+                  return <p className="text-xs text-muted mt-2 mb-0">Main tier: its quantity is the total seats shared with the tiers linked to it.</p>;
+                }
+                if (mains.length === 0) return null;
+                return (
+                  <label className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                    <span className="font-bold uppercase text-muted">Seats</span>
+                    <select value={td.pool_tier_id} onChange={(e) => setTier(t.id, { pool_tier_id: e.target.value })} className="border border-ink/20 px-2 py-1 text-sm" aria-label="Where this tier's seats come from">
+                      <option value="">Own stock</option>
+                      {mains.map((x) => (
+                        <option key={x.id} value={x.id}>Share seats with {x.alias || tierTypeName(x.tier_type)}</option>
+                      ))}
+                    </select>
+                    {td.pool_tier_id && <span className="text-muted">The box above is an optional cap. Blank uses only the shared total.</span>}
+                  </label>
+                );
+              })()}
               <textarea value={td.description} onChange={(e) => setTier(t.id, { description: e.target.value })} rows={2} placeholder="Inclusions (optional)" className="border border-ink/20 px-2 py-1 text-sm w-full mt-2" aria-label="Tier description" />
               {td.tier_type === "discounted" && (
                 <label className="flex items-start gap-1.5 mt-2 text-xs">
@@ -192,7 +230,8 @@ export function PerformanceCard({
                   </>
                 )}
                 <span className="text-muted tabular-nums ml-auto">
-                  {t.quantity_available - t.quantity_held} left ({t.quantity_held} held/sold)
+                  {tierRemaining(t, perf.ticket_tiers)} left ({t.quantity_held} held/sold)
+                  {t.pool_tier_id && " · shared"}
                 </span>
               </div>
             </div>
@@ -204,7 +243,7 @@ export function PerformanceCard({
 
       <details className="text-sm">
         <summary className="cursor-pointer font-bold text-xs uppercase text-danger">+ Add ticket tier</summary>
-        <form action={(fd) => onAddTier(perf.id, fd)} className="grid sm:grid-cols-2 gap-2 mt-3">
+        <form action={(fd) => { onAddTier(perf.id, fd); setAddPool(""); }} className="grid sm:grid-cols-2 gap-2 mt-3">
           <select name="tier_type" required defaultValue="" className={box} aria-label="Tier type">
             <option value="" disabled>Tier type</option>
             {TYPE_OPTIONS.filter((o) => !perf.ticket_tiers.some((t) => t.tier_type === o.value)).map((o) => (
@@ -217,8 +256,16 @@ export function PerformanceCard({
             <input type="checkbox" name="require_id" className="mt-0.5" />
             <span>Discounted only: require ID upload (Student, PWD, Senior) before add to cart</span>
           </label>
+          {perf.ticket_tiers.some((t) => !t.pool_tier_id) && (
+            <select name="pool_tier_id" value={addPool} onChange={(e) => setAddPool(e.target.value)} className={`${box} sm:col-span-2`} aria-label="Where this tier's seats come from">
+              <option value="">Own stock</option>
+              {perf.ticket_tiers.filter((t) => !t.pool_tier_id).map((t) => (
+                <option key={t.id} value={t.id}>Share seats with {t.alias || tierTypeName(t.tier_type)}</option>
+              ))}
+            </select>
+          )}
           <input name="price" type="number" step="0.01" placeholder="Price" required className={box} />
-          <input name="quantity_available" type="number" placeholder="Quantity" required className={box} />
+          <input name="quantity_available" type="number" placeholder={addPool ? "Cap (optional)" : "Quantity"} required={!addPool} className={box} />
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" name="is_discount_tier" /> Time-limited price window
           </label>

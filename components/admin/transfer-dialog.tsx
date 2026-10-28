@@ -1,5 +1,6 @@
 "use client";
 
+import { tierRemaining } from "@/lib/tiers";
 import { useEffect, useState } from "react";
 import { toast } from "@/lib/toast";
 import { formatDateTime } from "@/lib/datetime";
@@ -9,7 +10,7 @@ type Perf = {
   label: string;
   datetime: string;
   venue: string;
-  ticket_tiers: { id: string; label: string; tier_type: string; quantity_available: number; quantity_held: number }[];
+  ticket_tiers: { id: string; label: string; tier_type: string; quantity_available: number; quantity_held: number; pool_tier_id?: string | null; pool_capped?: boolean }[];
 };
 
 export type TransferTarget = {
@@ -54,7 +55,7 @@ export function TransferDialog({
   const lines = chosen
     ? reservation.reservation_items.map((i) => {
         const tier = chosen.ticket_tiers.find((t) => t.tier_type === i.ticket_tier.tier_type);
-        const left = tier ? tier.quantity_available - tier.quantity_held : null;
+        const left = tier ? tierRemaining(tier, chosen.ticket_tiers) : null;
         return { label: i.ticket_tier.label, quantity: i.quantity, left };
       })
     : [];
