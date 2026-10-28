@@ -114,7 +114,8 @@ export async function GET(req: NextRequest) {
         admitted: a.admitted,
         started,
         noShows: started ? Math.max(0, a.sold - a.admitted) : null,
-        tiers: p.ticket_tiers.map((t) => ({
+        // Most expensive first, down to the cheapest.
+        tiers: [...p.ticket_tiers].sort((x, y) => Number(y.price) - Number(x.price)).map((t) => ({
           label: t.label,
           capacity: t.pool_tier_id ? (t.pool_capped ? t.quantity_available : (p.ticket_tiers.find((x) => x.id === t.pool_tier_id)?.quantity_available ?? 0)) : t.quantity_available,
           sold: tier.get(t.id)?.sold ?? 0,

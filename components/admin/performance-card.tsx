@@ -78,6 +78,7 @@ const toDraft = (perf: Performance): Draft => ({
 });
 
 const box = "border border-ink/20 px-2 py-1.5 text-sm";
+const cap = "block text-[10px] font-bold uppercase tracking-wide text-muted mb-0.5";
 
 /** A performance and its ticket tiers. Edits are staged and saved together. */
 export function PerformanceCard({
@@ -167,26 +168,38 @@ export function PerformanceCard({
           const td = d.tiers[t.id] ?? base.tiers[t.id];
           return (
             <div key={t.id} className="border-t border-ink/10 pt-3">
-              <div className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+              <div className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 sm:items-end">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <select value={td.tier_type} onChange={(e) => setTier(t.id, { tier_type: e.target.value as TierType })} className="border border-ink/20 px-2 py-1 text-sm" aria-label="Tier type">
-                    {TYPE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.name}</option>
-                    ))}
-                  </select>
-                  <input value={td.alias} onChange={(e) => setTier(t.id, { alias: e.target.value })} placeholder={`Display name (default ${tierTypeName(td.tier_type)})`} className="border border-ink/20 px-2 py-1 text-sm" aria-label="Tier display name" />
+                  <label className="block">
+                    <span className={cap}>Type</span>
+                    <select value={td.tier_type} onChange={(e) => setTier(t.id, { tier_type: e.target.value as TierType })} className="border border-ink/20 px-2 py-1 text-sm w-full" aria-label="Tier type">
+                      {TYPE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className={cap}>Display name</span>
+                    <input value={td.alias} onChange={(e) => setTier(t.id, { alias: e.target.value })} placeholder={`Default ${tierTypeName(td.tier_type)}`} className="border border-ink/20 px-2 py-1 text-sm w-full" aria-label="Tier display name" />
+                  </label>
                 </div>
-                <input type="number" step="0.01" value={td.price} onChange={(e) => setTier(t.id, { price: e.target.value })} className="border border-ink/20 px-2 py-1 text-sm w-24 tabular-nums" aria-label="Price" />
-                <input
-                  type="number"
-                  value={td.quantity_available}
-                  onChange={(e) => setTier(t.id, { quantity_available: e.target.value })}
-                  className="border border-ink/20 px-2 py-1 text-sm w-24 tabular-nums"
-                  aria-label={td.pool_tier_id ? "Cap (optional)" : "Quantity available"}
-                  placeholder={td.pool_tier_id ? "No cap" : undefined}
-                  title={td.pool_tier_id ? "Cap for this tier inside the shared seats. Leave blank to use only the shared total." : "Total quantity available"}
-                />
-                <button onClick={() => onDeleteTier(t.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger">
+                <label className="block">
+                  <span className={cap}>Price (PHP)</span>
+                  <input type="number" step="0.01" value={td.price} onChange={(e) => setTier(t.id, { price: e.target.value })} className="border border-ink/20 px-2 py-1 text-sm w-full sm:w-24 tabular-nums" aria-label="Price" />
+                </label>
+                <label className="block">
+                  <span className={cap}>{td.pool_tier_id ? "Cap (optional)" : "Quantity"}</span>
+                  <input
+                    type="number"
+                    value={td.quantity_available}
+                    onChange={(e) => setTier(t.id, { quantity_available: e.target.value })}
+                    className="border border-ink/20 px-2 py-1 text-sm w-full sm:w-24 tabular-nums"
+                    aria-label={td.pool_tier_id ? "Cap (optional)" : "Quantity available"}
+                    placeholder={td.pool_tier_id ? "No cap" : undefined}
+                    title={td.pool_tier_id ? "Cap for this tier inside the shared seats. Leave blank to use only the shared total." : "Total quantity available"}
+                  />
+                </label>
+                <button onClick={() => onDeleteTier(t.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger sm:pb-2 text-left sm:text-center">
                   Delete
                 </button>
               </div>
