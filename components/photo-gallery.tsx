@@ -50,7 +50,7 @@ export function PhotoGallery({ photos, name }: { photos: Photo[]; name: string }
             className="relative aspect-[3/4] overflow-hidden bg-soft cursor-zoom-in group"
             aria-label={`View photo ${i + 1} of ${count}${photo.caption ? `: ${photo.caption}` : ""}`}
           >
-            <Image src={photo.photo_url} alt={photo.caption ?? ""} fill sizes="200px" className="object-cover transition-transform duration-300 group-hover:scale-105" />
+            <Image src={photo.photo_url} alt={photo.caption ?? ""} fill sizes="(min-width: 640px) 360px, 50vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
           </button>
         ))}
       </div>

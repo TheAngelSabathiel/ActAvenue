@@ -4,7 +4,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { withRefresh } from "@/lib/refresh-public";
 
-const MAX_GALLERY_PHOTOS = 8;
+const MAX_GALLERY_PHOTOS = 9;
 
 export async function GET() {
   const authClient = await createServerClient();

@@ -518,7 +518,7 @@ function GallerySection() {
     <section className="aa-card p-6 space-y-4">
       <h2 className="font-extrabold text-xl">Setcard gallery</h2>
       <p className="text-sm text-muted">
-        Extra photos shown on your public profile, beyond your main profile photo. Up to 8. Use the
+        Extra photos shown on your public profile, beyond your main profile photo. Up to 9. Use the
         arrows to reorder, or replace a photo to swap the picture and keep its place.
       </p>
 
@@ -601,13 +601,13 @@ function GallerySection() {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          disabled={uploading || photos.length >= 8}
+          disabled={uploading || photos.length >= 9}
           onClick={() => addInput.current?.click()}
           className="aa-btn aa-btn-sm"
         >
           {uploading ? "Uploading..." : "Add photo"}
         </button>
-        <span className="text-xs text-muted">{photos.length} of 8</span>
+        <span className="text-xs text-muted">{photos.length} of 9</span>
       </div>
     </section>
   );
