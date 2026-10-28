@@ -12,6 +12,7 @@ function PersonCard({ credit, sub }: { credit: ProductionCreditWithActor; sub: s
         alt={credit.profile.display_name ?? ""}
         width={56}
         height={56}
+        sizes="128px"
         className="h-14 w-14 object-cover shrink-0"
       />
       <div className="min-w-0">

@@ -28,6 +28,7 @@ export default async function ActorsDirectoryPage() {
               alt={actor.display_name ?? ""}
               width={64}
               height={64}
+              sizes="128px"
               className="h-16 w-16 object-cover shrink-0"
             />
             <div className="min-w-0">

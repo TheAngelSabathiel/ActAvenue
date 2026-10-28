@@ -99,6 +99,7 @@ export default async function ActorProfilePage({ params }: { params: Promise<{ i
           alt={actor.display_name ?? ""}
           width={160}
           height={160}
+          sizes="320px"
           className="h-40 w-40 object-cover mx-auto mb-6 border-2 border-black"
         />
         <h1 className="text-3xl mb-4">{actor.display_name ?? "Cast member"}</h1>

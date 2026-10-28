@@ -76,6 +76,7 @@ function Showing({ s }: { s: PlayShowing }) {
                 alt=""
                 width={44}
                 height={44}
+                sizes="128px"
                 className="h-11 w-11 object-cover shrink-0"
               />
               <div className="min-w-0">
