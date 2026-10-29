@@ -91,7 +91,7 @@ export function SiteHeader() {
       className="aa-navbar sticky top-0 z-50"
       style={{ ["--aa-navbar-img" as string]: `url(${IMAGES.navbar})` }}
     >
-      <div className="aa-container py-3 flex items-center justify-between">
+      <div className="aa-container xl:!max-w-[80rem] py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 font-black tracking-[0.12em] text-black" onClick={close}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -105,7 +105,7 @@ export function SiteHeader() {
           ACT AVENUE
         </Link>
         <button
-          className="md:hidden text-2xl leading-none p-1"
+          className="xl:hidden text-2xl leading-none p-1"
           aria-label="Toggle menu"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
@@ -113,12 +113,14 @@ export function SiteHeader() {
           <i className={`bi ${open ? "bi-x-lg" : "bi-list"}`} />
         </button>
         <nav
-          className={`${open ? "flex" : "hidden"} md:flex absolute md:static left-0 right-0 top-full bg-white md:bg-transparent border-b md:border-0 border-[#dee2e6] flex-col md:flex-row md:items-center gap-1 md:gap-1 px-6 py-3 md:p-0`}
+          className={`${open ? "flex" : "hidden"} xl:flex absolute xl:static left-0 right-0 top-full bg-white xl:bg-transparent border-b xl:border-0 border-[#dee2e6] flex-col xl:flex-row xl:items-center gap-1 xl:gap-1 px-6 py-3 xl:p-0`}
         >
           <Link href="/#now-showing" className="aa-nav-link" onClick={close}>Shows</Link>
           <Link href="/plays" className="aa-nav-link" onClick={close}>Plays</Link>
           <Link href="/actors" className="aa-nav-link" onClick={close}>Cast &amp; Crew</Link>
-          <Link href="/#about" className="aa-nav-link" onClick={close}>About</Link>
+          <Link href="/about" className="aa-nav-link" onClick={close}>About us</Link>
+          <Link href="/contact" className="aa-nav-link" onClick={close}>Contact us</Link>
+          <span className="my-1 h-px bg-black/15 xl:my-0 xl:mx-2 xl:h-5 xl:w-px" aria-hidden="true" />
           {email ? (
             <>
               {staffLabel && <Link href={staffLabel === "Scan" ? "/admin/scan" : "/admin/dashboard"} className="aa-nav-link" onClick={close}>{staffLabel}</Link>}
@@ -129,11 +131,11 @@ export function SiteHeader() {
           ) : (
             <>
               <button type="button" className="aa-nav-link text-left" onClick={() => { close(); setAuthMode("login"); }}>Sign In</button>
-              <button type="button" className="aa-btn aa-btn-sm aa-btn-outline md:ml-1 self-start md:self-center" onClick={() => { close(); setAuthMode("signup"); }}>Sign Up</button>
+              <button type="button" className="aa-btn aa-btn-sm aa-btn-outline xl:ml-1 self-start xl:self-center" onClick={() => { close(); setAuthMode("signup"); }}>Sign Up</button>
             </>
           )}
           {(email || cartCount > 0) && (
-          <Link href="/cart" className="aa-btn aa-btn-sm md:ml-2 mt-2 md:mt-0 self-start md:self-center" onClick={close}>
+          <Link href="/cart" className="aa-btn aa-btn-sm xl:ml-2 mt-2 xl:mt-0 self-start xl:self-center" onClick={close}>
               <i className="bi bi-cart3" /> Cart
               {cartCount > 0 && (
                 <span

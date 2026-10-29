@@ -54,7 +54,7 @@ The site runs on the Hobby plan. Image optimization is capped at 5,000 transform
 ```
 app/
   (site)/            Public site: home, shows, plays, cast and crew, cart, checkout,
-                     order and reservation pages, ticket page (t), contact, account, unsubscribe
+                     order and reservation pages, ticket page (t), about, contact, account, unsubscribe
   admin/(protected)/ Admin area, gated by a server layout
   admin/login/       Admin sign in (outside the gate on purpose)
   api/               Route handlers: account, admin, cart, checkin, checkout, cron,
@@ -102,7 +102,9 @@ Each file in `supabase/` named `migration-*.sql` is a one-time change run by han
 ## 4. Features
 
 ### Public site
-- Home page with show carousel and an About section.
+- Home page with show carousel and an About section that links to the About us page.
+- About us page (`/about`): the group's story, links to Shows, Plays and Cast & Crew, and ways to get in touch.
+- Navbar for visitors and members: Shows, Plays, Cast & Crew, About us, Contact us, then account links (Admin or Scan for staff, My Tickets, My Profile, Sign out, or Sign in and Sign up), then the Cart button. It collapses into a menu below 1280 px wide.
 - Shows: one page per published production with poster, banner, description, plays staged, cast and crew, partners, and a ticket picker. Share button on every show.
 - Ticket picker: choose a date, then tickets. Seats left update live as others buy.
 - Plays: catalog of Act Avenue plays with photo (shown uncropped up to 4:5 on the play page), tagline, writers, description, and every production that staged it, split into Now Showing and Past Showings. Share and Copy link buttons on each play.
@@ -252,6 +254,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- About us page, Contact us in the navbar, and a reordered navbar (browse, info, account, cart).
 - Contact us page that emails the team, plus a Data Privacy Notice (RA 10173) with required consent at checkout and on the contact form, and a notice link in the footer.
 - Shared seat pools: a tier can draw seats from a main tier, with an optional own cap.
 - Gallery limit raised from 8 to 9. Sharper thumbnails and headshots.

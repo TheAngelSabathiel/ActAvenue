@@ -82,10 +82,12 @@ export default async function HomePage() {
               performances by providing an <strong>avenue</strong> and a <strong>safe space</strong> for artists where they can freely discover and
               hone their full potential.
             </p>
+            <Link href="/about" className="font-bold underline">Read more about us</Link>
           </div>
           <div id="contact">
             <h2 className="text-2xl mb-3">Get In Touch</h2>
             <a href={`mailto:${CONTACT_EMAIL}`} className="font-bold">{CONTACT_EMAIL}</a>
+            <p className="mt-3 mb-0"><Link href="/contact" className="aa-btn aa-btn-sm">Contact us</Link></p>
             <SocialLinks className="mt-4" />
           </div>
         </div>
