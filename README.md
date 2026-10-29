@@ -133,7 +133,7 @@ Each file in `supabase/` named `migration-*.sql` is a one-time change run by han
 
 ### Admin tools
 - Dashboard: revenue, tickets sold, pending payments, online versus walk-in, per show seat bars, attendance and no-shows, sales by booking day, bookings by status, and promo use. Tickets are listed most expensive first. The Pending card opens Pending Review reservations.
-- Reservations: filter by status, approve, reject, reopen, edit quantities, review ID uploads, resend the confirmation email, transfer to another show, delete.
+- Reservations: search by name, email, phone, reference code or order code, filter by production and show, status tabs with counts, approve, reject, reopen, edit quantities, review ID uploads, resend the confirmation email, transfer to another show, delete.
 - New reservation: staff can book on behalf of a buyer.
 - Sales: summary by production, show and ticket type. CSV exports.
 - Productions: details, media, payment details, performances and tiers, plays staged, credits, partners, publish status. Staged "Save changes" bar on edit forms.
@@ -254,6 +254,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Reservations search and production and show filters, status tab counts, and a mobile fix so the status tabs wrap instead of overflowing.
 - About us page, Contact us in the navbar, and a reordered navbar (browse, info, account, cart).
 - Contact us page that emails the team, plus a Data Privacy Notice (RA 10173) with required consent at checkout and on the contact form, and a notice link in the footer.
 - Shared seat pools: a tier can draw seats from a main tier, with an optional own cap.

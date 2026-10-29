@@ -8,6 +8,8 @@ import { useAdminAccess } from "@/components/admin/access-context";
 import { QuantityEditor } from "@/components/admin/quantity-editor";
 import { TransferDialog } from "@/components/admin/transfer-dialog";
 import { isTransferred } from "@/lib/transfer";
+import { formatDateTime } from "@/lib/datetime";
+import { sortByName } from "@/lib/sort";
 
 type Row = {
   id: string;
@@ -51,15 +53,73 @@ export default function AdminReservationsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [transferring, setTransferring] = useState<Row | null>(null);
 
+  // Search and filters.
+  const [search, setSearch] = useState("");
+  const [q, setQ] = useState("");
+  const [productionId, setProductionId] = useState("");
+  const [performanceId, setPerformanceId] = useState("");
+  const [productions, setProductions] = useState<{ id: string; title: string }[]>([]);
+  const [shows, setShows] = useState<{ id: string; label: string; datetime: string }[]>([]);
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetch("/api/admin/productions")
+      .then((r) => r.json())
+      .then((d) => setProductions(sortByName<{ id: string; title: string }>(d.productions ?? [], (p) => p.title)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!productionId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShows([]);
+      return;
+    }
+    let alive = true;
+    fetch(`/api/admin/productions/${productionId}/performances`)
+      .then((r) => r.json())
+      .then((d) => alive && setShows(d.performances ?? []))
+      .catch(() => alive && setShows([]));
+    return () => {
+      alive = false;
+    };
+  }, [productionId]);
+
+  // Wait for a pause in typing before searching.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const next = search.trim();
+      if (next !== q) {
+        setQ(next);
+        setPage(1);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search, q]);
+
+  const filtered = !!(q || productionId || performanceId);
+  function clearFilters() {
+    setSearch("");
+    setQ("");
+    setProductionId("");
+    setPerformanceId("");
+    setPage(1);
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/reservations?status=${tab}&page=${page}&pageSize=${PAGE_SIZE}`);
+    const params = new URLSearchParams({ status: tab, page: String(page), pageSize: String(PAGE_SIZE) });
+    if (q) params.set("q", q);
+    if (productionId) params.set("production_id", productionId);
+    if (performanceId) params.set("performance_id", performanceId);
+    const res = await fetch(`/api/admin/reservations?${params}`);
     const data = await res.json();
+    setTabCounts(data.tabCounts ?? {});
     setRows(data.reservations ?? []);
     setTotalPages(data.pagination?.totalPages ?? 1);
     setTotal(data.pagination?.total ?? 0);
     setLoading(false);
-  }, [tab, page]);
+  }, [tab, page, q, productionId, performanceId]);
 
   useEffect(() => {
     // Refetch on mount and whenever the status tab or page changes - intentional.
@@ -141,18 +201,65 @@ export default function AdminReservationsPage() {
     <div>
       <h1 className="font-extrabold text-3xl mb-6">Reservations</h1>
 
-      <div className="flex gap-2 mb-6">
+      <div className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr] mb-4">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search name, email, phone or code"
+          aria-label="Search reservations"
+          className="border border-ink/20 px-3 py-2 text-sm w-full min-w-0"
+        />
+        <select
+          value={productionId}
+          onChange={(e) => {
+            setProductionId(e.target.value);
+            setPerformanceId("");
+            setPage(1);
+          }}
+          aria-label="Filter by production"
+          className="border border-ink/20 px-3 py-2 text-sm w-full min-w-0"
+        >
+          <option value="">All productions</option>
+          {productions.map((p) => (
+            <option key={p.id} value={p.id}>{p.title}</option>
+          ))}
+        </select>
+        <select
+          value={performanceId}
+          onChange={(e) => {
+            setPerformanceId(e.target.value);
+            setPage(1);
+          }}
+          disabled={!productionId}
+          aria-label="Filter by show"
+          className="border border-ink/20 px-3 py-2 text-sm w-full min-w-0 disabled:opacity-50"
+        >
+          <option value="">{productionId ? "All shows" : "Pick a production first"}</option>
+          {shows.map((s) => (
+            <option key={s.id} value={s.id}>{s.label} - {formatDateTime(s.datetime)}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         {STATUS_TABS.map((s) => (
           <button
             key={s}
             onClick={() => selectTab(s)}
-            className={`px-3 py-1.5  text-xs font-bold uppercase tracking-wide border ${
+            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide border ${
               tab === s ? "bg-danger text-paper border-danger" : "border-ink/20 text-ink/60"
             }`}
           >
             {s.replace("_", " ")}
+            {tabCounts[s] !== undefined && <span className="ml-1.5 tabular-nums opacity-80">{tabCounts[s]}</span>}
           </button>
         ))}
+        {filtered && (
+          <button onClick={clearFilters} className="text-xs font-bold uppercase underline ml-1">
+            Clear search
+          </button>
+        )}
       </div>
 
       {loading && <Spinner className="!py-12" />}
@@ -301,7 +408,7 @@ export default function AdminReservationsPage() {
         ))}
 
         {!loading && rows.length === 0 && (
-          <p className="text-muted text-sm">No reservations in this view.</p>
+          <p className="text-muted text-sm">{filtered ? "No reservations match your search. Try another status tab or clear the search." : "No reservations in this view."}</p>
         )}
       </div>
 
