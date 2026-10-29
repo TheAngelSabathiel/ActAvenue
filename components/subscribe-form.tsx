@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { PrivacyConsent } from "@/components/privacy-notice";
 
 /** Footer sign up for show news. */
 export function SubscribeForm() {
   const [email, setEmail] = useState("");
   const [trap, setTrap] = useState("");
-  const [agreed, setAgreed] = useState(false);
   const [state, setState] = useState<"idle" | "working" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +17,7 @@ export function SubscribeForm() {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, website: trap, consent: agreed }),
+        body: JSON.stringify({ email, website: trap }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Could not sign you up.");
@@ -50,9 +48,6 @@ export function SubscribeForm() {
         <button disabled={state === "working"} className="aa-btn aa-btn-light aa-btn-sm shrink-0">
           {state === "working" ? "..." : "Subscribe"}
         </button>
-      </div>
-      <div className="mt-3 text-xs" onChange={(e) => setAgreed((e.target as HTMLInputElement).checked)}>
-        <PrivacyConsent name="privacy" light />
       </div>
       {error && <p className="text-sm text-danger font-bold mt-2 mb-0">{error}</p>}
     </form>

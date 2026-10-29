@@ -225,8 +225,8 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 ---
 
 ### Data privacy
-- The Data Privacy Notice follows the Data Privacy Act of 2012 (RA 10173). It opens in a centered box (same style as sign in) from the checkout, the contact form, the footer sign up and the footer link. The text lives in `components/privacy-notice.tsx`.
-- A consent box with a link to the notice is required on the contact form, at checkout and on the footer newsletter sign up. The server also rejects submissions without it.
+- The Data Privacy Notice follows the Data Privacy Act of 2012 (RA 10173). It opens in a centered box (same style as sign in) from the checkout, the contact form and the footer link. The text lives in `components/privacy-notice.tsx`.
+- A consent box with a link to the notice is required on the contact form and at checkout. The server also rejects submissions without it. The footer carries a link to the notice next to Contact us.
 - The notice should be reviewed by the organization's legal adviser or data protection officer before relying on it.
 
 ## 6. Performance and caching
@@ -252,7 +252,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
-- Contact us page that emails the team, plus a Data Privacy Notice (RA 10173) with required consent at checkout, on the contact form and on the footer newsletter sign up.
+- Contact us page that emails the team, plus a Data Privacy Notice (RA 10173) with required consent at checkout and on the contact form, and a notice link in the footer.
 - Shared seat pools: a tier can draw seats from a main tier, with an optional own cap.
 - Gallery limit raised from 8 to 9. Sharper thumbnails and headshots.
 - Play tagline and Share / Copy link buttons on play pages.

@@ -48,7 +48,7 @@ export function PrivacyModal({ open, onClose }: { open: boolean; onClose: () => 
         onClick={onClose}
       />
       <div
-        className={`relative w-full max-w-2xl bg-white text-black border-2 border-black shadow-2xl transition-all duration-300 ease-out max-h-[calc(100dvh-2rem)] flex flex-col ${
+        className={`relative w-full max-w-2xl bg-white text-black text-left border-2 border-black shadow-2xl transition-all duration-300 ease-out max-h-[calc(100dvh-2rem)] flex flex-col ${
           shown ? "translate-y-0 opacity-100" : "-translate-y-24 opacity-0"
         }`}
       >
@@ -148,16 +148,16 @@ export function PrivacyLink({ children = "Data Privacy Notice", className = "und
 }
 
 /** Required consent tick box with a clickable link to the full notice. */
-export function PrivacyConsent({ name = "privacy", required = true, light = false }: { name?: string; required?: boolean; light?: boolean }) {
+export function PrivacyConsent({ name = "privacy", required = true }: { name?: string; required?: boolean }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   return (
     <>
-      <label className={`flex items-start gap-2 text-sm ${light ? "text-white text-left" : ""}`}>
+      <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" name={name} required={required} className="mt-1" />
         <span>
           I have read the{" "}
-          <button type="button" onClick={() => setOpen(true)} className={`underline font-bold ${light ? "text-white" : ""}`}>
+          <button type="button" onClick={() => setOpen(true)} className="underline font-bold">
             Data Privacy Notice
           </button>{" "}
           and I agree to the collection and use of my personal information as described, in line with the Data Privacy Act of 2012.
