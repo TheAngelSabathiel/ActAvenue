@@ -31,7 +31,7 @@ export function SubscribeForm() {
   if (state === "done") return <p className="text-sm mb-0">You are on the list. See you at the next show.</p>;
   return (
     <form onSubmit={submit} className="max-w-sm mx-auto">
-      <p className="aa-label opacity-75 mb-2">Get news of the next show</p>
+      <p className="aa-label opacity-75 mb-2">Get the latest news on the next shows.</p>
       <div className="flex gap-2">
         <input
           type="email"
