@@ -54,7 +54,7 @@ The site runs on the Hobby plan. Image optimization is capped at 5,000 transform
 ```
 app/
   (site)/            Public site: home, shows, plays, cast and crew, cart, checkout,
-                     order and reservation pages, ticket page (t), account, unsubscribe
+                     order and reservation pages, ticket page (t), contact, account, unsubscribe
   admin/(protected)/ Admin area, gated by a server layout
   admin/login/       Admin sign in (outside the gate on purpose)
   api/               Route handlers: account, admin, cart, checkin, checkout, cron,
@@ -108,7 +108,8 @@ Each file in `supabase/` named `migration-*.sql` is a one-time change run by han
 - Plays: catalog of Act Avenue plays with photo (shown uncropped up to 4:5 on the play page), tagline, writers, description, and every production that staged it, split into Now Showing and Past Showings. Share and Copy link buttons on each play.
 - Cast and Crew: public profiles with photo, formatted bio, links, resume and reel, gallery of up to 9 photos, and production history.
 - Link previews: shows, plays and profiles carry share metadata for Facebook, Messenger, Viber, X and similar.
-- Footer: social links, tagline "Ang Paborito Mong Tambayan.", and a mailing list sign up.
+- Footer: social links, tagline "Ang Paborito Mong Tambayan.", mailing list sign up, and links to Contact us and the Data Privacy Notice.
+- Contact us page (`/contact`): name, email, optional phone, subject and message. Messages are emailed to jomari.jacinto@actavenue.org with the sender's address as the reply-to. Includes a hidden bot trap and a limit of 5 messages an hour per visitor.
 
 ### Buying tickets
 - Cart works for guests and signed in people. The cart icon shows for signed in visitors, or for guests with items.
@@ -117,7 +118,7 @@ Each file in `supabase/` named `migration-*.sql` is a one-time change run by han
 - Discounted tiers can require an ID upload (Student, PWD, Senior) before the ticket is added to the cart. IDs go to a private bucket.
 - Shared seats: a tier can draw seats from a main tier on the same show (for example Regular 50 with Discounted drawing from it). The linked tier can have its own cap or use only the shared total.
 - Promo codes: percent or fixed amount off per ticket, limited by production, ticket type, expiry and number of uses. One code per reservation. Codes do not stack with time-limited tier pricing.
-- Checkout: buyer details, optional mailing list opt-in, and payment instructions (GCash or bank, with QR) set per production. Seats are held for 24 hours while payment is reviewed.
+- Checkout: buyer details, a required Data Privacy consent box, optional mailing list opt-in, and payment instructions (GCash or bank, with QR) set per production. Seats are held for 24 hours while payment is reviewed.
 - Payment proof upload with re-upload if it is rejected. A reminder email goes out before the hold ends. Expired holds release seats.
 - After approval the buyer gets an email with an e-ticket and QR code, and a ticket page they can open on the day.
 - Guests get a prompt to create an account after checkout. Signed in buyers see "My tickets".
@@ -191,7 +192,7 @@ Production staff roles (set per production by an admin, on top of any account ro
 Managers and FOH only reach productions they are assigned to. Admins reach all.
 
 ### Visitor
-Can: browse shows, plays and cast and crew, build a cart, check out as a guest, open an order or ticket link from an email, subscribe to the mailing list.
+Can: browse shows, plays and cast and crew, build a cart, check out as a guest, open an order or ticket link from an email, subscribe to the mailing list, send a message through Contact us.
 Cannot: see "My tickets", edit a profile, or enter the admin area.
 
 ### Account (signed in, not listed)
@@ -223,6 +224,11 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 ---
 
+### Data privacy
+- The Data Privacy Notice follows the Data Privacy Act of 2012 (RA 10173). It opens in a centered box (same style as sign in) from the checkout, the contact form, the footer sign up and the footer link. The text lives in `components/privacy-notice.tsx`.
+- A consent box with a link to the notice is required on the contact form, at checkout and on the footer newsletter sign up. The server also rejects submissions without it.
+- The notice should be reviewed by the organization's legal adviser or data protection officer before relying on it.
+
 ## 6. Performance and caching
 
 - Public pages (home, shows, plays, cast and crew) read through a cookie-free Supabase client so they can be cached. They revalidate every 60 seconds.
@@ -238,7 +244,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 - Admin and staff routes check access on the server with helpers in `lib/admin-auth.ts` (`requireStaff`, `requireProduction`, `requireAnyAccess`, `requireAdminPage`). UI hiding is never the only gate.
 - The service role key is used only in server code.
 - Uploaded IDs and payment proofs sit in non-public buckets or behind staff-only routes.
-- Mailing list sign up has a hidden honeypot field. Cron endpoints require `CRON_SECRET`.
+- Mailing list sign up and the contact form have a hidden honeypot field, and the contact form is rate limited. Cron endpoints require `CRON_SECRET`.
 
 ---
 
@@ -246,6 +252,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Contact us page that emails the team, plus a Data Privacy Notice (RA 10173) with required consent at checkout, on the contact form and on the footer newsletter sign up.
 - Shared seat pools: a tier can draw seats from a main tier, with an optional own cap.
 - Gallery limit raised from 8 to 9. Sharper thumbnails and headshots.
 - Play tagline and Share / Copy link buttons on play pages.

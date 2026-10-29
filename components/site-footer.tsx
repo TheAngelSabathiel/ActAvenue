@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { SubscribeForm } from "@/components/subscribe-form";
+import { PrivacyLink } from "@/components/privacy-notice";
 
 export const CONTACT_EMAIL = "actavenue@gmail.com";
 
@@ -36,6 +38,10 @@ export function SiteFooter() {
         <SocialLinks className="justify-center !text-3xl !gap-6 mb-6" />
         <div className="mb-6"><SubscribeForm /></div>
         <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm opacity-75 hover:opacity-100">{CONTACT_EMAIL}</a>
+        <p className="text-sm mt-3 mb-0 flex justify-center gap-5">
+          <Link href="/contact" className="opacity-75 hover:opacity-100 underline">Contact us</Link>
+          <PrivacyLink className="opacity-75 hover:opacity-100 underline">Data Privacy Notice</PrivacyLink>
+        </p>
         <p className="text-xs opacity-50 mt-6 mb-0">© 2026 Act Avenue | Developed by TheAngelSabathiel</p>
       </div>
     </footer>

@@ -7,6 +7,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   // Hidden field that only bots fill in.
   if (body.website) return NextResponse.json({ ok: true });
+  if (body.consent !== true) return NextResponse.json({ error: "Please tick the Data Privacy box to subscribe." }, { status: 400 });
   const email = cleanEmail(body.email);
   if (!email) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   try {

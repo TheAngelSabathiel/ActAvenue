@@ -1,6 +1,7 @@
 "use client";
 
 import { FilePicker } from "@/components/file-picker";
+import { PrivacyConsent } from "@/components/privacy-notice";
 
 import { toast } from "@/lib/toast";
 import { useToastOn } from "@/lib/use-toast-on";
@@ -175,6 +176,7 @@ function CheckoutForm() {
 
         {error && <p className="text-sm text-danger font-bold mb-0">{error}</p>}
 
+        <PrivacyConsent />
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="subscribe" className="mt-1" />
           Email me about upcoming Act Avenue shows. You can unsubscribe anytime.

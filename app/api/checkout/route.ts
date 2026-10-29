@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
   // Email is required regardless of whether the buyer is signed in - an
   // account just links a reservation to a buyer's history, it never
   // replaces the need for an email to send the booking/e-ticket to.
+  if (formData.get("privacy") !== "on") {
+    return NextResponse.json({ error: "Please tick the Data Privacy box to continue." }, { status: 400 });
+  }
   if (!buyer_name || !buyer_email) {
     return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
   }

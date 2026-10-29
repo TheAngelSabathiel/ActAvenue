@@ -355,3 +355,35 @@ export async function sendBulkEmails(messages: BulkMessage[]): Promise<number> {
   }
   return sent;
 }
+
+/** Where contact form messages go. */
+export const CONTACT_INBOX = "jomari.jacinto@actavenue.org";
+
+/** A message from the public contact form. Replying to it answers the sender. */
+export async function sendContactEmail(m: { name: string; email: string; phone: string; subject: string; message: string }) {
+  const when = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" });
+  const { error } = await getResend().emails.send({
+    from: FROM,
+    to: CONTACT_INBOX,
+    replyTo: m.email,
+    subject: `Contact form: ${m.subject}`,
+    text: `New message from the Act Avenue contact form.
+
+Name: ${m.name}
+Email: ${m.email}
+Phone: ${m.phone || "not given"}
+Subject: ${m.subject}
+
+${m.message}
+
+Data Privacy consent: given on the form, ${when} (PHT).`,
+    html: `<p>New message from the Act Avenue contact form.</p>
+<p><strong>Name:</strong> ${escapeHtml(m.name)}<br>
+<strong>Email:</strong> ${escapeHtml(m.email)}<br>
+<strong>Phone:</strong> ${escapeHtml(m.phone || "not given")}<br>
+<strong>Subject:</strong> ${escapeHtml(m.subject)}</p>
+<p style="white-space:pre-line">${escapeHtml(m.message)}</p>
+<p style="color:#666;font-size:12px">Data Privacy consent: given on the form, ${when} (PHT).</p>`,
+  });
+  if (error) throw new Error(error.message);
+}
