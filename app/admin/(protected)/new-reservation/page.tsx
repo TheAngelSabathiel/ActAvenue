@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 type Production = { id: string; title: string; slug: string };
 type Performance = { id: string; label: string; datetime: string };
 type Tier = { id: string; label: string; price: number };
+type Preview = { valid: boolean; reason?: string; pricing?: { subtotal: number; discountAmount: number; total: number } };
 
 export default function NewReservationPage() {
   const [productions, setProductions] = useState<Production[]>([]);
@@ -23,6 +24,31 @@ export default function NewReservationPage() {
   const [buyerPhone, setBuyerPhone] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [proof, setProof] = useState<File | null>(null);
+  const [fileKey, setFileKey] = useState(0);
+
+  const tier = tiers.find((t) => t.id === tierId);
+  const subtotal = tier ? tier.price * quantity : 0;
+
+  useEffect(() => {
+    const code = promoCode.trim();
+    if (!code || !tierId || !productionId || quantity < 1) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPreview(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      const res = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, production_id: productionId, lines: [{ ticket_tier_id: tierId, quantity }] }),
+      });
+      setPreview(res.ok ? await res.json() : null);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [promoCode, tierId, quantity, productionId]);
 
   useEffect(() => {
     fetch("/api/admin/productions")
@@ -49,18 +75,16 @@ export default function NewReservationPage() {
     setSubmitting(true);
     setMessage(null);
 
-    const res = await fetch("/api/admin/reservations/manual", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        performance_id: performanceId,
-        buyer_name: buyerName,
-        buyer_email: buyerEmail || null,
-        buyer_phone: buyerPhone || null,
-        status,
-        items: [{ ticket_tier_id: tierId, quantity }],
-      }),
-    });
+    const fd = new FormData();
+    fd.set("performance_id", performanceId);
+    fd.set("buyer_name", buyerName);
+    fd.set("buyer_email", buyerEmail);
+    fd.set("buyer_phone", buyerPhone);
+    fd.set("status", status);
+    fd.set("items", JSON.stringify([{ ticket_tier_id: tierId, quantity }]));
+    if (promoCode.trim()) fd.set("promo_code", promoCode.trim());
+    if (proof) fd.set("payment_proof", proof);
+    const res = await fetch("/api/admin/reservations/manual", { method: "POST", body: fd });
     const data = await res.json();
     setSubmitting(false);
 
@@ -75,6 +99,11 @@ export default function NewReservationPage() {
     setBuyerEmail("");
     setBuyerPhone("");
     setQuantity(1);
+    setPromoCode("");
+    setPreview(null);
+    setProof(null);
+    setFileKey((k) => k + 1);
+    if (data.proofWarning) toast.error(data.proofWarning);
   }
 
   return (
@@ -158,6 +187,38 @@ export default function NewReservationPage() {
           onChange={(e) => setBuyerPhone(e.target.value)}
           className="w-full border border-ink/20  px-3 py-2"
         />
+
+        <input
+          placeholder="Promo code (optional)"
+          value={promoCode}
+          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+          className="w-full border border-ink/20 px-3 py-2 uppercase"
+        />
+        {preview && !preview.valid && <p className="text-sm text-danger">{preview.reason}</p>}
+
+        <label className="block text-sm">
+          <span className="block text-xs font-bold uppercase text-muted mb-1">Proof of payment (optional)</span>
+          <input
+            key={fileKey}
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={(e) => setProof(e.target.files?.[0] ?? null)}
+            className="w-full text-sm"
+          />
+        </label>
+
+        {tier && (
+          <div className="aa-card p-3 text-sm space-y-0.5">
+            <div className="flex justify-between"><span>Subtotal</span><span>₱{subtotal.toFixed(2)}</span></div>
+            {preview?.valid && preview.pricing && (
+              <div className="flex justify-between text-green-700"><span>Discount</span><span>-₱{preview.pricing.discountAmount.toFixed(2)}</span></div>
+            )}
+            <div className="flex justify-between font-black">
+              <span>Total</span>
+              <span>₱{(preview?.valid && preview.pricing ? preview.pricing.total : subtotal).toFixed(2)}</span>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2">

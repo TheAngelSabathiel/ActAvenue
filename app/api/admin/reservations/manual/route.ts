@@ -5,16 +5,25 @@ import { ensureTicketQrs } from "@/lib/tickets";
 import { sendApprovedEmail, sendBookingReceivedEmail } from "@/lib/email/send";
 import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
 import { withRefresh } from "@/lib/refresh-public";
+import { incrementPromoUsage } from "@/lib/inventory";
+import { calculatePricing } from "@/lib/pricing";
+import { uploadPaymentProof } from "@/lib/payment-proof";
 
 async function handlePOST(req: NextRequest) {
-  const {
-    performance_id,
-    buyer_name,
-    buyer_email, // optional - walk-ins may have none
-    buyer_phone,
-    status, // "confirmed" | "pending_review" - admin decides
-    items, // [{ ticket_tier_id, quantity }]
-  } = await req.json();
+  const form = await req.formData();
+  const performance_id = form.get("performance_id") as string | null;
+  const buyer_name = form.get("buyer_name") as string | null;
+  const buyer_email = (form.get("buyer_email") as string | null) || null; // optional - walk-ins may have none
+  const buyer_phone = (form.get("buyer_phone") as string | null) || null;
+  const status = form.get("status") as string | null; // "confirmed" | "pending_review" - admin decides
+  const promoCode = ((form.get("promo_code") as string | null) ?? "").toUpperCase().trim();
+  const proofFile = form.get("payment_proof") as File | null;
+  let items: { ticket_tier_id: string; quantity: number }[] = [];
+  try {
+    items = JSON.parse((form.get("items") as string) || "[]");
+  } catch {
+    /* handled below */
+  }
 
   if (!performance_id || !buyer_name || !items?.length || !status) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
@@ -51,11 +60,29 @@ async function handlePOST(req: NextRequest) {
       return NextResponse.json({ error: "Ticket tier not found" }, { status: 404 });
     }
   }
-  const subtotal = items.reduce(
-    (sum: number, item: { ticket_tier_id: string; quantity: number }) =>
-      sum + tierMap.get(item.ticket_tier_id)!.price * item.quantity,
-    0
+  if (items.some((i) => !Number.isInteger(i.quantity) || i.quantity < 1)) {
+    return NextResponse.json({ error: "Quantity must be at least 1." }, { status: 400 });
+  }
+
+  // Optional promo code, same rules as public checkout.
+  let promo = null;
+  if (promoCode) {
+    const { data } = await db.from("promo_codes").select("*").eq("code", promoCode).maybeSingle();
+    if (!data) return NextResponse.json({ error: "Promo code not found." }, { status: 400 });
+    promo = data;
+  }
+  const pricing = calculatePricing(
+    items.map((i) => ({ ticket_tier: tierMap.get(i.ticket_tier_id)!, quantity: i.quantity })),
+    promo,
+    production.id
   );
+  if (promo && pricing.discountAmount <= 0) {
+    return NextResponse.json(
+      { error: pricing.rejectedPromoReason ?? "This code doesn't apply to the selected tickets." },
+      { status: 400 }
+    );
+  }
+  const { subtotal, discountAmount, total } = pricing;
 
   // Atomic hold per item (check + increment in one DB statement), same
   // pattern as public checkout - a confirmed walk-in occupies a real seat,
@@ -105,8 +132,10 @@ async function handlePOST(req: NextRequest) {
       buyer_email: buyer_email || null,
       buyer_phone: buyer_phone || null,
       subtotal,
-      discount_amount: 0,
-      total: subtotal,
+      discount_amount: discountAmount,
+      total,
+      promo_code_id: promo ? promo.id : null,
+      promo_uses: promo ? pricing.promoUses : null,
       payment_status: status,
       booking_source: "admin_manual",
       hold_expires_at: status === "pending_review"
@@ -119,6 +148,29 @@ async function handlePOST(req: NextRequest) {
   if (reservationError || !reservation) {
     await releaseTicketTierHolds(db, heldSoFar);
     return NextResponse.json({ error: reservationError?.message }, { status: 500 });
+  }
+
+  if (promo) {
+    for (let n = 0; n < Math.max(1, pricing.promoUses); n++) {
+      const { error: promoError } = await incrementPromoUsage(db, promo.id);
+      if (promoError) {
+        console.error(`Promo usage increment failed for ${promo.code}:`, promoError.message);
+        break;
+      }
+    }
+  }
+
+  // Optional payment proof. The booking already exists, so a failed upload is
+  // reported but does not undo it; staff can add the proof from Reservations.
+  let proofWarning: string | undefined;
+  if (proofFile && proofFile.size) {
+    const up = await uploadPaymentProof(db, reservation.id, proofFile);
+    if (up.url) {
+      await db.from("reservations").update({ payment_proof_url: up.url }).eq("id", reservation.id);
+      reservation.payment_proof_url = up.url;
+    } else {
+      proofWarning = `Reservation created, but the proof was not saved: ${up.error}`;
+    }
   }
 
   const reservationItemsPayload = items.map((i: { ticket_tier_id: string; quantity: number }) => ({
@@ -191,7 +243,7 @@ async function handlePOST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ reservation });
+  return NextResponse.json({ reservation, proofWarning });
 }
 
 export const POST = withRefresh(handlePOST);

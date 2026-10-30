@@ -134,7 +134,7 @@ Each file in `supabase/` named `migration-*.sql` is a one-time change run by han
 ### Admin tools
 - Dashboard: revenue, tickets sold, pending payments, online versus walk-in, per show seat bars, attendance and no-shows, sales by booking day, bookings by status, and promo use. Tickets are listed most expensive first. The Pending card opens Pending Review reservations.
 - Reservations: search by name, email, phone, reference code or order code, filter by production and show, status tabs with counts, approve, reject, reopen, edit quantities, review ID uploads, resend the confirmation email, transfer to another show, delete.
-- New reservation: staff can book on behalf of a buyer.
+- New reservation: staff can book on behalf of a buyer, apply a promo code (with a live total preview) and attach a proof of payment. Pending and confirmed reservations get an Add proof or Replace proof link in Reservations.
 - Sales: summary by production, show and ticket type. CSV exports.
 - Productions: details, media, payment details, performances and tiers, plays staged, credits, partners, publish status. Staged "Save changes" bar on edit forms.
 - Plays: catalog with photo, tagline, description and writers. Adding a writer to a play credits them automatically on any production that stages it.
@@ -254,6 +254,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Manual reservations: optional promo code with total preview, optional proof of payment upload, and Add or Replace proof on pending and confirmed reservations.
 - One ID per discounted ticket: the ID upload asks for as many IDs as tickets, checkout checks the count, and staff can open each ID.
 - Reservations search and production and show filters, status tab counts, and a mobile fix so the status tabs wrap instead of overflowing.
 - About us page, Contact us in the navbar, and a reordered navbar (browse, info, account, cart).

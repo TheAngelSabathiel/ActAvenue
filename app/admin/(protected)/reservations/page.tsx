@@ -133,6 +133,22 @@ export default function AdminReservationsPage() {
     setPage(1); // reset to first page whenever the filter changes
   }
 
+  async function uploadProof(id: string, file: File | undefined) {
+    if (!file) return;
+    setBusyId(id);
+    const fd = new FormData();
+    fd.set("payment_proof", file);
+    const res = await fetch(`/api/admin/reservations/${id}/proof`, { method: "POST", body: fd });
+    const data = await res.json();
+    setBusyId(null);
+    if (!res.ok) {
+      toast.error(data.error ?? "Could not save the proof.");
+      return;
+    }
+    toast.success("Proof of payment saved.");
+    load();
+  }
+
   async function act(id: string, action: "approve" | "reject" | "reopen" | "resend-email") {
     setBusyId(id);
     const reason =
@@ -324,6 +340,20 @@ export default function AdminReservationsPage() {
                   >
                     View proof
                   </a>
+                )}
+                {["pending_review", "confirmed"].includes(r.payment_status) && !isTransferred(r.rejection_reason) && (
+                  <label className={`text-xs font-bold uppercase underline cursor-pointer ${busyId === r.id ? "opacity-50 pointer-events-none" : ""}`}>
+                    {r.payment_proof_url ? "Replace proof" : "Add proof"}
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="sr-only"
+                      onChange={(e) => {
+                        uploadProof(r.id, e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
                 )}
                 <div className="flex flex-wrap justify-start sm:justify-end gap-2">
                   {r.payment_status === "pending_review" && (
