@@ -29,7 +29,9 @@ export function PerformancePicker({
   const [qty, setQty] = useState<Record<string, number>>({});
   const [idFor, setIdFor] = useState<{ tierId: string; performanceId: string } | null>(null);
   const qtyOf = (tier: TicketTier & { remaining?: number }) => Math.min(Math.max(1, qty[tier.id] ?? 1), Math.max(1, tier.remaining ?? 1));
-  const [idFile, setIdFile] = useState<File | null>(null);
+  // One ID per ticket: a slot for each ticket being added.
+  const [idFiles, setIdFiles] = useState<(File | null)[]>([]);
+  const slot = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Record<string, "idle" | "adding" | "added" | "error">>({});
 
@@ -111,17 +113,17 @@ export function PerformancePicker({
 
   function startAdd(tier: TicketTier, performanceId: string) {
     if (tier.require_id) {
-      setIdFile(null);
+      setIdFiles(Array(qtyOf(tier as never)).fill(null));
       setIdFor({ tierId: tier.id, performanceId });
     } else {
       void handleAdd(tier.id, performanceId, null, qtyOf(tier as never));
     }
   }
 
-  async function handleAdd(tierId: string, performanceId: string, file?: File | null, quantity = 1) {
+  async function handleAdd(tierId: string, performanceId: string, files?: File[] | null, quantity = 1) {
     setStatus((s) => ({ ...s, [tierId]: "adding" }));
     try {
-      await addItem(tierId, performanceId, quantity, file);
+      await addItem(tierId, performanceId, quantity, files);
       setStatus((s) => ({ ...s, [tierId]: "idle" }));
       setIdFor(null);
       const perf = performances.find((p) => p.id === performanceId);
@@ -138,7 +140,7 @@ export function PerformancePicker({
       // The ticket needs an ID we do not have yet: ask for it instead of failing.
       if (err instanceof CartError && err.code === "id_required") {
         setStatus((s) => ({ ...s, [tierId]: "idle" }));
-        setIdFile(null);
+        setIdFiles(Array(quantity).fill(null));
         setIdFor({ tierId, performanceId });
         return;
       }
@@ -160,42 +162,58 @@ export function PerformancePicker({
       {added && <AddedToCartModal item={added} onClose={() => setAdded(null)} />}
       {idFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setIdFor(null)} role="presentation">
-          <div role="dialog" aria-modal="true" className="aa-card w-full max-w-md p-8 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <p className="aa-label text-muted mb-0">Step 3: upload your ID</p>
-            <p className="font-black text-xl mb-0">Discounted ticket</p>
+          <div role="dialog" aria-modal="true" className="aa-card w-full max-w-md p-6 sm:p-8 space-y-4 max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <p className="aa-label text-muted mb-0">Step 3: upload your {idFiles.length === 1 ? "ID" : "IDs"}</p>
+            <p className="font-black text-xl mb-0">Discounted ticket{idFiles.length === 1 ? "" : "s"}</p>
             <p className="mb-0">{ID_INSTRUCTION}</p>
-            <p className="text-xs text-muted mb-0">Photo or PDF, up to 8 MB. Only our team can see it.</p>
+            {idFiles.length > 1 && (
+              <p className="text-sm font-bold mb-0">Each ticket needs its own ID. Upload {idFiles.length} IDs, one per ticket.</p>
+            )}
+            <p className="text-xs text-muted mb-0">Photo or PDF, up to 8 MB each. Only our team can see them.</p>
             <input
               ref={fileInput}
               type="file"
               accept="image/*,application/pdf"
               onChange={(e) => {
-                setIdFile(e.target.files?.[0] ?? null);
+                const f = e.target.files?.[0] ?? null;
+                const i = slot.current;
+                setIdFiles((list) => list.map((x, n) => (n === i ? f : x)));
                 e.target.value = "";
               }}
               className="hidden"
               aria-label="Upload ID"
             />
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => fileInput.current?.click()} className="aa-btn aa-btn-outline aa-btn-sm shrink-0">
-                <i className={`bi ${idFile ? "bi-arrow-repeat" : "bi-upload"}`} /> {idFile ? "Replace file" : "Choose file"}
-              </button>
-              {!idFile && <span className="text-sm text-muted">No file chosen</span>}
+            <div className="space-y-3">
+              {idFiles.map((file, i) => (
+                <div key={i} className="border border-ink/15 p-3 space-y-2">
+                  {idFiles.length > 1 && <p className="aa-label text-muted mb-0">ID {i + 1} of {idFiles.length}</p>}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        slot.current = i;
+                        fileInput.current?.click();
+                      }}
+                      className="aa-btn aa-btn-outline aa-btn-sm shrink-0"
+                    >
+                      <i className={`bi ${file ? "bi-arrow-repeat" : "bi-upload"}`} /> {file ? "Replace file" : "Choose file"}
+                    </button>
+                    {!file && <span className="text-sm text-muted">No file chosen</span>}
+                  </div>
+                  {file && (
+                    <p className="text-sm font-bold mb-0 flex items-center justify-between gap-2">
+                      <span className="truncate"><i className="bi bi-check-circle" /> {file.name}</span>
+                      <button type="button" onClick={() => setIdFiles((list) => list.map((x, n) => (n === i ? null : x)))} className="underline shrink-0">Remove</button>
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
-            {idFile && (
-              <p className="text-sm font-bold mb-0 flex items-center justify-between gap-2">
-                <span className="truncate"><i className="bi bi-check-circle" /> {idFile.name}</span>
-                <button type="button" onClick={() => setIdFile(null)} className="underline shrink-0">Remove</button>
-              </p>
-            )}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 className="aa-btn flex-1"
-                disabled={!idFile || status[idFor.tierId] === "adding"}
-                onClick={() => {
-                  const t = performances.flatMap((p) => p.ticket_tiers).find((x) => x.id === idFor.tierId);
-                  void handleAdd(idFor.tierId, idFor.performanceId, idFile, t ? qtyOf(t) : 1);
-                }}
+                disabled={idFiles.some((f) => !f) || status[idFor.tierId] === "adding"}
+                onClick={() => void handleAdd(idFor.tierId, idFor.performanceId, idFiles as File[], idFiles.length)}
               >
                 {status[idFor.tierId] === "adding" ? "Uploading..." : "Upload and add to cart"}
               </button>

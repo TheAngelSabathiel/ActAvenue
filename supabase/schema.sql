@@ -156,6 +156,7 @@ create table cart_items (
   ticket_tier_id uuid not null references ticket_tiers (id) on delete cascade,
   quantity integer not null check (quantity > 0),
   id_proof_path text,
+  id_proof_paths text[] not null default '{}',
   created_at timestamptz not null default now()
 );
 
@@ -227,6 +228,7 @@ create table reservation_items (
   quantity integer not null check (quantity > 0),
   unit_price numeric(10, 2) not null,
   id_proof_path text,
+  id_proof_paths text[] not null default '{}',
   ticket_code text,
   qr_code_url text,
   scans_used integer not null default 0

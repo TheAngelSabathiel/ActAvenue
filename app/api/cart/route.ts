@@ -1,4 +1,5 @@
 import { remainingForTier } from "@/lib/tier-stock";
+import { idPaths } from "@/lib/id-proofs";
 import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateCart } from "@/lib/cart-session";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -20,14 +21,13 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   let ticket_tier_id: string, performance_id: string, quantity: number;
-  let idFile: File | null = null;
+  let idFiles: File[] = [];
   if ((req.headers.get("content-type") ?? "").includes("multipart/form-data")) {
     const fd = await req.formData();
     ticket_tier_id = fd.get("ticket_tier_id") as string;
     performance_id = fd.get("performance_id") as string;
     quantity = Number(fd.get("quantity"));
-    const f = fd.get("id_file");
-    idFile = f instanceof File && f.size > 0 ? f : null;
+    idFiles = fd.getAll("id_file").filter((f): f is File => f instanceof File && f.size > 0);
   } else {
     ({ ticket_tier_id, performance_id, quantity } = await req.json());
   }
@@ -66,34 +66,53 @@ export async function POST(req: NextRequest) {
     .eq("ticket_tier_id", ticket_tier_id)
     .maybeSingle();
 
-  // Discounted tiers can ask for an ID before the ticket goes in the cart.
-  let idPath: string | null = null;
+  // Discounted tiers need one ID per ticket before the tickets go in the cart.
+  const newPaths: string[] = [];
   if (tier.require_id) {
-    if (idFile) {
-      if (!/^(image\/|application\/pdf)/.test(idFile.type)) {
-        return NextResponse.json({ error: "Upload your ID as an image or PDF." }, { status: 400 });
-      }
-      if (idFile.size > 8 * 1024 * 1024) {
-        return NextResponse.json({ error: "ID file is too large (8 MB max)." }, { status: 400 });
-      }
-      const safe = idFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      idPath = `${cart.id}/${Date.now()}-${safe}`;
-      const { error: upErr } = await db.storage
-        .from("id-proofs")
-        .upload(idPath, new Uint8Array(await idFile.arrayBuffer()), { contentType: idFile.type });
-      if (upErr) return NextResponse.json({ error: `ID upload failed: ${upErr.message}` }, { status: 500 });
-    } else if (!existingItem?.id_proof_path) {
+    if (idFiles.length !== quantity) {
       return NextResponse.json(
-        { error: "Upload your ID to add this ticket.", code: "id_required" },
+        {
+          error: `Upload ${quantity} ID${quantity === 1 ? "" : "s"}, one for each ticket.`,
+          code: "id_required",
+          needed: quantity,
+        },
         { status: 400 }
       );
+    }
+    for (const f of idFiles) {
+      if (!/^(image\/|application\/pdf)/.test(f.type)) {
+        return NextResponse.json({ error: "Upload your IDs as images or PDFs." }, { status: 400 });
+      }
+      if (f.size > 8 * 1024 * 1024) {
+        return NextResponse.json({ error: "An ID file is too large (8 MB max each)." }, { status: 400 });
+      }
+    }
+    for (const [n, f] of idFiles.entries()) {
+      const safe = f.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${cart.id}/${Date.now()}-${n}-${safe}`;
+      const { error: upErr } = await db.storage
+        .from("id-proofs")
+        .upload(path, new Uint8Array(await f.arrayBuffer()), { contentType: f.type });
+      if (upErr) {
+        if (newPaths.length) await db.storage.from("id-proofs").remove(newPaths);
+        return NextResponse.json({ error: `ID upload failed: ${upErr.message}` }, { status: 500 });
+      }
+      newPaths.push(path);
     }
   }
 
   if (existingItem) {
     const { data, error } = await db
       .from("cart_items")
-      .update({ quantity: existingItem.quantity + quantity, ...(idPath ? { id_proof_path: idPath } : {}) })
+      .update({
+        quantity: existingItem.quantity + quantity,
+        ...(newPaths.length
+          ? (() => {
+              const all = [...idPaths(existingItem), ...newPaths];
+              return { id_proof_paths: all, id_proof_path: all[0] };
+            })()
+          : {}),
+      })
       .eq("id", existingItem.id)
       .select()
       .single();
@@ -103,7 +122,14 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await db
     .from("cart_items")
-    .insert({ cart_id: cart.id, ticket_tier_id, performance_id, quantity, id_proof_path: idPath })
+    .insert({
+      cart_id: cart.id,
+      ticket_tier_id,
+      performance_id,
+      quantity,
+      id_proof_paths: newPaths,
+      id_proof_path: newPaths[0] ?? null,
+    })
     .select()
     .single();
 

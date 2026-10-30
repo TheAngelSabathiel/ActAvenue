@@ -1,3 +1,4 @@
+import { idPaths } from "@/lib/id-proofs";
 import { remainingForTier } from "@/lib/tier-stock";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -39,9 +40,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     );
   }
 
+  // Discounted tickets carry one ID each. Fewer tickets drops the extra IDs. More tickets
+  // needs new IDs, which are uploaded when the tickets are added from the show page.
+  const updates: Record<string, unknown> = { quantity };
+  if (existing.ticket_tier.require_id) {
+    const have = idPaths(existing);
+    if (quantity > have.length) {
+      return NextResponse.json(
+        {
+          code: "id_required",
+          error: "Each discounted ticket needs its own ID. Add more tickets from the show page so you can upload their IDs.",
+        },
+        { status: 400 }
+      );
+    }
+    if (quantity < have.length) {
+      const keep = have.slice(0, quantity);
+      updates.id_proof_paths = keep;
+      updates.id_proof_path = keep[0] ?? null;
+      await db.storage.from("id-proofs").remove(have.slice(quantity));
+    }
+  }
+
   const { data, error } = await db
     .from("cart_items")
-    .update({ quantity })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();

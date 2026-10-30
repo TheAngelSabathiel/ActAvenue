@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "@/lib/toast";
+import { idPaths } from "@/lib/id-proofs";
 
 import { useState } from "react";
 import { Spinner } from "@/components/spinner";
@@ -92,13 +93,18 @@ export default function CartPage() {
                     <p className="font-black mb-0">{item.ticket_tier.label}</p>
                     <p className="text-sm text-muted mb-0">₱{item.ticket_tier.price.toFixed(2)} each</p>
                     {item.ticket_tier.require_id && (
-                      <p className="text-xs font-bold mb-0">{item.id_proof_path ? "ID uploaded" : "ID needed. Remove and re-add this ticket to upload."}</p>
+                      <p className="text-xs font-bold mb-0">
+                        {idPaths(item).length >= item.quantity
+                          ? `${item.quantity === 1 ? "ID" : "IDs"} uploaded (${idPaths(item).length} of ${item.quantity})`
+                          : `IDs needed: ${idPaths(item).length} of ${item.quantity} uploaded. Remove and re-add these tickets to upload.`}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-3 ml-auto">
                     <input
                       type="number"
                       min={1}
+                      max={item.ticket_tier.require_id ? Math.max(1, idPaths(item).length) : undefined}
                       value={item.quantity}
                       onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
                       className="aa-input !w-20"

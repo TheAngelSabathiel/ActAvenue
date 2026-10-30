@@ -36,14 +36,15 @@ export function useCart() {
   }, [refresh]);
 
   const addItem = useCallback(
-    async (ticket_tier_id: string, performance_id: string, quantity: number, idFile?: File | null) => {
+    async (ticket_tier_id: string, performance_id: string, quantity: number, idFiles?: File[] | File | null) => {
       let init: RequestInit;
-      if (idFile) {
+      const files = Array.isArray(idFiles) ? idFiles : idFiles ? [idFiles] : [];
+      if (files.length > 0) {
         const fd = new FormData();
         fd.set("ticket_tier_id", ticket_tier_id);
         fd.set("performance_id", performance_id);
         fd.set("quantity", String(quantity));
-        fd.set("id_file", idFile);
+        for (const f of files) fd.append("id_file", f);
         init = { method: "POST", body: fd };
       } else {
         init = {

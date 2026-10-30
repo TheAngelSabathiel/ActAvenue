@@ -169,6 +169,8 @@ export interface CartItem {
   ticket_tier_id: string;
   quantity: number;
   id_proof_path?: string | null;
+  /** One ID per ticket on a discounted line. */
+  id_proof_paths?: string[];
   created_at: string;
 }
 
@@ -211,6 +213,8 @@ export interface ReservationItem {
   quantity: number;
   unit_price: number;
   id_proof_path?: string | null;
+  /** One ID per ticket on a discounted line. */
+  id_proof_paths?: string[];
   ticket_code?: string | null;
   qr_code_url?: string | null;
   scans_used?: number;

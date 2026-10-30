@@ -8,6 +8,7 @@ import { useAdminAccess } from "@/components/admin/access-context";
 import { QuantityEditor } from "@/components/admin/quantity-editor";
 import { TransferDialog } from "@/components/admin/transfer-dialog";
 import { isTransferred } from "@/lib/transfer";
+import { idPaths } from "@/lib/id-proofs";
 import { formatDateTime } from "@/lib/datetime";
 import { sortByName } from "@/lib/sort";
 
@@ -28,7 +29,7 @@ type Row = {
   payment_proof_url: string | null;
   production: { title: string };
   performance: { label: string; datetime: string };
-  reservation_items: { id: string; quantity: number; id_proof_path?: string | null; scans_used?: number; ticket_tier: { label: string; tier_type: string } }[];
+  reservation_items: { id: string; quantity: number; id_proof_path?: string | null; id_proof_paths?: string[]; scans_used?: number; ticket_tier: { label: string; tier_type: string } }[];
 };
 
 const STATUS_TABS = ["all", "pending_review", "confirmed", "rejected", "expired"] as const;
@@ -293,12 +294,17 @@ export default function AdminReservationsPage() {
                   {r.reservation_items.map((i) => `${i.quantity}× ${i.ticket_tier.label}`).join(", ")}
                   {" · "}
                   <span className="tabular-nums">₱{r.total.toFixed(2)}</span>
-                  {r.reservation_items.filter((i) => i.id_proof_path).map((i) => (
-                    <span key={i.id}>
-                      {" · "}
-                      <a href={`/api/admin/reservations/${r.id}/id-proof?item=${i.id}`} target="_blank" rel="noopener noreferrer" className="underline font-bold">View ID ({i.ticket_tier.label})</a>
-                    </span>
-                  ))}
+                  {r.reservation_items.flatMap((i) => {
+                    const ids = idPaths(i);
+                    return ids.map((_, n) => (
+                      <span key={`${i.id}-${n}`}>
+                        {" · "}
+                        <a href={`/api/admin/reservations/${r.id}/id-proof?item=${i.id}&n=${n + 1}`} target="_blank" rel="noopener noreferrer" className="underline font-bold">
+                          View ID{ids.length > 1 ? ` ${n + 1} of ${ids.length}` : ""} ({i.ticket_tier.label})
+                        </a>
+                      </span>
+                    ));
+                  })}
                 </p>
                 {["pending_review", "confirmed"].includes(r.payment_status) && !isTransferred(r.rejection_reason) && (
                   <details className="mt-2">

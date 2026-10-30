@@ -1,3 +1,4 @@
+import { idPaths } from "@/lib/id-proofs";
 import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateCart } from "@/lib/cart-session";
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -51,10 +52,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
   }
 
-  const missingId = items.find((i) => i.ticket_tier.require_id && !i.id_proof_path);
+  const missingId = items.find((i) => i.ticket_tier.require_id && idPaths(i).length < i.quantity);
   if (missingId) {
     return NextResponse.json(
-      { error: `Upload your ID for "${missingId.ticket_tier.label}" in your cart first.` },
+      {
+        error: `"${missingId.ticket_tier.label}" needs ${missingId.quantity} ID${missingId.quantity === 1 ? "" : "s"}, one per ticket (${idPaths(missingId).length} uploaded). Remove it from your cart and add it again with each ID.`,
+      },
       { status: 400 }
     );
   }
@@ -210,7 +213,8 @@ export async function POST(req: NextRequest) {
             ticket_tier_id: i.ticket_tier_id,
             quantity: i.quantity,
             unit_price: i.ticket_tier.price,
-            id_proof_path: i.id_proof_path ?? null,
+            id_proof_path: idPaths(i)[0] ?? null,
+            id_proof_paths: idPaths(i),
           }))
         )
         .select("*, ticket_tier:ticket_tiers(*)");

@@ -139,6 +139,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
         quantity: p.oldItem.quantity,
         unit_price: p.oldItem.unit_price,
         id_proof_path: p.oldItem.id_proof_path ?? null,
+        id_proof_paths: p.oldItem.id_proof_paths ?? [],
       }))
     )
     .select("*, ticket_tier:ticket_tiers(*)");

@@ -95,7 +95,7 @@ proxy.ts             Session refresh for protected paths only
 
 Each file in `supabase/` named `migration-*.sql` is a one-time change run by hand in the Supabase SQL editor. Current files, oldest topics first:
 
-`migration-tiers-partners`, `migration-orders`, `migration-payment-details`, `migration-ticket-qr`, `migration-promo-uses`, `migration-credits-plays`, `migration-play-catalog`, `migration-dancers`, `migration-carousel-order`, `migration-profile-links-email-notes`, `migration-staff-profiles`, `migration-production-staff`, `migration-scanner-role`, `migration-bio-style-play-writers`, `migration-dashboard-mailing`, `migration-play-logline`, `migration-shared-pools`. Also: `fix-patlangreschedule-uses.sql` (one-off data fix) and the `seed-*.sql` files (sample data).
+`migration-tiers-partners`, `migration-orders`, `migration-payment-details`, `migration-ticket-qr`, `migration-promo-uses`, `migration-credits-plays`, `migration-play-catalog`, `migration-dancers`, `migration-carousel-order`, `migration-profile-links-email-notes`, `migration-staff-profiles`, `migration-production-staff`, `migration-scanner-role`, `migration-bio-style-play-writers`, `migration-dashboard-mailing`, `migration-play-logline`, `migration-shared-pools`, `migration-multi-id`. Also: `fix-patlangreschedule-uses.sql` (one-off data fix) and the `seed-*.sql` files (sample data).
 
 ---
 
@@ -117,7 +117,7 @@ Each file in `supabase/` named `migration-*.sql` is a one-time change run by han
 - Cart works for guests and signed in people. The cart icon shows for signed in visitors, or for guests with items.
 - Sign in and sign up open in a centered modal from the navbar.
 - Ticket types: Regular, VIP, Discounted, Special. A tier can carry a display name such as "Early Bird".
-- Discounted tiers can require an ID upload (Student, PWD, Senior) before the ticket is added to the cart. IDs go to a private bucket.
+- Discounted tiers can require an ID upload (Student, PWD, Senior) before the tickets are added to the cart. One ID is required for each ticket (buying 3 asks for 3 IDs). IDs go to a private bucket. Lowering the quantity in the cart drops the extra IDs. Raising it means adding tickets again from the show page with their IDs.
 - Shared seats: a tier can draw seats from a main tier on the same show (for example Regular 50 with Discounted drawing from it). The linked tier can have its own cap or use only the shared total.
 - Promo codes: percent or fixed amount off per ticket, limited by production, ticket type, expiry and number of uses. One code per reservation. Codes do not stack with time-limited tier pricing.
 - Checkout: buyer details, a required Data Privacy consent box, optional mailing list opt-in, and payment instructions (GCash or bank, with QR) set per production. Seats are held for 24 hours while payment is reviewed.
@@ -254,6 +254,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- One ID per discounted ticket: the ID upload asks for as many IDs as tickets, checkout checks the count, and staff can open each ID.
 - Reservations search and production and show filters, status tab counts, and a mobile fix so the status tabs wrap instead of overflowing.
 - About us page, Contact us in the navbar, and a reordered navbar (browse, info, account, cart).
 - Contact us page that emails the team, plus a Data Privacy Notice (RA 10173) with required consent at checkout and on the contact form, and a notice link in the footer.
