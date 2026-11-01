@@ -60,7 +60,6 @@ export default function ProductionEditorPage() {
         label: formData.get("label"),
         datetime: formData.get("datetime"),
         venue: formData.get("venue"),
-        capacity: Number(formData.get("capacity")),
       }),
     });
     const data = await res.json();
@@ -230,7 +229,6 @@ export default function ProductionEditorPage() {
             <input name="label" placeholder="Label (e.g. Matinee - Aug 20)" required className="border border-ink/20  px-2 py-1.5 text-sm" />
             <ManilaDateTimeInput name="datetime" required ariaLabel="Performance" defaultTime="19:00" />
             <input name="venue" placeholder="Venue" required className="border border-ink/20  px-2 py-1.5 text-sm" />
-            <input name="capacity" type="number" placeholder="Capacity" required className="border border-ink/20  px-2 py-1.5 text-sm" />
             <button className="sm:col-span-2 py-2  bg-black text-paper text-sm font-bold uppercase">
               Add performance
             </button>

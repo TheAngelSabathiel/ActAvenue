@@ -10,7 +10,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   const gate = await requireProduction(await productionOfPerformance(id), "manager");
   if (gate.error) return gate.error;
   const body = await req.json();
-  const allowed = ["label", "datetime", "venue", "capacity"] as const;
+  const allowed = ["label", "datetime", "venue"] as const;
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];

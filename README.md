@@ -254,6 +254,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Removed the show capacity field. A show's seat total is now the sum of its ticket tier quantities (linked tiers share their main tier's seats).
 - Manual reservations: optional promo code with total preview, optional proof of payment upload, and Add or Replace proof on pending and confirmed reservations.
 - One ID per discounted ticket: the ID upload asks for as many IDs as tickets, checkout checks the count, and staff can open each ID.
 - Reservations search and production and show filters, status tab counts, and a mobile fix so the status tabs wrap instead of overflowing.

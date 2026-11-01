@@ -23,17 +23,17 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const gate = await requireProduction(id, "manager");
   if (gate.error) return gate.error;
-  const { label, datetime: rawDatetime, venue, capacity } = await req.json();
+  const { label, datetime: rawDatetime, venue } = await req.json();
   const datetime = toIsoManila(rawDatetime);
 
-  if (!label || !datetime || !venue || !capacity) {
-    return NextResponse.json({ error: "label, datetime, venue, capacity are required" }, { status: 400 });
+  if (!label || !datetime || !venue) {
+    return NextResponse.json({ error: "label, datetime and venue are required" }, { status: 400 });
   }
 
   const db = createServiceClient();
   const { data, error } = await db
     .from("performances")
-    .insert({ production_id: id, label, datetime, venue, capacity })
+    .insert({ production_id: id, label, datetime, venue, capacity: 0 })
     .select()
     .single();
 

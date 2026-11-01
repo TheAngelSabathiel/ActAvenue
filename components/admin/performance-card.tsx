@@ -103,7 +103,6 @@ export function PerformanceCard({
   if (d.label !== base.label) perfChanges.label = d.label;
   if (d.datetime !== base.datetime) perfChanges.datetime = fromManilaInput(d.datetime);
   if (d.venue !== base.venue) perfChanges.venue = d.venue;
-  if (d.capacity !== base.capacity) perfChanges.capacity = Number(d.capacity);
 
   const tierChanges = perf.ticket_tiers
     .map((t) => {
@@ -156,7 +155,6 @@ export function PerformanceCard({
           <input value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} className={`${box} font-extrabold`} aria-label="Performance label" />
           <ManilaDateTimeInput value={d.datetime} onChange={(v) => setD({ ...d, datetime: v })} ariaLabel="Performance date and time" defaultTime="19:00" />
           <input value={d.venue} onChange={(e) => setD({ ...d, venue: e.target.value })} className={box} aria-label="Venue" placeholder="Venue" />
-          <input type="number" value={d.capacity} onChange={(e) => setD({ ...d, capacity: e.target.value })} className={box} aria-label="Capacity" placeholder="Capacity" />
         </div>
         <button onClick={() => onDelete(perf.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger shrink-0">
           Delete
