@@ -28,7 +28,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="now-showing" className="aa-container py-16">
+      <section id="now-showing" className="aa-container pt-12 pb-6">
         <h2 className="text-3xl mb-2">Current Productions</h2>
         <hr className="aa-divider" />
         {productions.length === 0 ? (
@@ -51,11 +51,11 @@ export default async function HomePage() {
         )}
       </section>
 
-      <section className="py-16">
+      <section className="py-6">
         <div className="aa-container">
           <h2 className="text-3xl mb-2">How Booking Works</h2>
           <hr className="aa-divider" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-6">
             {STEPS.map((s) => (
               <div key={s.title} className="aa-box shadow-sm p-6 md:p-8">
                 <i className={`bi ${s.icon} text-3xl block mb-3`} />
@@ -71,7 +71,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="about" className="py-16">
+      <section id="about" className="pt-6 pb-14">
         <div className="aa-container grid gap-10 md:grid-cols-2">
           <div className="border-l-[5px] border-black pl-6">
             <h2 className="text-2xl mb-3">About</h2>

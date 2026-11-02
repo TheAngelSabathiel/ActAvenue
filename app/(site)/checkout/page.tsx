@@ -4,7 +4,6 @@ import { FilePicker } from "@/components/file-picker";
 import { PrivacyConsent } from "@/components/privacy-notice";
 
 import { toast } from "@/lib/toast";
-import { CrossshowBox } from "@/components/crossshow-box";
 import { useToastOn } from "@/lib/use-toast-on";
 
 import { Suspense, useEffect, useState } from "react";
@@ -46,8 +45,9 @@ function CheckoutForm() {
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>("");
   const [quote, setQuote] = useState<{ discount: number; total: number; bundles: number; promo: number; payments: PaymentGroup[]; crossshow?: { offered: boolean; checked: boolean; error?: string; used: number; discount: number } } | null>(null);
-  const [xemail, setXemail] = useState(searchParams.get("email") ?? "");
-  const [xref, setXref] = useState(searchParams.get("xref") ?? "");
+  // Cross-show email and codes come from the cart.
+  const xemail = searchParams.get("email") ?? "";
+  const xref = searchParams.get("xref") ?? "";
   const promoParam = searchParams.get("promo") ?? "";
 
   // What the buyer actually owes (promo applied), from the same pricing as checkout.
@@ -61,7 +61,6 @@ function CheckoutForm() {
     return () => clearTimeout(t);
   }, [promoParam, items.length, listTotal, xref, xemail]);
   const discount = quote?.discount ?? 0;
-  const cross = quote?.crossshow;
   const total = quote?.total ?? listTotal;
 
   // If the buyer is signed in, prefill their details - still editable, and
@@ -172,7 +171,9 @@ function CheckoutForm() {
           <label className={label}>Phone</label>
           <input name="buyer_phone" className="aa-input" />
         </div>
-        {cross?.offered && <CrossshowBox named email={xemail} onEmail={setXemail} refs={xref} onRefs={setXref} status={cross} />}
+        {/* Cross-show codes are entered in the cart and carried here. */}
+        <input type="hidden" name="crossshow_email" value={xemail} />
+        <input type="hidden" name="crossshow_ref" value={xref} />
         <PaymentInstructions total={total} payments={quote?.payments} />
         <div>
           <label className={label}>Payment proof</label>
