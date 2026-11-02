@@ -258,6 +258,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Transferring a booking now keeps its discount type and moves any cross-show uses to the new booking, so they are not given back.
 - Cross-show discount (per production, off by default, booking code plus matching email, one use per ticket, tracked in `crossshow_uses`). Requires `migration-crossshow.sql`.
 - Ticket tiers in the show editor are now separate boxes with a gold edge, a header (name, price, Main tier or Shares seats badge) and their own Delete tier button.
 - Cart shows a subtotal per ticket line and an order subtotal before discounts; checkout labels the discount as Group discount or Promo code. Tier Delete moved to a button at the bottom of each tier.

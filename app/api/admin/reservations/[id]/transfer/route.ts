@@ -116,6 +116,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
       buyer_phone: old.buyer_phone,
       promo_code_id: old.promo_code_id,
       promo_uses: old.promo_uses ?? null,
+      discount_source: old.discount_source ?? null,
       subtotal: old.subtotal,
       discount_amount: old.discount_amount,
       total: old.total,
@@ -159,6 +160,8 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // The new booking now holds the seats. Retire the old one and free its seats.
   // Its promo link moves to the new booking so the code's use is not counted twice.
+  // A cross-show discount stays spent: its uses move to the new booking.
+  await db.from("crossshow_uses").update({ target_reservation_id: created.id }).eq("target_reservation_id", id);
   const { error: retireError } = await db
     .from("reservations")
     .update({
