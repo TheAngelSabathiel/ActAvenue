@@ -119,7 +119,7 @@ function OrgCard({ org, onSaved, onCopy, copied }: { org: Organization; onSaved:
 
   return (
     <div className="aa-card p-5 space-y-4">
-      <div className="flex flex-wrap gap-4">
+      <div className="grid gap-4 sm:grid-cols-[8rem_1fr]">
         <div className="w-32">
           <StagedImage
             label="Logo"
@@ -131,20 +131,28 @@ function OrgCard({ org, onSaved, onCopy, copied }: { org: Organization; onSaved:
             allowRemove={false}
           />
         </div>
-        <div className="flex-1 min-w-[180px] space-y-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full border border-ink/20 px-3 py-2 font-extrabold text-lg"
-            aria-label="Organization name"
-          />
-          <button
-            onClick={() => onCopy(org.id)}
-            className="text-xs tabular-nums text-muted hover:text-danger"
-            title="Copy organization ID for use in Productions / Promo codes forms"
-          >
-            {copied ? "Copied!" : `${org.id.slice(0, 8)}... (copy ID)`}
-          </button>
+        <div className="min-w-0 flex flex-col">
+          <label className="block">
+            <span className="aa-label block mb-1">Name</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full border border-ink/20 px-3 py-2 font-extrabold text-lg"
+              aria-label="Organization name"
+            />
+          </label>
+          <div className="mt-auto pt-3">
+            <span className="aa-label block mb-1">Organization ID</span>
+            <button
+              type="button"
+              onClick={() => onCopy(org.id)}
+              className="inline-flex items-center gap-2 border border-ink/20 px-3 py-1.5 text-xs tabular-nums text-muted hover:text-ink hover:border-ink/50 transition-colors"
+              title="Copy organization ID for use in Productions / Promo codes forms"
+            >
+              <i className={`bi ${copied ? "bi-check2" : "bi-clipboard"}`} />
+              {copied ? "Copied" : `${org.id.slice(0, 8)}... Copy`}
+            </button>
+          </div>
         </div>
       </div>
       <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={() => { setName(org.name); setLogo(EMPTY_IMAGE); }} />

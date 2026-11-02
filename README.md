@@ -258,6 +258,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Organizations page: the name field now has a label and lines up with the logo, and the organization ID is a labeled Copy button.
 - The cross-show block now lives in the cart only (checkout just carries the codes over). Tighter spacing between the home page sections.
 - Cross-show discount checks the booking code against the email typed with it, not the checkout email. New collapsible "Bought tickets to another show?" block in the cart only; checkout no longer shows it. Desktop navbar stays on one line when signed in with items in the cart.
 - Cross-show discount can be checked in the cart as well as at checkout, and several booking codes under the same email add up (one use per ticket across all of them). Requires `migration-crossshow-multi.sql`.
