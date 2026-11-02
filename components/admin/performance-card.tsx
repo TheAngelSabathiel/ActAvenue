@@ -165,11 +165,18 @@ export function PerformanceCard({
         </button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-4">
         {perf.ticket_tiers.map((t) => {
           const td = d.tiers[t.id] ?? base.tiers[t.id];
+          const hasLinkedTier = perf.ticket_tiers.some((x) => (d.tiers[x.id] ?? base.tiers[x.id]).pool_tier_id === t.id);
           return (
-            <div key={t.id} className="border-t border-ink/10 pt-3">
+            <div key={t.id} className="border border-ink/20 border-l-4 border-l-accent bg-ink/[0.03] p-4">
+              <div className="flex flex-wrap items-center gap-2 mb-3 pb-2 border-b border-ink/10">
+                <span className="font-black uppercase tracking-[0.12em] text-sm">{td.alias.trim() || tierTypeName(td.tier_type)}</span>
+                <span className="text-xs font-bold tabular-nums text-muted">₱{Number(td.price || 0).toFixed(2)}</span>
+                {hasLinkedTier && <span className="text-[0.65rem] font-bold uppercase bg-black text-white px-1.5 py-0.5">Main tier</span>}
+                {td.pool_tier_id && <span className="text-[0.65rem] font-bold uppercase border border-ink/40 px-1.5 py-0.5">Shares seats</span>}
+              </div>
               <div className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 sm:items-end">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <label className="block">

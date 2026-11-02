@@ -256,6 +256,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Ticket tiers in the show editor are now separate boxes with a gold edge, a header (name, price, Main tier or Shares seats badge) and their own Delete tier button.
 - Cart shows a subtotal per ticket line and an order subtotal before discounts; checkout labels the discount as Group discount or Promo code. Tier Delete moved to a button at the bottom of each tier.
 - Group discounts per production (off by default, editable steps, per show, Regular tickets only, never stacked with a promo code) and a public percent booked bar per ticket tier with an optional displayed capacity per tier. Requires `migration-bundle-display.sql`.
 - Removed the show capacity field. A show's seat total is now the sum of its ticket tier quantities (linked tiers share their main tier's seats).
