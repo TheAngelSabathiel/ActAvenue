@@ -34,6 +34,7 @@ export type Performance = {
   datetime: string;
   venue: string;
   capacity: number;
+  display_capacity?: number | null;
   ticket_tiers: Tier[];
 };
 
@@ -57,7 +58,7 @@ const toDraft = (perf: Performance): Draft => ({
   label: perf.label,
   datetime: toManilaInput(perf.datetime),
   venue: perf.venue,
-  capacity: String(perf.capacity),
+  capacity: perf.display_capacity ? String(perf.display_capacity) : "",
   tiers: Object.fromEntries(
     perf.ticket_tiers.map((t) => [
       t.id,
@@ -103,6 +104,7 @@ export function PerformanceCard({
   if (d.label !== base.label) perfChanges.label = d.label;
   if (d.datetime !== base.datetime) perfChanges.datetime = fromManilaInput(d.datetime);
   if (d.venue !== base.venue) perfChanges.venue = d.venue;
+  if (d.capacity !== base.capacity) perfChanges.display_capacity = d.capacity.trim() ? Number(d.capacity) : null;
 
   const tierChanges = perf.ticket_tiers
     .map((t) => {
@@ -155,6 +157,11 @@ export function PerformanceCard({
           <input value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} className={`${box} font-extrabold`} aria-label="Performance label" />
           <ManilaDateTimeInput value={d.datetime} onChange={(v) => setD({ ...d, datetime: v })} ariaLabel="Performance date and time" defaultTime="19:00" />
           <input value={d.venue} onChange={(e) => setD({ ...d, venue: e.target.value })} className={box} aria-label="Venue" placeholder="Venue" />
+          <label className="block sm:col-span-2">
+            <span className="block text-xs font-bold uppercase text-muted mb-1">Displayed capacity (optional)</span>
+            <input type="number" min={1} value={d.capacity} onChange={(e) => setD({ ...d, capacity: e.target.value })} className={`${box} w-full`} placeholder="Leave empty to use the real seat total" />
+            <span className="block text-xs text-muted mt-1">The public page shows a percent booked based on this number. Real seats and sales limits do not change.</span>
+          </label>
         </div>
         <button onClick={() => onDelete(perf.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger shrink-0">
           Delete

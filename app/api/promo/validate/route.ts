@@ -39,8 +39,16 @@ export async function POST(req: NextRequest) {
     .map((l) => ({ ticket_tier: tierMap.get(l.ticket_tier_id)!, quantity: l.quantity }))
     .filter((l) => l.ticket_tier);
 
-  const pricing = calculatePricing(cartLines, promo, production_id);
+  const { data: production } = await db.from("productions").select("bundle_enabled, bundle_tiers").eq("id", production_id).maybeSingle();
+  const pricing = calculatePricing(cartLines, promo, production_id, new Date(), production);
 
+  if (pricing.discountSource === "bundle") {
+    return NextResponse.json({
+      valid: false,
+      reason: "The group discount saves more, so it applies instead. Only one discount applies per order.",
+      pricing,
+    });
+  }
   if (pricing.discountAmount === 0) {
     return NextResponse.json({
       valid: false,

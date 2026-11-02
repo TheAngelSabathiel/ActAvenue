@@ -6,7 +6,7 @@ import { productionOfReservation } from "@/lib/admin-scope";
 import { holdTicketTier, releaseTicketTierHold } from "@/lib/inventory";
 import { isTransferred } from "@/lib/transfer";
 import { ensureTicketQrs } from "@/lib/tickets";
-import { calculatePricing, eligibleTicketCount } from "@/lib/pricing";
+import { calculatePricing, eligibleTicketCount, bundleDiscount } from "@/lib/pricing";
 import type { PromoCode, TicketTier } from "@/types/database";
 import { sendQuantityChangedEmail } from "@/lib/email/send";
 import { withRefresh } from "@/lib/refresh-public";
@@ -75,6 +75,17 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  // A booking with a group discount gets it recomputed from the new quantities.
+  let bundleAmount: number | null = null;
+  if (reservation.discount_source === "bundle") {
+    const { data: prod } = await db.from("productions").select("bundle_tiers").eq("id", reservation.production_id).maybeSingle();
+    const lines = (allItems ?? []).map((i) => ({
+      ticket_tier: ({ ...(Array.isArray(i.ticket_tier) ? i.ticket_tier[0] : i.ticket_tier), price: Number(i.unit_price) }) as TicketTier,
+      quantity: i.id === itemId ? quantity : i.quantity,
+    }));
+    bundleAmount = bundleDiscount(lines, { bundle_enabled: true, bundle_tiers: prod?.bundle_tiers }, new Date(reservation.created_at)).amount;
+  }
+
   // Availability first. Nothing else changes if the show can't take more.
   const diff = quantity - from;
   if (diff > 0) {
@@ -100,11 +111,11 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   // Keep the order totals in line with the new quantities.
   const { data: all } = await db.from("reservation_items").select("quantity, unit_price").eq("reservation_id", id);
   const subtotal = (all ?? []).reduce((n, i) => n + i.quantity * Number(i.unit_price), 0);
-  const discount = promoPlan ? promoPlan.discount : Number(reservation.discount_amount ?? 0);
+  const discount = promoPlan ? promoPlan.discount : bundleAmount !== null ? bundleAmount : Number(reservation.discount_amount ?? 0);
   const total = Math.max(0, subtotal - discount);
   const { data: updated } = await db
     .from("reservations")
-    .update({ subtotal, total, discount_amount: discount, ...(promoPlan ? { promo_uses: promoPlan.uses } : {}) })
+    .update({ subtotal, total, discount_amount: discount, ...(promoPlan ? { promo_uses: promoPlan.uses } : {}), ...(bundleAmount !== null ? { discount_source: bundleAmount > 0 ? "bundle" : null } : {}) })
     .eq("id", id)
     .select()
     .single();

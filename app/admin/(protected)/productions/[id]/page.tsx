@@ -12,6 +12,7 @@ import { PerformanceCard, type Performance } from "@/components/admin/performanc
 import { Spinner } from "@/components/spinner";
 import { ManilaDateTimeInput } from "@/components/manila-datetime-input";
 import { useParams } from "next/navigation";
+import { BundleSettings } from "@/components/admin/bundle-settings";
 
 type Production = {
   id: string;
@@ -27,6 +28,8 @@ type Production = {
   bank_account_number: string | null;
   bank_qr_url: string | null;
   email_note: string | null;
+  bundle_enabled?: boolean;
+  bundle_tiers?: { min: number; percent: number }[];
   status: "draft" | "published" | "closed";
   slug: string;
 };
@@ -205,6 +208,13 @@ export default function ProductionEditorPage() {
             fields: [{ key: "email_note", label: "Note for buyers (for example: arrival time, venue reminders, house rules)", type: "textarea", rows: 5 }],
           },
         ]}
+      />
+
+      <BundleSettings
+        productionId={id}
+        enabled={production.bundle_enabled}
+        tiers={production.bundle_tiers}
+        onSaved={(p) => setProduction((prev) => (prev ? { ...prev, ...p } : prev))}
       />
 
       {/* ---- Performances + tiers ---- */}

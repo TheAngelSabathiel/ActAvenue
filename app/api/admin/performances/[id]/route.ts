@@ -15,6 +15,11 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
   }
+  if ("display_capacity" in body) {
+    const n = Number(body.display_capacity);
+    update.display_capacity = body.display_capacity === null || body.display_capacity === "" ? null : Number.isInteger(n) && n > 0 ? n : undefined;
+    if (update.display_capacity === undefined) return NextResponse.json({ error: "Displayed capacity must be a whole number above 0." }, { status: 400 });
+  }
   if ("datetime" in update) {
     const iso = toIsoManila(update.datetime);
     if (!iso) return NextResponse.json({ error: "Enter a valid date and time." }, { status: 400 });

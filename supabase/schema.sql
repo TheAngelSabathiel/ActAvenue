@@ -68,6 +68,9 @@ create table productions (
   -- Extra note added to confirmation and transfer emails.
   email_note text,
   status text not null default 'draft' check (status in ('draft', 'published', 'closed')),
+  -- Group discounts on Regular tickets, per show date. Off by default.
+  bundle_enabled boolean not null default false,
+  bundle_tiers jsonb not null default '[{"min":3,"percent":5},{"min":5,"percent":8},{"min":10,"percent":12}]'::jsonb,
   -- Position in the landing page carousel (lowest first).
   carousel_order int not null default 0,
   created_at timestamptz not null default now(),
@@ -87,6 +90,8 @@ create table performances (
   datetime timestamptz not null,
   venue text not null,
   capacity integer not null check (capacity >= 0),
+  -- Seats shown publicly as the show size. Empty means the real total.
+  display_capacity integer check (display_capacity is null or display_capacity > 0),
   created_at timestamptz not null default now()
 );
 
@@ -188,6 +193,7 @@ create table reservations (
   promo_code_id uuid references promo_codes (id),
   subtotal numeric(10, 2) not null default 0,
   discount_amount numeric(10, 2) not null default 0,
+  discount_source text check (discount_source in ('promo', 'bundle')),
   total numeric(10, 2) not null default 0,
 
   payment_status text not null default 'pending_review'

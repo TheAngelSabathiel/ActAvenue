@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { withRefresh } from "@/lib/refresh-public";
+import { cleanBundleTiers } from "@/lib/pricing";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,6 +27,12 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
+  }
+  if ("bundle_enabled" in body) update.bundle_enabled = body.bundle_enabled === true;
+  if ("bundle_tiers" in body) {
+    const tiers = cleanBundleTiers(body.bundle_tiers);
+    if (!tiers.length) return NextResponse.json({ error: "Add at least one group step (2 or more tickets, 1 to 90 percent)." }, { status: 400 });
+    update.bundle_tiers = tiers;
   }
   // Blank payment fields clear back to the site default.
   for (const key of paymentFields) {

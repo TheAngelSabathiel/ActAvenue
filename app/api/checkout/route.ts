@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     const performance = groupItems[0].performance;
     const production = productionById.get(performance.production_id)!;
     const cartLines = groupItems.map((i) => ({ ticket_tier: i.ticket_tier as TicketTier, quantity: i.quantity }));
-    const pricing = calculatePricing(cartLines, promoLeft, production.id);
+    const pricing = calculatePricing(cartLines, promoLeft, production.id, new Date(), production);
     if (promoLeft) promoLeft = { ...promoLeft, times_used: promoLeft.times_used + pricing.promoUses };
     return { groupItems, performance, production, pricing };
   });
@@ -183,8 +183,9 @@ export async function POST(req: NextRequest) {
           buyer_name,
           buyer_email,
           buyer_phone,
-          promo_code_id: plan.pricing.discountAmount > 0 ? promo?.id ?? null : null,
-          promo_uses: plan.pricing.discountAmount > 0 ? plan.pricing.promoUses : null,
+          promo_code_id: plan.pricing.discountSource === "promo" ? promo?.id ?? null : null,
+          promo_uses: plan.pricing.discountSource === "promo" ? plan.pricing.promoUses : null,
+          discount_source: plan.pricing.discountSource === "promo" || plan.pricing.discountSource === "bundle" ? plan.pricing.discountSource : null,
           subtotal: plan.pricing.subtotal,
           discount_amount: plan.pricing.discountAmount,
           total: plan.pricing.total,
@@ -240,7 +241,7 @@ export async function POST(req: NextRequest) {
     // max_uses at commit time (defense in depth beyond the eligibility check).
     if (promo) {
       for (const plan of plans) {
-        if (plan.pricing.discountAmount <= 0) continue;
+        if (plan.pricing.discountSource !== "promo") continue;
         // A fixed-amount code uses up one use per discounted ticket.
         for (let n = 0; n < Math.max(1, plan.pricing.promoUses); n++) {
           const { error: promoError } = await incrementPromoUsage(db, promo.id);

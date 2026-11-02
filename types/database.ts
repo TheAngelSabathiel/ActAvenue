@@ -89,6 +89,8 @@ export interface Production {
   bank_qr_url: string | null;
   email_note: string | null;
   status: ProductionStatus;
+  bundle_enabled?: boolean;
+  bundle_tiers?: { min: number; percent: number }[];
   carousel_order: number;
   created_at: string;
   updated_at: string;
@@ -101,6 +103,8 @@ export interface Performance {
   datetime: string;
   venue: string;
   capacity: number;
+  /** Seats shown publicly as the show size. Empty means the real total. */
+  display_capacity?: number | null;
   created_at: string;
 }
 
@@ -187,6 +191,7 @@ export interface Reservation {
   promo_code_id: string | null;
   subtotal: number;
   discount_amount: number;
+  discount_source?: "promo" | "bundle" | null;
   total: number;
   payment_status: PaymentStatus;
   booking_source: BookingSource;

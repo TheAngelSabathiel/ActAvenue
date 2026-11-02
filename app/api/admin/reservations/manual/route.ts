@@ -74,9 +74,11 @@ async function handlePOST(req: NextRequest) {
   const pricing = calculatePricing(
     items.map((i) => ({ ticket_tier: tierMap.get(i.ticket_tier_id)!, quantity: i.quantity })),
     promo,
-    production.id
+    production.id,
+    new Date(),
+    production
   );
-  if (promo && pricing.discountAmount <= 0) {
+  if (promo && pricing.discountSource === "none") {
     return NextResponse.json(
       { error: pricing.rejectedPromoReason ?? "This code doesn't apply to the selected tickets." },
       { status: 400 }
@@ -134,8 +136,9 @@ async function handlePOST(req: NextRequest) {
       subtotal,
       discount_amount: discountAmount,
       total,
-      promo_code_id: promo ? promo.id : null,
-      promo_uses: promo ? pricing.promoUses : null,
+      promo_code_id: pricing.discountSource === "promo" && promo ? promo.id : null,
+      promo_uses: pricing.discountSource === "promo" ? pricing.promoUses : null,
+      discount_source: pricing.discountSource === "promo" || pricing.discountSource === "bundle" ? pricing.discountSource : null,
       payment_status: status,
       booking_source: "admin_manual",
       hold_expires_at: status === "pending_review"
@@ -150,7 +153,7 @@ async function handlePOST(req: NextRequest) {
     return NextResponse.json({ error: reservationError?.message }, { status: 500 });
   }
 
-  if (promo) {
+  if (promo && pricing.discountSource === "promo") {
     for (let n = 0; n < Math.max(1, pricing.promoUses); n++) {
       const { error: promoError } = await incrementPromoUsage(db, promo.id);
       if (promoError) {

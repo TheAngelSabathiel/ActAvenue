@@ -7,6 +7,8 @@ import type { TicketTier } from "@/types/database";
 
 type PaymentProduction = {
   title: string;
+  bundle_enabled?: boolean;
+  bundle_tiers?: { min: number; percent: number }[];
   gcash_name: string | null;
   gcash_number: string | null;
   gcash_qr_url: string | null;
@@ -27,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const { data: items } = await db
     .from("cart_items")
-    .select("*, ticket_tier:ticket_tiers(*), performance:performances(production_id, production:productions(id, title, gcash_name, gcash_number, gcash_qr_url, bank_name, bank_account_name, bank_account_number, bank_qr_url))")
+    .select("*, ticket_tier:ticket_tiers(*), performance:performances(production_id, production:productions(id, title, gcash_name, gcash_number, gcash_qr_url, bank_name, bank_account_name, bank_account_number, bank_qr_url, bundle_enabled, bundle_tiers))")
     .eq("cart_id", cart.id);
 
   const promo = code
@@ -45,11 +47,17 @@ export async function GET(req: NextRequest) {
   let subtotal = 0;
   let discount = 0;
   let total = 0;
+  const bundles: { title: string; percent: number; amount: number }[] = [];
+  let promoDiscount = 0;
+  let promoSkipped = false;
   // Shows that pay into the same account are merged into one payee.
   const payees = new Map<string, PaymentGroup>();
   let promoLeft = promo;
   for (const g of groups.values()) {
-    const p = calculatePricing(g.lines, promoLeft, g.productionId);
+    const p = calculatePricing(g.lines, promoLeft, g.productionId, new Date(), g.production);
+    if (p.discountSource === "bundle") bundles.push({ title: g.production?.title ?? "", percent: p.bundlePercent ?? 0, amount: p.discountAmount });
+    if (p.discountSource === "promo") promoDiscount += p.discountAmount;
+    if (p.promoSkipped) promoSkipped = true;
     if (promoLeft) promoLeft = { ...promoLeft, times_used: promoLeft.times_used + p.promoUses };
     subtotal += p.subtotal;
     discount += p.discountAmount;
@@ -63,5 +71,5 @@ export async function GET(req: NextRequest) {
     payee.total += p.total;
     payees.set(key, payee);
   }
-  return NextResponse.json({ subtotal, discount, total, payments: [...payees.values()] });
+  return NextResponse.json({ subtotal, discount, total, bundles, promoDiscount, promoSkipped, payments: [...payees.values()] });
 }

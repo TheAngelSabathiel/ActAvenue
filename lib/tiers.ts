@@ -59,3 +59,19 @@ export function tierRemaining(t: StockTier, all: StockTier[]): number {
 export function applyRemaining<T extends StockTier>(tiers: T[]): (T & { remaining: number })[] {
   return tiers.map((t) => ({ ...t, remaining: tierRemaining(t, tiers) }));
 }
+
+/** Percent of a show that is booked, for the public "X% booked" bar. */
+export const FILL_ALMOST_FULL = 70;
+
+/**
+ * Booked share of a show. The size is the displayed capacity when an admin set
+ * one, otherwise the real seat total. It stays under 100 until the show is
+ * truly sold out, and a show with seats left never reads as full.
+ */
+export function showFill(tiers: StockTier[], displayCapacity?: number | null): { percent: number; soldOut: boolean } {
+  const real = tiers.filter((t) => !t.pool_tier_id).reduce((n, t) => n + t.quantity_available, 0);
+  const booked = tiers.reduce((n, t) => n + t.quantity_held, 0);
+  if (real <= 0 || booked >= real) return { percent: 100, soldOut: real > 0 };
+  const size = displayCapacity && displayCapacity > 0 ? displayCapacity : real;
+  return { percent: Math.max(0, Math.min(99, Math.round((booked / size) * 100))), soldOut: false };
+}

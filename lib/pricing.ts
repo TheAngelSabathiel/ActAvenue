@@ -9,8 +9,12 @@ export interface PricingResult {
   subtotal: number;
   discountAmount: number;
   total: number;
-  discountSource: "promo" | "tier" | "none";
+  discountSource: "promo" | "tier" | "bundle" | "none";
   rejectedPromoReason?: string;
+  /** Set when a group discount applied (percent off the Regular tickets). */
+  bundlePercent?: number;
+  /** A promo code was entered but the group discount was bigger, so only that applied. */
+  promoSkipped?: boolean;
   /** How many uses of the code this order consumes (a fixed-amount code uses one per discounted ticket). */
   promoUses: number;
 }
@@ -86,66 +90,114 @@ export function isPromoCodeValid(
   return { valid: true };
 }
 
+export type BundleTier = { min: number; percent: number };
+export type BundleConfig = { bundle_enabled?: boolean | null; bundle_tiers?: BundleTier[] | null };
+
+export const DEFAULT_BUNDLE_TIERS: BundleTier[] = [
+  { min: 3, percent: 5 },
+  { min: 5, percent: 8 },
+  { min: 10, percent: 12 },
+];
+
+/** Cleans stored or submitted tiers: whole counts of 2 or more, percent 1 to 90, no repeats, lowest first. */
+export function cleanBundleTiers(v: unknown): BundleTier[] {
+  if (!Array.isArray(v)) return DEFAULT_BUNDLE_TIERS;
+  const out = new Map<number, number>();
+  for (const t of v) {
+    const min = Math.floor(Number((t as BundleTier)?.min));
+    const percent = Number((t as BundleTier)?.percent);
+    if (min >= 2 && percent > 0 && percent <= 90) out.set(min, Math.round(percent * 100) / 100);
+  }
+  return [...out.entries()].map(([min, percent]) => ({ min, percent })).sort((a, b) => a.min - b.min);
+}
+
+/** Regular tickets in these lines that a group discount counts (no active tier discount, not free). */
+function bundleLines(lines: CartLineInput[], now: Date) {
+  return lines.filter((l) => l.ticket_tier.tier_type === "regular" && !isTierDiscountActive(l.ticket_tier, now) && l.ticket_tier.price > 0);
+}
+
+/** The group discount for one show: the biggest step the Regular ticket count reaches. */
+export function bundleDiscount(
+  lines: CartLineInput[],
+  config: BundleConfig | null | undefined,
+  now = new Date()
+): { amount: number; percent: number; count: number } {
+  if (!config?.bundle_enabled) return { amount: 0, percent: 0, count: 0 };
+  const eligible = bundleLines(lines, now);
+  const count = eligible.reduce((n, l) => n + l.quantity, 0);
+  const step = cleanBundleTiers(config.bundle_tiers ?? DEFAULT_BUNDLE_TIERS)
+    .filter((t) => count >= t.min)
+    .pop();
+  if (!step) return { amount: 0, percent: 0, count };
+  const base = eligible.reduce((n, l) => n + l.ticket_tier.price * l.quantity, 0);
+  return { amount: Math.round(base * step.percent) / 100, percent: step.percent, count };
+}
+
+/** The next group step above the current Regular count, for "add 1 more" hints. */
+export function nextBundleStep(count: number, config: BundleConfig | null | undefined): BundleTier | null {
+  if (!config?.bundle_enabled) return null;
+  return cleanBundleTiers(config.bundle_tiers ?? DEFAULT_BUNDLE_TIERS).find((t) => t.min > count) ?? null;
+}
+
 /**
  * Business rules baked in here (see MVP doc "Promo code vs. discounted-tier logic"):
- *  - One promo code per reservation, never stacked with anything else.
+ *  - One discount per reservation, never stacked: a promo code or the group
+ *    (bundle) discount, whichever saves more. A tie goes to the group discount
+ *    so no code use is spent.
  *  - Discount-tier line items (is_discount_tier = true, active window) do not
- *    accept a promo code on top of them.
- *  - If a cart mixes discount-tier and regular items, the promo only applies
- *    to the regular-tier subtotal.
- *  - Where it's ambiguous whether the tier discount or the promo gives a
- *    bigger saving on the same items, the larger discount wins - they never stack.
+ *    accept a promo code or a group discount on top of them.
+ *  - If a cart mixes discount-tier and regular items, the discount only applies
+ *    to the regular-tier subtotal. The group discount only counts Regular tickets.
  */
 export function calculatePricing(
   lines: CartLineInput[],
   promo: PromoCode | null,
   productionId: string,
-  now = new Date()
+  now = new Date(),
+  bundle?: BundleConfig | null
 ): PricingResult {
   const subtotal = lines.reduce((sum, l) => sum + l.ticket_tier.price * l.quantity, 0);
+  const none = (extra: Partial<PricingResult> = {}): PricingResult => ({
+    subtotal, discountAmount: 0, total: subtotal, discountSource: "none", promoUses: 0, ...extra,
+  });
 
-  if (!promo) {
-    return { subtotal, discountAmount: 0, total: subtotal, discountSource: "none", promoUses: 0 };
+  // Promo side
+  let promoAmount = 0;
+  let promoUses = 0;
+  let rejectedPromoReason: string | undefined;
+  if (promo) {
+    const validity = isPromoCodeValid(promo, productionId, now);
+    if (!validity.valid) {
+      rejectedPromoReason = validity.reason;
+    } else {
+      const regularLines = lines.filter((l) => !isTierDiscountActive(l.ticket_tier, now));
+      const types = promo.applicable_tier_types;
+      const eligibleLines = types && types.length ? regularLines.filter((l) => types.includes(l.ticket_tier.tier_type)) : regularLines;
+      if (types && types.length && regularLines.length > 0 && eligibleLines.length === 0) {
+        rejectedPromoReason = "Promo code not valid for this ticket type / show.";
+      } else {
+        const r = promoDiscount(promo, eligibleLines);
+        promoAmount = r.amount;
+        promoUses = r.uses;
+      }
+    }
   }
 
-  const validity = isPromoCodeValid(promo, productionId, now);
-  if (!validity.valid) {
-    return {
-      subtotal,
-      discountAmount: 0,
-      total: subtotal,
-      discountSource: "none",
-      rejectedPromoReason: validity.reason,
-      promoUses: 0,
-    };
+  // Group side
+  const b = bundleDiscount(lines, bundle, now);
+
+  if (b.amount > 0 && b.amount >= promoAmount) {
+    return none({
+      discountAmount: b.amount,
+      total: Math.max(0, subtotal - b.amount),
+      discountSource: "bundle",
+      bundlePercent: b.percent,
+      promoSkipped: !!promo && promoAmount > 0,
+      rejectedPromoReason: promo && promoAmount === 0 ? rejectedPromoReason : undefined,
+    });
   }
-
-  // Promo only ever applies to the non-discount-tier portion of the cart.
-  const regularLines = lines.filter((l) => !isTierDiscountActive(l.ticket_tier, now));
-  const types = promo.applicable_tier_types;
-  const eligibleLines = types && types.length ? regularLines.filter((l) => types.includes(l.ticket_tier.tier_type)) : regularLines;
-  if (types && types.length && regularLines.length > 0 && eligibleLines.length === 0) {
-    return {
-      subtotal,
-      discountAmount: 0,
-      total: subtotal,
-      discountSource: "none",
-      rejectedPromoReason: "Promo code not valid for this ticket type / show.",
-      promoUses: 0,
-    };
+  if (promoAmount > 0) {
+    return none({ discountAmount: promoAmount, total: Math.max(0, subtotal - promoAmount), discountSource: "promo", promoUses });
   }
-  const { amount: promoAmount, uses } = promoDiscount(promo, eligibleLines);
-
-  // Nothing to compare against on the discount-tier portion - the tier
-  // pricing itself *is* the discount, so just report it as "tier" sourced
-  // if that's where all the savings vs. list price already are.
-  const total = Math.max(0, subtotal - promoAmount);
-
-  return {
-    subtotal,
-    discountAmount: promoAmount,
-    total,
-    discountSource: promoAmount > 0 ? "promo" : "none",
-    promoUses: promoAmount > 0 ? uses : 0,
-  };
+  return none({ rejectedPromoReason });
 }

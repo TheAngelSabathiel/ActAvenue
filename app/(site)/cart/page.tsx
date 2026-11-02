@@ -3,7 +3,7 @@
 import { toast } from "@/lib/toast";
 import { idPaths } from "@/lib/id-proofs";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Spinner } from "@/components/spinner";
 import { formatDayLong, formatTime } from "@/lib/datetime";
 import Link from "next/link";
@@ -16,6 +16,21 @@ export default function CartPage() {
     { valid: boolean; reason?: string; discount: number } | null
   >(null);
   const [checkingPromo, setCheckingPromo] = useState(false);
+  // What the buyer owes, from the same pricing as checkout (includes group discounts).
+  const [quote, setQuote] = useState<{ discount: number; total: number; bundles: { title: string; percent: number; amount: number }[] } | null>(null);
+  const appliedCode = promoResult?.valid ? promoCode : "";
+  const quoteKey = items.map((i) => `${i.id}:${i.quantity}`).join(",");
+  useEffect(() => {
+    if (!quoteKey) return;
+    let live = true;
+    fetch(`/api/cart/quote?promo=${encodeURIComponent(appliedCode)}`)
+      .then((r) => r.json())
+      .then((q) => live && setQuote({ discount: q.discount ?? 0, total: q.total ?? 0, bundles: q.bundles ?? [] }))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [quoteKey, appliedCode]);
 
   // Promo codes are per production, so check each production in the cart
   // separately and add up what the code saves.
@@ -62,7 +77,6 @@ export default function CartPage() {
     entry.lines.push(i);
     shows.set(i.performance_id, entry);
   }
-  const discount = promoResult?.valid ? promoResult.discount : 0;
 
   return (
     <div className="aa-container max-w-3xl py-12">
@@ -140,9 +154,15 @@ export default function CartPage() {
               </p>
             )}
 
+            {quote?.bundles.map((b) => (
+              <p key={b.title} className="text-sm text-success font-bold mb-0">
+                Group discount applied{b.title ? ` to ${b.title}` : ""}: {b.percent}% off. You save ₱{b.amount.toFixed(2)}
+              </p>
+            ))}
+
             <div className="flex items-center justify-between text-2xl font-black">
               <span className="uppercase tracking-[0.08em]">Total</span>
-              <span>₱{Math.max(0, total - discount).toFixed(2)}</span>
+              <span>₱{Math.max(0, quote?.total ?? total).toFixed(2)}</span>
             </div>
 
             {shows.size > 1 && (
