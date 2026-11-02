@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireProduction } from "@/lib/admin-auth";
 import { calculatePricing } from "@/lib/pricing";
-import { lookupCrossSource, crossAllowance } from "@/lib/crossshow";
+import { lookupCrossSources, crossAllowance, sourceLeft } from "@/lib/crossshow";
 import type { TicketTier } from "@/types/database";
 
 /** Live total for the staff New reservation form: same pricing as the booking itself. */
@@ -30,13 +30,8 @@ export async function POST(req: NextRequest) {
     promo = data;
     if (!data) promoError = "Promo code not found.";
   }
-  let crossError: string | undefined;
-  let source;
-  if (crossshow_ref?.trim()) {
-    const found = await lookupCrossSource(db, crossshow_ref, buyer_email ?? "");
-    crossError = found.error;
-    source = found.source;
-  }
-  const pricing = calculatePricing(lines, promo, production!.id, new Date(), production, crossAllowance(production, source, source?.available ?? 0));
+  const found = crossshow_ref?.trim() ? await lookupCrossSources(db, crossshow_ref, buyer_email ?? "") : { sources: [] };
+  const crossError = found.error;
+  const pricing = calculatePricing(lines, promo, production!.id, new Date(), production, crossAllowance(production, found.sources, sourceLeft(found.sources)));
   return NextResponse.json({ pricing, promoError: promoError ?? (promo && pricing.discountSource === "none" ? pricing.rejectedPromoReason : undefined), crossError });
 }

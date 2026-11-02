@@ -205,12 +205,12 @@ export default function NewReservationPage() {
         {preview?.promoError && <p className="text-sm text-danger">{preview.promoError}</p>}
 
         <input
-          placeholder="Booking code from another show (optional)"
+          placeholder="Booking code(s) from another show (optional)"
           value={crossRef}
           onChange={(e) => setCrossRef(e.target.value.toUpperCase())}
           className="w-full border border-ink/20 px-3 py-2 uppercase"
         />
-        <p className="text-xs text-muted -mt-2">Cross-show discount. The buyer email above must match that confirmed booking. Only one discount applies per order.</p>
+        <p className="text-xs text-muted -mt-2">Cross-show discount. Separate several codes with commas. The buyer email above must match those confirmed bookings. Only one discount applies per order.</p>
         {preview?.crossError && <p className="text-sm text-danger">{preview.crossError}</p>}
 
         <label className="block text-sm">

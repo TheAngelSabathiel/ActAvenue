@@ -17,20 +17,25 @@ export default function CartPage() {
   >(null);
   const [checkingPromo, setCheckingPromo] = useState(false);
   // What the buyer owes, from the same pricing as checkout (includes group discounts).
-  const [quote, setQuote] = useState<{ discount: number; total: number; bundles: { title: string; percent: number; amount: number }[] } | null>(null);
+  const [quote, setQuote] = useState<{ discount: number; total: number; bundles: { title: string; percent: number; amount: number }[]; crossshow?: { offered: boolean; checked: boolean; error?: string; available: number; used: number; discount: number } } | null>(null);
+  const [xemail, setXemail] = useState("");
+  const [xref, setXref] = useState("");
   const appliedCode = promoResult?.valid ? promoCode : "";
   const quoteKey = items.map((i) => `${i.id}:${i.quantity}`).join(",");
   useEffect(() => {
     if (!quoteKey) return;
     let live = true;
-    fetch(`/api/cart/quote?promo=${encodeURIComponent(appliedCode)}`)
-      .then((r) => r.json())
-      .then((q) => live && setQuote({ discount: q.discount ?? 0, total: q.total ?? 0, bundles: q.bundles ?? [] }))
-      .catch(() => {});
+    const t = setTimeout(() => {
+      fetch(`/api/cart/quote?promo=${encodeURIComponent(appliedCode)}&xref=${encodeURIComponent(xref)}&email=${encodeURIComponent(xemail)}`)
+        .then((r) => r.json())
+        .then((q) => live && setQuote({ discount: q.discount ?? 0, total: q.total ?? 0, bundles: q.bundles ?? [], crossshow: q.crossshow }))
+        .catch(() => {});
+    }, 400);
     return () => {
       live = false;
+      clearTimeout(t);
     };
-  }, [quoteKey, appliedCode]);
+  }, [quoteKey, appliedCode, xref, xemail]);
 
   // Promo codes are per production, so check each production in the cart
   // separately and add up what the code saves.
@@ -157,9 +162,27 @@ export default function CartPage() {
               </p>
             )}
 
+            {quote?.crossshow?.offered && (
+              <div className="aa-card p-4 space-y-2">
+                <p className="font-black text-sm mb-0">Bought tickets to another show that is on sale now?</p>
+                <p className="text-xs text-muted mb-0">
+                  Enter the email and booking code(s) from your confirmed booking. Each ticket earns one discounted Regular ticket. Several booking codes under the same email add up (separate them with commas).
+                </p>
+                <input type="email" value={xemail} onChange={(e) => setXemail(e.target.value)} placeholder="Email used on that booking" className="aa-input" aria-label="Email used on the other booking" />
+                <input value={xref} onChange={(e) => setXref(e.target.value.toUpperCase())} placeholder="BOOKING CODE(S)" className="aa-input uppercase" aria-label="Booking codes" />
+                {quote.crossshow.checked && quote.crossshow.error && <p className="text-sm text-danger font-bold mb-0">{quote.crossshow.error}</p>}
+                {quote.crossshow.checked && !quote.crossshow.error && quote.crossshow.used > 0 && (
+                  <p className="text-sm text-success font-bold mb-0">Cross-show discount applied to {quote.crossshow.used} ticket{quote.crossshow.used === 1 ? "" : "s"}. You save ₱{quote.crossshow.discount.toFixed(2)}.</p>
+                )}
+                {quote.crossshow.checked && !quote.crossshow.error && quote.crossshow.used === 0 && (
+                  <p className="text-sm text-muted font-bold mb-0">Code accepted, but no discount applies to this cart. It may not cover these shows, or another discount saves more (only one applies per order).</p>
+                )}
+              </div>
+            )}
+
             {quote && quote.discount > 0 && (
               <div className="flex items-center justify-between text-sm font-bold text-success">
-                <span className="uppercase tracking-[0.08em]">{quote.bundles.length && !appliedCode ? `Group discount${quote.bundles.length === 1 ? ` (${quote.bundles[0].percent}% off)` : ""}` : appliedCode && !quote.bundles.length ? "Promo code" : "Discounts"}</span>
+                <span className="uppercase tracking-[0.08em]">{quote.bundles.length && !appliedCode && !quote.crossshow?.used ? `Group discount${quote.bundles.length === 1 ? ` (${quote.bundles[0].percent}% off)` : ""}` : appliedCode && !quote.bundles.length && !quote.crossshow?.used ? "Promo code" : quote.crossshow?.used && !appliedCode && !quote.bundles.length ? "Cross-show discount" : "Discounts"}</span>
                 <span className="tabular-nums">-₱{quote.discount.toFixed(2)}</span>
               </div>
             )}
@@ -175,7 +198,7 @@ export default function CartPage() {
             )}
 
             <Link
-              href={`/checkout?promo=${encodeURIComponent(promoResult?.valid ? promoCode : "")}`}
+              href={`/checkout?promo=${encodeURIComponent(promoResult?.valid ? promoCode : "")}${xref && xemail ? `&xref=${encodeURIComponent(xref)}&email=${encodeURIComponent(xemail)}` : ""}`}
               className="aa-btn aa-btn-lg w-full"
             >
               Proceed to Checkout

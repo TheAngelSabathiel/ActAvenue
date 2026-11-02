@@ -4,7 +4,7 @@ import { getOrCreateCart } from "@/lib/cart-session";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { calculatePricing } from "@/lib/pricing";
-import { lookupCrossSource, crossAllowance } from "@/lib/crossshow";
+import { lookupCrossSources, crossAllowance, allocateCross, sourceLeft } from "@/lib/crossshow";
 import { subscribe } from "@/lib/mailing";
 import { sendBookingReceivedEmail } from "@/lib/email/send";
 import { holdTicketTier, incrementPromoUsage, releaseTicketTierHolds } from "@/lib/inventory";
@@ -93,13 +93,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Cross-show discount: the code must belong to a confirmed booking with this same email.
-  let crossSource: Awaited<ReturnType<typeof lookupCrossSource>>["source"];
-  if (crossshow_ref) {
-    const found = await lookupCrossSource(db, crossshow_ref, buyer_email);
-    if (found.error) return NextResponse.json({ error: found.error }, { status: 400 });
-    crossSource = found.source;
-  }
-  let crossLeft = crossSource?.available ?? 0;
+  // Several codes under the same email add up.
+  const found = crossshow_ref ? await lookupCrossSources(db, crossshow_ref, buyer_email) : { sources: [] };
+  if (found.error) return NextResponse.json({ error: found.error }, { status: 400 });
+  const crossLeft = sourceLeft(found.sources);
 
   // Price each show on its own. A promo only discounts the shows it applies to.
   // A code with limited uses is spread across the shows in order: each show
@@ -109,10 +106,11 @@ export async function POST(req: NextRequest) {
     const performance = groupItems[0].performance;
     const production = productionById.get(performance.production_id)!;
     const cartLines = groupItems.map((i) => ({ ticket_tier: i.ticket_tier as TicketTier, quantity: i.quantity }));
-    const pricing = calculatePricing(cartLines, promoLeft, production.id, new Date(), production, crossAllowance(production, crossSource, crossLeft));
-    crossLeft -= pricing.crossshowUses ?? 0;
+    const allowance = crossAllowance(production, found.sources, crossLeft);
+    const pricing = calculatePricing(cartLines, promoLeft, production.id, new Date(), production, allowance);
+    const crossAlloc = allowance && pricing.discountSource === "crossshow" ? allocateCross(allowance.eligible, crossLeft, pricing.crossshowUses ?? 0) : [];
     if (promoLeft) promoLeft = { ...promoLeft, times_used: promoLeft.times_used + pricing.promoUses };
-    return { groupItems, performance, production, pricing };
+    return { groupItems, performance, production, pricing, crossAlloc };
   });
 
   // --- Atomic inventory hold ---
@@ -219,11 +217,11 @@ export async function POST(req: NextRequest) {
       createdIds.push(reservation.id);
 
       // Spend the earned uses now, atomically. If they were just taken, undo the whole checkout.
-      if (plan.pricing.discountSource === "crossshow" && crossSource) {
+      for (const a of plan.crossAlloc) {
         const { error: claimError } = await db.rpc("claim_crossshow_uses", {
-          p_source: crossSource.id,
+          p_source: a.sourceId,
           p_target: reservation.id,
-          p_uses: plan.pricing.crossshowUses ?? 0,
+          p_uses: a.uses,
           p_amount: Number(plan.production.crossshow_amount),
         });
         if (claimError) {

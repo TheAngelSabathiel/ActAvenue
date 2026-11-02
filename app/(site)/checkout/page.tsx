@@ -45,8 +45,8 @@ function CheckoutForm() {
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>("");
   const [quote, setQuote] = useState<{ discount: number; total: number; bundles: number; promo: number; payments: PaymentGroup[]; crossshow?: { offered: boolean; checked: boolean; error?: string; used: number; discount: number } } | null>(null);
-  const [email, setEmail] = useState("");
-  const [xref, setXref] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
+  const [xref, setXref] = useState(searchParams.get("xref") ?? "");
   const promoParam = searchParams.get("promo") ?? "";
 
   // What the buyer actually owes (promo applied), from the same pricing as checkout.
@@ -71,7 +71,7 @@ function CheckoutForm() {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         setAccountEmail(data.user.email ?? null);
-        setEmail(data.user.email ?? "");
+        setEmail((prev) => prev || (data.user.email ?? ""));
         setAccountName((data.user.user_metadata?.display_name as string) ?? "");
       }
     });
@@ -165,7 +165,7 @@ function CheckoutForm() {
         </div>
         <div>
           <label className={label}>Email</label>
-          <input type="email" name="buyer_email" defaultValue={accountEmail ?? ""} key={accountEmail} onChange={(e) => setEmail(e.target.value)} required className="aa-input" />
+          <input type="email" name="buyer_email" defaultValue={searchParams.get("email") ?? accountEmail ?? ""} key={accountEmail} onChange={(e) => setEmail(e.target.value)} required className="aa-input" />
           <p className="text-xs text-muted mt-1 mb-0">Your confirmation and e-ticket QR go here.</p>
         </div>
         <div>
@@ -174,10 +174,10 @@ function CheckoutForm() {
         </div>
         {cross?.offered && (
           <div>
-            <label className={label}>Booking code from another show (optional)</label>
-            <input name="crossshow_ref" value={xref} onChange={(e) => setXref(e.target.value.toUpperCase())} placeholder="Booking code" className="aa-input uppercase" />
+            <label className={label}>Booking code(s) from another show (optional)</label>
+            <input name="crossshow_ref" value={xref} onChange={(e) => setXref(e.target.value.toUpperCase())} placeholder="Booking code(s)" className="aa-input uppercase" />
             <p className="text-xs text-muted mt-1 mb-0">
-              Bought tickets to another show that is on sale now? Enter the booking code from your confirmed booking. The email above must be the same one used for that booking. Each ticket earns one discounted ticket here.
+              Bought tickets to another show that is on sale now? Enter the booking code from your confirmed booking. The email above must be the same one used for that booking. Each ticket earns one discounted ticket here. Several booking codes under the same email add up (separate them with commas).
             </p>
             {cross.checked && cross.error && <p className="text-sm text-danger font-bold mt-1 mb-0">{cross.error}</p>}
             {cross.checked && !cross.error && cross.used > 0 && (

@@ -14,23 +14,24 @@ export const CROSSSHOW_ENDED =
 export const CROSSSHOW_MISMATCH =
   "We couldn't match that code to this email. Use the booking code and the same email from a paid, confirmed booking.";
 
+/** Splits a typed list of booking codes (commas, spaces or new lines), uppercased, without repeats. */
+export function parseRefs(raw: string | null | undefined): string[] {
+  return [...new Set((raw ?? "").toUpperCase().split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean))].slice(0, 10);
+}
+
 /**
  * Finds the booking a buyer wants to earn a cross-show discount from. It must be
- * confirmed and carry the same email (not case sensitive). The error is the same
- * whether the code or the email is wrong, so codes can't be probed.
+ * confirmed, carry the same email (not case sensitive), and belong to a show that
+ * is on sale now. The error is the same whether the code or the email is wrong,
+ * so codes can't be probed.
  */
-export async function lookupCrossSource(
-  db: SupabaseClient,
-  code: string,
-  email: string
-): Promise<{ source?: CrossSource; error?: string }> {
-  const ref = code.toUpperCase().trim();
+async function lookupOne(db: SupabaseClient, code: string, email: string): Promise<{ source?: CrossSource; error?: string }> {
   const mail = email.trim().toLowerCase();
-  if (!ref || !mail) return { error: CROSSSHOW_MISMATCH };
+  if (!code || !mail) return { error: CROSSSHOW_MISMATCH };
   const { data: r } = await db
     .from("reservations")
     .select("id, production_id, buyer_email, payment_status")
-    .eq("reference_code", ref)
+    .eq("reference_code", code)
     .maybeSingle();
   if (!r || r.payment_status !== "confirmed" || (r.buyer_email ?? "").trim().toLowerCase() !== mail) {
     return { error: CROSSSHOW_MISMATCH };
@@ -47,14 +48,49 @@ export async function lookupCrossSource(
   return { source: { id: r.id, production_id: r.production_id, available: Number(avail) || 0 } };
 }
 
-/** What a production's cross-show discount allows for this source booking, or null. */
+/** Looks up every code typed. Several bookings under the same email add up. */
+export async function lookupCrossSources(
+  db: SupabaseClient,
+  raw: string,
+  email: string
+): Promise<{ sources: CrossSource[]; error?: string }> {
+  const sources = new Map<string, CrossSource>();
+  for (const code of parseRefs(raw)) {
+    const found = await lookupOne(db, code, email);
+    if (found.error || !found.source) return { sources: [], error: `${code}: ${found.error ?? CROSSSHOW_MISMATCH}` };
+    sources.set(found.source.id, found.source);
+  }
+  return { sources: [...sources.values()] };
+}
+
+/** What a production's cross-show discount allows from these sources, or null. */
 export function crossAllowance(
   production: CrossProduction | null | undefined,
-  source: CrossSource | undefined,
-  usesLeft: number
-): { amount: number; uses: number } | null {
-  if (!production?.crossshow_enabled || !source) return null;
-  if (!(production.crossshow_source_ids ?? []).includes(source.production_id)) return null;
+  sources: CrossSource[],
+  left: Map<string, number>
+): { amount: number; uses: number; eligible: CrossSource[] } | null {
+  if (!production?.crossshow_enabled) return null;
+  const list = production.crossshow_source_ids ?? [];
+  const eligible = sources.filter((s) => list.includes(s.production_id));
+  const uses = eligible.reduce((n, s) => n + (left.get(s.id) ?? 0), 0);
   const amount = Number(production.crossshow_amount);
-  return amount > 0 && usesLeft > 0 ? { amount, uses: usesLeft } : null;
+  return amount > 0 && uses > 0 ? { amount, uses, eligible } : null;
 }
+
+/** Takes `uses` from the eligible sources in order and records what is left of each. */
+export function allocateCross(eligible: CrossSource[], left: Map<string, number>, uses: number): { sourceId: string; uses: number }[] {
+  const out: { sourceId: string; uses: number }[] = [];
+  let need = uses;
+  for (const s of eligible) {
+    if (need <= 0) break;
+    const take = Math.min(left.get(s.id) ?? 0, need);
+    if (take > 0) {
+      out.push({ sourceId: s.id, uses: take });
+      left.set(s.id, (left.get(s.id) ?? 0) - take);
+      need -= take;
+    }
+  }
+  return out;
+}
+
+export const sourceLeft = (sources: CrossSource[]) => new Map(sources.map((s) => [s.id, s.available]));

@@ -88,8 +88,11 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 
   // A cross-show discount keeps its uses; they shrink only if there are fewer Regular tickets left.
   let crossPlan: { amount: number; uses: number; rowUses: number } | null = null;
+  let crossRows: { id: string; uses: number }[] = [];
   if (reservation.discount_source === "crossshow") {
-    const { data: row } = await db.from("crossshow_uses").select("uses, amount_each").eq("target_reservation_id", id).maybeSingle();
+    const { data: rows } = await db.from("crossshow_uses").select("id, uses, amount_each").eq("target_reservation_id", id).order("created_at");
+    crossRows = (rows ?? []).map((r) => ({ id: r.id, uses: r.uses }));
+    const row = rows?.length ? { uses: rows.reduce((n, r) => n + r.uses, 0), amount_each: rows[0].amount_each } : null;
     if (row) {
       const lines = (allItems ?? []).map((i) => ({
         ticket_tier: ({ ...(Array.isArray(i.ticket_tier) ? i.ticket_tier[0] : i.ticket_tier), price: Number(i.unit_price) }) as TicketTier,
@@ -145,9 +148,16 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  if (crossPlan && crossPlan.uses !== crossPlan.rowUses) {
-    if (crossPlan.uses > 0) await db.from("crossshow_uses").update({ uses: crossPlan.uses }).eq("target_reservation_id", id);
-    else await db.from("crossshow_uses").delete().eq("target_reservation_id", id);
+  if (crossPlan && crossPlan.uses < crossPlan.rowUses) {
+    // Give back the extra uses, taking from the last source first.
+    let excess = crossPlan.rowUses - crossPlan.uses;
+    for (const row of [...crossRows].reverse()) {
+      if (excess <= 0) break;
+      const cut = Math.min(row.uses, excess);
+      if (row.uses - cut > 0) await db.from("crossshow_uses").update({ uses: row.uses - cut }).eq("id", row.id);
+      else await db.from("crossshow_uses").delete().eq("id", row.id);
+      excess -= cut;
+    }
   }
 
   // The reservation is no longer fully admitted if the quantity went up.

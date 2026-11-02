@@ -7,7 +7,7 @@ import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
 import { withRefresh } from "@/lib/refresh-public";
 import { incrementPromoUsage } from "@/lib/inventory";
 import { calculatePricing } from "@/lib/pricing";
-import { lookupCrossSource, crossAllowance } from "@/lib/crossshow";
+import { lookupCrossSources, crossAllowance, allocateCross, sourceLeft } from "@/lib/crossshow";
 import { uploadPaymentProof } from "@/lib/payment-proof";
 
 async function handlePOST(req: NextRequest) {
@@ -73,20 +73,19 @@ async function handlePOST(req: NextRequest) {
     if (!data) return NextResponse.json({ error: "Promo code not found." }, { status: 400 });
     promo = data;
   }
-  let crossSource: Awaited<ReturnType<typeof lookupCrossSource>>["source"];
-  if (crossRef) {
-    const found = await lookupCrossSource(db, crossRef, buyer_email ?? "");
-    if (found.error) return NextResponse.json({ error: found.error }, { status: 400 });
-    crossSource = found.source;
-  }
+  const found = crossRef ? await lookupCrossSources(db, crossRef, buyer_email ?? "") : { sources: [] };
+  if (found.error) return NextResponse.json({ error: found.error }, { status: 400 });
+  const crossLeft = sourceLeft(found.sources);
+  const allowance = crossAllowance(production, found.sources, crossLeft);
   const pricing = calculatePricing(
     items.map((i) => ({ ticket_tier: tierMap.get(i.ticket_tier_id)!, quantity: i.quantity })),
     promo,
     production.id,
     new Date(),
     production,
-    crossAllowance(production, crossSource, crossSource?.available ?? 0)
+    allowance
   );
+  const crossAlloc = allowance && pricing.discountSource === "crossshow" ? allocateCross(allowance.eligible, crossLeft, pricing.crossshowUses ?? 0) : [];
   if (promo && pricing.discountSource === "none") {
     return NextResponse.json(
       { error: pricing.rejectedPromoReason ?? "This code doesn't apply to the selected tickets." },
@@ -162,11 +161,11 @@ async function handlePOST(req: NextRequest) {
     return NextResponse.json({ error: reservationError?.message }, { status: 500 });
   }
 
-  if (pricing.discountSource === "crossshow" && crossSource) {
+  for (const a of crossAlloc) {
     const { error: claimError } = await db.rpc("claim_crossshow_uses", {
-      p_source: crossSource.id,
+      p_source: a.sourceId,
       p_target: reservation.id,
-      p_uses: pricing.crossshowUses ?? 0,
+      p_uses: a.uses,
       p_amount: Number(production.crossshow_amount),
     });
     if (claimError) {

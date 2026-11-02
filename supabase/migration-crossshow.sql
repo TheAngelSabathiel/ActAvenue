@@ -16,7 +16,7 @@ create table if not exists crossshow_uses (
   uses integer not null check (uses > 0),
   amount_each numeric(10, 2) not null,
   created_at timestamptz not null default now(),
-  unique (target_reservation_id)
+  unique (target_reservation_id, source_reservation_id)
 );
 create index if not exists crossshow_uses_source_idx on crossshow_uses (source_reservation_id);
 
