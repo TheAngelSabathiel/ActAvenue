@@ -20,6 +20,8 @@ export async function POST(req: NextRequest) {
   const buyer_phone = formData.get("buyer_phone") as string;
   const promo_code = (formData.get("promo_code") as string) || null;
   const crossshow_ref = ((formData.get("crossshow_ref") as string) || "").trim();
+  // The email on the earlier booking. It does not have to match the buyer email.
+  const crossshow_email = ((formData.get("crossshow_email") as string) || "").trim();
   const proofFile = formData.get("payment_proof") as File | null;
 
   // Email is required regardless of whether the buyer is signed in - an
@@ -94,7 +96,7 @@ export async function POST(req: NextRequest) {
 
   // Cross-show discount: the code must belong to a confirmed booking with this same email.
   // Several codes under the same email add up.
-  const found = crossshow_ref ? await lookupCrossSources(db, crossshow_ref, buyer_email) : { sources: [] };
+  const found = crossshow_ref ? await lookupCrossSources(db, crossshow_ref, crossshow_email) : { sources: [] };
   if (found.error) return NextResponse.json({ error: found.error }, { status: 400 });
   const crossLeft = sourceLeft(found.sources);
 

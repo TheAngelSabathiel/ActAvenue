@@ -19,6 +19,7 @@ async function handlePOST(req: NextRequest) {
   const status = form.get("status") as string | null; // "confirmed" | "pending_review" - admin decides
   const promoCode = ((form.get("promo_code") as string | null) ?? "").toUpperCase().trim();
   const crossRef = ((form.get("crossshow_ref") as string | null) ?? "").trim();
+  const crossEmail = ((form.get("crossshow_email") as string | null) ?? "").trim() || (buyer_email ?? "");
   const proofFile = form.get("payment_proof") as File | null;
   let items: { ticket_tier_id: string; quantity: number }[] = [];
   try {
@@ -73,7 +74,7 @@ async function handlePOST(req: NextRequest) {
     if (!data) return NextResponse.json({ error: "Promo code not found." }, { status: 400 });
     promo = data;
   }
-  const found = crossRef ? await lookupCrossSources(db, crossRef, buyer_email ?? "") : { sources: [] };
+  const found = crossRef ? await lookupCrossSources(db, crossRef, crossEmail) : { sources: [] };
   if (found.error) return NextResponse.json({ error: found.error }, { status: 400 });
   const crossLeft = sourceLeft(found.sources);
   const allowance = crossAllowance(production, found.sources, crossLeft);

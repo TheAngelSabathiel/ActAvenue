@@ -7,7 +7,7 @@ import type { TicketTier } from "@/types/database";
 
 /** Live total for the staff New reservation form: same pricing as the booking itself. */
 export async function POST(req: NextRequest) {
-  const { performance_id, items, promo_code, crossshow_ref, buyer_email } = await req.json();
+  const { performance_id, items, promo_code, crossshow_ref, crossshow_email, buyer_email } = await req.json();
   if (!performance_id || !Array.isArray(items) || !items.length) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   const db = createServiceClient();
   const { data: performance } = await db.from("performances").select("id, production_id").eq("id", performance_id).maybeSingle();
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     promo = data;
     if (!data) promoError = "Promo code not found.";
   }
-  const found = crossshow_ref?.trim() ? await lookupCrossSources(db, crossshow_ref, buyer_email ?? "") : { sources: [] };
+  const found = crossshow_ref?.trim() ? await lookupCrossSources(db, crossshow_ref, crossshow_email || buyer_email || "") : { sources: [] };
   const crossError = found.error;
   const pricing = calculatePricing(lines, promo, production!.id, new Date(), production, crossAllowance(production, found.sources, sourceLeft(found.sources)));
   return NextResponse.json({ pricing, promoError: promoError ?? (promo && pricing.discountSource === "none" ? pricing.rejectedPromoReason : undefined), crossError });

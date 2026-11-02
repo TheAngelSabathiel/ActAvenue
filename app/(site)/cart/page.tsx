@@ -8,6 +8,7 @@ import { Spinner } from "@/components/spinner";
 import { formatDayLong, formatTime } from "@/lib/datetime";
 import Link from "next/link";
 import { useCart } from "@/lib/hooks/use-cart";
+import { CrossshowBox } from "@/components/crossshow-box";
 
 export default function CartPage() {
   const { items, loading, updateQuantity, removeItem, total } = useCart();
@@ -163,21 +164,7 @@ export default function CartPage() {
             )}
 
             {quote?.crossshow?.offered && (
-              <div className="aa-card p-4 space-y-2">
-                <p className="font-black text-sm mb-0">Bought tickets to another show that is on sale now?</p>
-                <p className="text-xs text-muted mb-0">
-                  Enter the email and booking code(s) from your confirmed booking. Each ticket earns one discounted Regular ticket. Several booking codes under the same email add up (separate them with commas).
-                </p>
-                <input type="email" value={xemail} onChange={(e) => setXemail(e.target.value)} placeholder="Email used on that booking" className="aa-input" aria-label="Email used on the other booking" />
-                <input value={xref} onChange={(e) => setXref(e.target.value.toUpperCase())} placeholder="BOOKING CODE(S)" className="aa-input uppercase" aria-label="Booking codes" />
-                {quote.crossshow.checked && quote.crossshow.error && <p className="text-sm text-danger font-bold mb-0">{quote.crossshow.error}</p>}
-                {quote.crossshow.checked && !quote.crossshow.error && quote.crossshow.used > 0 && (
-                  <p className="text-sm text-success font-bold mb-0">Cross-show discount applied to {quote.crossshow.used} ticket{quote.crossshow.used === 1 ? "" : "s"}. You save ₱{quote.crossshow.discount.toFixed(2)}.</p>
-                )}
-                {quote.crossshow.checked && !quote.crossshow.error && quote.crossshow.used === 0 && (
-                  <p className="text-sm text-muted font-bold mb-0">Code accepted, but no discount applies to this cart. It may not cover these shows, or another discount saves more (only one applies per order).</p>
-                )}
-              </div>
+              <CrossshowBox email={xemail} onEmail={setXemail} refs={xref} onRefs={setXref} status={quote.crossshow} />
             )}
 
             {quote && quote.discount > 0 && (

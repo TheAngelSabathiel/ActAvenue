@@ -4,6 +4,7 @@ import { FilePicker } from "@/components/file-picker";
 import { PrivacyConsent } from "@/components/privacy-notice";
 
 import { toast } from "@/lib/toast";
+import { CrossshowBox } from "@/components/crossshow-box";
 import { useToastOn } from "@/lib/use-toast-on";
 
 import { Suspense, useEffect, useState } from "react";
@@ -45,20 +46,20 @@ function CheckoutForm() {
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>("");
   const [quote, setQuote] = useState<{ discount: number; total: number; bundles: number; promo: number; payments: PaymentGroup[]; crossshow?: { offered: boolean; checked: boolean; error?: string; used: number; discount: number } } | null>(null);
-  const [email, setEmail] = useState(searchParams.get("email") ?? "");
+  const [xemail, setXemail] = useState(searchParams.get("email") ?? "");
   const [xref, setXref] = useState(searchParams.get("xref") ?? "");
   const promoParam = searchParams.get("promo") ?? "";
 
   // What the buyer actually owes (promo applied), from the same pricing as checkout.
   useEffect(() => {
     const t = setTimeout(() => {
-      fetch(`/api/cart/quote?promo=${encodeURIComponent(promoParam)}&xref=${encodeURIComponent(xref)}&email=${encodeURIComponent(email)}`)
+      fetch(`/api/cart/quote?promo=${encodeURIComponent(promoParam)}&xref=${encodeURIComponent(xref)}&email=${encodeURIComponent(xemail)}`)
         .then((r) => r.json())
         .then((q) => setQuote({ discount: q.discount ?? 0, total: q.total ?? 0, bundles: (q.bundles ?? []).length, promo: q.promoDiscount ?? 0, payments: q.payments ?? [], crossshow: q.crossshow }))
         .catch(() => setQuote(null));
     }, 400);
     return () => clearTimeout(t);
-  }, [promoParam, items.length, listTotal, xref, email]);
+  }, [promoParam, items.length, listTotal, xref, xemail]);
   const discount = quote?.discount ?? 0;
   const cross = quote?.crossshow;
   const total = quote?.total ?? listTotal;
@@ -71,7 +72,6 @@ function CheckoutForm() {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         setAccountEmail(data.user.email ?? null);
-        setEmail((prev) => prev || (data.user.email ?? ""));
         setAccountName((data.user.user_metadata?.display_name as string) ?? "");
       }
     });
@@ -165,29 +165,14 @@ function CheckoutForm() {
         </div>
         <div>
           <label className={label}>Email</label>
-          <input type="email" name="buyer_email" defaultValue={searchParams.get("email") ?? accountEmail ?? ""} key={accountEmail} onChange={(e) => setEmail(e.target.value)} required className="aa-input" />
+          <input type="email" name="buyer_email" defaultValue={accountEmail ?? ""} key={accountEmail} required className="aa-input" />
           <p className="text-xs text-muted mt-1 mb-0">Your confirmation and e-ticket QR go here.</p>
         </div>
         <div>
           <label className={label}>Phone</label>
           <input name="buyer_phone" className="aa-input" />
         </div>
-        {cross?.offered && (
-          <div>
-            <label className={label}>Booking code(s) from another show (optional)</label>
-            <input name="crossshow_ref" value={xref} onChange={(e) => setXref(e.target.value.toUpperCase())} placeholder="Booking code(s)" className="aa-input uppercase" />
-            <p className="text-xs text-muted mt-1 mb-0">
-              Bought tickets to another show that is on sale now? Enter the booking code from your confirmed booking. The email above must be the same one used for that booking. Each ticket earns one discounted ticket here. Several booking codes under the same email add up (separate them with commas).
-            </p>
-            {cross.checked && cross.error && <p className="text-sm text-danger font-bold mt-1 mb-0">{cross.error}</p>}
-            {cross.checked && !cross.error && cross.used > 0 && (
-              <p className="text-sm text-success font-bold mt-1 mb-0">Cross-show discount applied to {cross.used} ticket{cross.used === 1 ? "" : "s"}. You save ₱{cross.discount.toFixed(2)}.</p>
-            )}
-            {cross.checked && !cross.error && cross.used === 0 && (
-              <p className="text-sm text-muted font-bold mt-1 mb-0">Code accepted, but no discount applies to this cart. It may not cover this show, or another discount saves more (only one applies per order).</p>
-            )}
-          </div>
-        )}
+        {cross?.offered && <CrossshowBox named email={xemail} onEmail={setXemail} refs={xref} onRefs={setXref} status={cross} />}
         <PaymentInstructions total={total} payments={quote?.payments} />
         <div>
           <label className={label}>Payment proof</label>

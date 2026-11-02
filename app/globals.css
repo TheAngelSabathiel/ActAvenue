@@ -54,7 +54,11 @@
   .aa-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
   .aa-nav-link {
     font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-    padding: 0.5rem 0.75rem; display: inline-block; transition: transform .2s ease;
+    padding: 0.5rem 0.75rem; display: inline-block; transition: transform .2s ease; white-space: nowrap;
+  }
+  /* Laptop widths: the full menu (with account links and cart) must stay on one line. */
+  @media (min-width: 1280px) and (max-width: 1535px) {
+    .aa-nav-link { padding: 0.5rem 0.5rem; letter-spacing: 0.05em; font-size: 0.75rem; }
   }
   .aa-nav-link:hover { transform: translateY(-2px); }
 

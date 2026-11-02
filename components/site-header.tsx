@@ -91,8 +91,8 @@ export function SiteHeader() {
       className="aa-navbar sticky top-0 z-50"
       style={{ ["--aa-navbar-img" as string]: `url(${IMAGES.navbar})` }}
     >
-      <div className="aa-container xl:!max-w-[80rem] py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-black tracking-[0.12em] text-black" onClick={close}>
+      <div className="aa-container xl:!max-w-[80rem] 2xl:!max-w-[88rem] py-3 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 font-black tracking-[0.12em] text-black whitespace-nowrap shrink-0" onClick={close}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={IMAGES.logo}
@@ -135,7 +135,7 @@ export function SiteHeader() {
             </>
           )}
           {(email || cartCount > 0) && (
-          <Link href="/cart" className="aa-btn aa-btn-sm xl:ml-2 mt-2 xl:mt-0 self-start xl:self-center" onClick={close}>
+          <Link href="/cart" className="aa-btn aa-btn-sm whitespace-nowrap xl:ml-2 mt-2 xl:mt-0 self-start xl:self-center" onClick={close}>
               <i className="bi bi-cart3" /> Cart
               {cartCount > 0 && (
                 <span

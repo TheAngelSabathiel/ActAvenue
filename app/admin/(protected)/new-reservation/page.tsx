@@ -26,6 +26,7 @@ export default function NewReservationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [crossRef, setCrossRef] = useState("");
+  const [crossEmail, setCrossEmail] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [proof, setProof] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
@@ -48,13 +49,14 @@ export default function NewReservationPage() {
           items: [{ ticket_tier_id: tierId, quantity }],
           promo_code: promoCode,
           crossshow_ref: crossRef,
+          crossshow_email: crossEmail,
           buyer_email: buyerEmail,
         }),
       });
       setPreview(res.ok ? await res.json() : null);
     }, 400);
     return () => clearTimeout(t);
-  }, [promoCode, crossRef, buyerEmail, tierId, quantity, performanceId]);
+  }, [promoCode, crossRef, crossEmail, buyerEmail, tierId, quantity, performanceId]);
 
   useEffect(() => {
     fetch("/api/admin/productions")
@@ -90,6 +92,7 @@ export default function NewReservationPage() {
     fd.set("items", JSON.stringify([{ ticket_tier_id: tierId, quantity }]));
     if (promoCode.trim()) fd.set("promo_code", promoCode.trim());
     if (crossRef.trim()) fd.set("crossshow_ref", crossRef.trim());
+    if (crossEmail.trim()) fd.set("crossshow_email", crossEmail.trim());
     if (proof) fd.set("payment_proof", proof);
     const res = await fetch("/api/admin/reservations/manual", { method: "POST", body: fd });
     const data = await res.json();
@@ -108,6 +111,7 @@ export default function NewReservationPage() {
     setQuantity(1);
     setPromoCode("");
     setCrossRef("");
+    setCrossEmail("");
     setPreview(null);
     setProof(null);
     setFileKey((k) => k + 1);
@@ -210,7 +214,14 @@ export default function NewReservationPage() {
           onChange={(e) => setCrossRef(e.target.value.toUpperCase())}
           className="w-full border border-ink/20 px-3 py-2 uppercase"
         />
-        <p className="text-xs text-muted -mt-2">Cross-show discount. Separate several codes with commas. The buyer email above must match those confirmed bookings. Only one discount applies per order.</p>
+        <input
+          type="email"
+          placeholder="Email on that booking (blank uses the buyer email)"
+          value={crossEmail}
+          onChange={(e) => setCrossEmail(e.target.value)}
+          className="w-full border border-ink/20 px-3 py-2"
+        />
+        <p className="text-xs text-muted -mt-2">Cross-show discount. Separate several codes with commas. The email must match those confirmed bookings. Only one discount applies per order.</p>
         {preview?.crossError && <p className="text-sm text-danger">{preview.crossError}</p>}
 
         <label className="block text-sm">
