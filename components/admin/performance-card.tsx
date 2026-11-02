@@ -210,13 +210,10 @@ export function PerformanceCard({
                     onChange={(e) => setTier(t.id, { display_capacity: e.target.value })}
                     className="border border-ink/20 px-2 py-1 text-sm w-full sm:w-28 tabular-nums"
                     aria-label="Displayed capacity"
-                    placeholder="Real quantity"
+                    placeholder="Auto"
                     title="The public percent booked is based on this number. Real seats and sales limits do not change."
                   />
                 </label>
-                <button onClick={() => onDeleteTier(t.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger sm:pb-2 text-left sm:text-center">
-                  Delete
-                </button>
               </div>
               {(() => {
                 const hasLinked = perf.ticket_tiers.some((x) => (d.tiers[x.id] ?? base.tiers[x.id]).pool_tier_id === t.id);
@@ -261,6 +258,13 @@ export function PerformanceCard({
                   {tierRemaining(t, perf.ticket_tiers)} left ({t.quantity_held} held/sold)
                   {t.pool_tier_id && " · shared"}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => onDeleteTier(t.id)}
+                  className="border border-danger text-danger px-3 py-1 text-[0.7rem] font-bold uppercase tracking-[0.08em] hover:bg-danger hover:text-white transition-colors"
+                >
+                  Delete tier
+                </button>
               </div>
             </div>
           );

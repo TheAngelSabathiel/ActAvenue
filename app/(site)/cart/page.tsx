@@ -105,7 +105,7 @@ export default function CartPage() {
                 <div key={item.id} className="aa-card px-6 py-4 flex flex-wrap items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-black mb-0">{item.ticket_tier.label}</p>
-                    <p className="text-sm text-muted mb-0">₱{item.ticket_tier.price.toFixed(2)} each</p>
+                    <p className="text-sm text-muted mb-0">₱{item.ticket_tier.price.toFixed(2)} × {item.quantity}</p>
                     {item.ticket_tier.require_id && (
                       <p className="text-xs font-bold mb-0">
                         {idPaths(item).length >= item.quantity
@@ -114,7 +114,7 @@ export default function CartPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 ml-auto">
+                  <div className="flex flex-wrap items-center justify-end gap-3 ml-auto">
                     <input
                       type="number"
                       min={1}
@@ -124,6 +124,9 @@ export default function CartPage() {
                       className="aa-input !w-20"
                       aria-label="Quantity"
                     />
+                    <p className="font-black tabular-nums mb-0 min-w-[5.5rem] text-right" aria-label="Line subtotal">
+                      ₱{(item.ticket_tier.price * item.quantity).toFixed(2)}
+                    </p>
                     <button onClick={() => removeItem(item.id)} className="aa-btn aa-btn-outline aa-btn-sm">
                       Remove
                     </button>
@@ -154,12 +157,16 @@ export default function CartPage() {
               </p>
             )}
 
-            {quote?.bundles.map((b) => (
-              <p key={b.title} className="text-sm text-success font-bold mb-0">
-                Group discount applied{b.title ? ` to ${b.title}` : ""}: {b.percent}% off. You save ₱{b.amount.toFixed(2)}
-              </p>
-            ))}
-
+            <div className="flex items-center justify-between text-sm font-bold">
+              <span className="uppercase tracking-[0.08em]">Subtotal</span>
+              <span className="tabular-nums">₱{total.toFixed(2)}</span>
+            </div>
+            {quote && quote.discount > 0 && (
+              <div className="flex items-center justify-between text-sm font-bold text-success">
+                <span className="uppercase tracking-[0.08em]">{quote.bundles.length && !appliedCode ? `Group discount${quote.bundles.length === 1 ? ` (${quote.bundles[0].percent}% off)` : ""}` : appliedCode && !quote.bundles.length ? "Promo code" : "Discounts"}</span>
+                <span className="tabular-nums">-₱{quote.discount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-2xl font-black">
               <span className="uppercase tracking-[0.08em]">Total</span>
               <span>₱{Math.max(0, quote?.total ?? total).toFixed(2)}</span>

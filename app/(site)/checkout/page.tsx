@@ -44,14 +44,14 @@ function CheckoutForm() {
   useToastOn(error, "error");
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>("");
-  const [quote, setQuote] = useState<{ discount: number; total: number; payments: PaymentGroup[] } | null>(null);
+  const [quote, setQuote] = useState<{ discount: number; total: number; bundles: number; promo: number; payments: PaymentGroup[] } | null>(null);
   const promoParam = searchParams.get("promo") ?? "";
 
   // What the buyer actually owes (promo applied), from the same pricing as checkout.
   useEffect(() => {
     fetch(`/api/cart/quote?promo=${encodeURIComponent(promoParam)}`)
       .then((r) => r.json())
-      .then((q) => setQuote({ discount: q.discount ?? 0, total: q.total ?? 0, payments: q.payments ?? [] }))
+      .then((q) => setQuote({ discount: q.discount ?? 0, total: q.total ?? 0, bundles: (q.bundles ?? []).length, promo: q.promoDiscount ?? 0, payments: q.payments ?? [] }))
       .catch(() => setQuote(null));
   }, [promoParam, items.length, listTotal]);
   const discount = quote?.discount ?? 0;
@@ -136,7 +136,7 @@ function CheckoutForm() {
         ))}
         {discount > 0 && (
           <div className="flex justify-between text-sm text-success font-bold">
-            <span>Promo code</span>
+            <span>{quote && quote.bundles > 0 && quote.promo === 0 ? "Group discount" : quote && quote.promo > 0 && quote.bundles === 0 ? "Promo code" : "Discounts"}</span>
             <span>-₱{discount.toFixed(2)}</span>
           </div>
         )}

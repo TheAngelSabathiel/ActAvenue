@@ -256,6 +256,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Cart shows a subtotal per ticket line and an order subtotal before discounts; checkout labels the discount as Group discount or Promo code. Tier Delete moved to a button at the bottom of each tier.
 - Group discounts per production (off by default, editable steps, per show, Regular tickets only, never stacked with a promo code) and a public percent booked bar per ticket tier with an optional displayed capacity per tier. Requires `migration-bundle-display.sql`.
 - Removed the show capacity field. A show's seat total is now the sum of its ticket tier quantities (linked tiers share their main tier's seats).
 - Manual reservations: optional promo code with total preview, optional proof of payment upload, and Add or Replace proof on pending and confirmed reservations.
