@@ -293,17 +293,22 @@ export function PerformancePicker({
             </span>
           </button>
 
-          {step2Open && bundle?.bundle_enabled && (
+          {step2Open && (bundle?.bundle_enabled || bundle?.crossshow_enabled) && (
+            <div className="flex flex-col gap-3 mb-5">
+          {bundle?.bundle_enabled && (
             <p className="aa-card px-4 py-3 text-sm font-bold mb-0">
               <i className="bi bi-people" /> Group discount on Regular tickets:{" "}
               {cleanBundleTiers(bundle.bundle_tiers).map((t) => `${t.min}+ tickets ${t.percent}% off`).join(", ")}. Applied automatically per show.
             </p>
           )}
 
-          {step2Open && bundle?.crossshow_enabled && (
+          {bundle?.crossshow_enabled && (
             <p className="aa-card px-4 py-3 text-sm font-bold mb-0">
-              <i className="bi bi-ticket-perforated" /> Been to another Act Avenue show? Enter your booking code at checkout for ₱{Number(bundle.crossshow_amount).toFixed(0)} off each Regular ticket, one per ticket you bought.
+              <i className="bi bi-ticket-perforated" /> Bought tickets to another show that is on sale now? Enter your booking code at checkout for ₱{Number(bundle.crossshow_amount).toFixed(0)} off each Regular ticket, one per ticket you bought.
             </p>
+          )}
+
+            </div>
           )}
 
           {step2Open && (<div className="grid gap-4 sm:grid-cols-2">

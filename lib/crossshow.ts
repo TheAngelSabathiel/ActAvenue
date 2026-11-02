@@ -8,6 +8,9 @@ type CrossProduction = {
   crossshow_source_ids?: string[] | null;
 };
 
+export const CROSSSHOW_ENDED =
+  "That show is no longer on sale, so its bookings can't earn this discount. Only shows currently on sale qualify.";
+
 export const CROSSSHOW_MISMATCH =
   "We couldn't match that code to this email. Use the booking code and the same email from a paid, confirmed booking.";
 
@@ -32,6 +35,14 @@ export async function lookupCrossSource(
   if (!r || r.payment_status !== "confirmed" || (r.buyer_email ?? "").trim().toLowerCase() !== mail) {
     return { error: CROSSSHOW_MISMATCH };
   }
+  // Only shows on sale now qualify: published, and still with a show date ahead.
+  const { data: prod } = await db.from("productions").select("status").eq("id", r.production_id).maybeSingle();
+  const { count: upcoming } = await db
+    .from("performances")
+    .select("id", { count: "exact", head: true })
+    .eq("production_id", r.production_id)
+    .gt("datetime", new Date().toISOString());
+  if (prod?.status !== "published" || !upcoming) return { error: CROSSSHOW_ENDED };
   const { data: avail } = await db.rpc("crossshow_available", { p_source: r.id });
   return { source: { id: r.id, production_id: r.production_id, available: Number(avail) || 0 } };
 }

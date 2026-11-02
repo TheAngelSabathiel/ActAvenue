@@ -157,10 +157,6 @@ export default function CartPage() {
               </p>
             )}
 
-            <div className="flex items-center justify-between text-sm font-bold">
-              <span className="uppercase tracking-[0.08em]">Subtotal</span>
-              <span className="tabular-nums">₱{total.toFixed(2)}</span>
-            </div>
             {quote && quote.discount > 0 && (
               <div className="flex items-center justify-between text-sm font-bold text-success">
                 <span className="uppercase tracking-[0.08em]">{quote.bundles.length && !appliedCode ? `Group discount${quote.bundles.length === 1 ? ` (${quote.bundles[0].percent}% off)` : ""}` : appliedCode && !quote.bundles.length ? "Promo code" : "Discounts"}</span>

@@ -177,7 +177,7 @@ function CheckoutForm() {
             <label className={label}>Booking code from another show (optional)</label>
             <input name="crossshow_ref" value={xref} onChange={(e) => setXref(e.target.value.toUpperCase())} placeholder="Booking code" className="aa-input uppercase" />
             <p className="text-xs text-muted mt-1 mb-0">
-              Bought tickets to another show? Enter the booking code from your confirmed booking. The email above must be the same one used for that booking. Each ticket earns one discounted ticket here.
+              Bought tickets to another show that is on sale now? Enter the booking code from your confirmed booking. The email above must be the same one used for that booking. Each ticket earns one discounted ticket here.
             </p>
             {cross.checked && cross.error && <p className="text-sm text-danger font-bold mt-1 mb-0">{cross.error}</p>}
             {cross.checked && !cross.error && cross.used > 0 && (

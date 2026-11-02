@@ -66,7 +66,7 @@ export function CrossshowSettings({
       <div>
         <h2 className="font-extrabold text-xl">Cross-show discount</h2>
         <p className="text-sm text-muted mb-0">
-          Buyers of the shows you pick get a fixed amount off Regular tickets here. Each paid ticket from a confirmed booking earns one discounted ticket, once. The buyer enters that booking code at checkout and must use the same email. Only one discount applies per order. Off by default.
+          Buyers of the shows you pick get a fixed amount off Regular tickets here. Only shows currently on sale qualify: once a show is closed, archived or has no upcoming date, its bookings stop earning the discount. Each paid ticket from a confirmed booking earns one discounted ticket, once. The buyer enters that booking code at checkout and must use the same email. Only one discount applies per order. Off by default.
         </p>
       </div>
 

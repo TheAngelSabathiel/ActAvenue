@@ -22,7 +22,7 @@ export function AddedToCartModal({ item, onClose }: { item: AddedItem; onClose: 
         role="dialog"
         aria-modal="true"
         aria-labelledby="added-title"
-        className="aa-card w-full max-w-md p-8 space-y-5"
+        className="aa-card w-full max-w-md p-8 flex flex-col gap-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div>
