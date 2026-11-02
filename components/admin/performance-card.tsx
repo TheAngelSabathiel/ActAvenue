@@ -23,6 +23,7 @@ export type Tier = {
   quantity_held: number;
   pool_tier_id?: string | null;
   pool_capped?: boolean;
+  display_capacity?: number | null;
   is_discount_tier: boolean;
   discount_valid_from: string | null;
   discount_valid_until: string | null;
@@ -34,7 +35,6 @@ export type Performance = {
   datetime: string;
   venue: string;
   capacity: number;
-  display_capacity?: number | null;
   ticket_tiers: Tier[];
 };
 
@@ -48,17 +48,18 @@ type TierDraft = {
   quantity_available: string;
   /** Main tier this one draws seats from, or empty for its own stock. */
   pool_tier_id: string;
+  /** Size the public percent booked uses (blank = real quantity). */
+  display_capacity: string;
   is_discount_tier: boolean;
   from: string;
   until: string;
 };
-type Draft = { label: string; datetime: string; venue: string; capacity: string; tiers: Record<string, TierDraft> };
+type Draft = { label: string; datetime: string; venue: string; tiers: Record<string, TierDraft> };
 
 const toDraft = (perf: Performance): Draft => ({
   label: perf.label,
   datetime: toManilaInput(perf.datetime),
   venue: perf.venue,
-  capacity: perf.display_capacity ? String(perf.display_capacity) : "",
   tiers: Object.fromEntries(
     perf.ticket_tiers.map((t) => [
       t.id,
@@ -70,6 +71,7 @@ const toDraft = (perf: Performance): Draft => ({
         price: String(t.price),
         quantity_available: t.pool_tier_id && !t.pool_capped ? "" : String(t.quantity_available),
         pool_tier_id: t.pool_tier_id ?? "",
+        display_capacity: t.display_capacity ? String(t.display_capacity) : "",
         is_discount_tier: t.is_discount_tier,
         from: t.discount_valid_from ? toManilaInput(t.discount_valid_from) : "",
         until: t.discount_valid_until ? toManilaInput(t.discount_valid_until) : "",
@@ -104,7 +106,6 @@ export function PerformanceCard({
   if (d.label !== base.label) perfChanges.label = d.label;
   if (d.datetime !== base.datetime) perfChanges.datetime = fromManilaInput(d.datetime);
   if (d.venue !== base.venue) perfChanges.venue = d.venue;
-  if (d.capacity !== base.capacity) perfChanges.display_capacity = d.capacity.trim() ? Number(d.capacity) : null;
 
   const tierChanges = perf.ticket_tiers
     .map((t) => {
@@ -120,6 +121,7 @@ export function PerformanceCard({
         c.quantity_available = Number(a.quantity_available) || 0;
         c.pool_tier_id = a.pool_tier_id || null;
       }
+      if (a.display_capacity !== b.display_capacity) c.display_capacity = a.display_capacity.trim() ? Number(a.display_capacity) : null;
       if (a.is_discount_tier !== b.is_discount_tier) c.is_discount_tier = a.is_discount_tier;
       if (a.from !== b.from) c.discount_valid_from = a.from ? fromManilaInput(a.from) : null;
       if (a.until !== b.until) c.discount_valid_until = a.until ? fromManilaInput(a.until) : null;
@@ -157,11 +159,6 @@ export function PerformanceCard({
           <input value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} className={`${box} font-extrabold`} aria-label="Performance label" />
           <ManilaDateTimeInput value={d.datetime} onChange={(v) => setD({ ...d, datetime: v })} ariaLabel="Performance date and time" defaultTime="19:00" />
           <input value={d.venue} onChange={(e) => setD({ ...d, venue: e.target.value })} className={box} aria-label="Venue" placeholder="Venue" />
-          <label className="block sm:col-span-2">
-            <span className="block text-xs font-bold uppercase text-muted mb-1">Displayed capacity (optional)</span>
-            <input type="number" min={1} value={d.capacity} onChange={(e) => setD({ ...d, capacity: e.target.value })} className={`${box} w-full`} placeholder="Leave empty to use the real seat total" />
-            <span className="block text-xs text-muted mt-1">The public page shows a percent booked based on this number. Real seats and sales limits do not change.</span>
-          </label>
         </div>
         <button onClick={() => onDelete(perf.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger shrink-0">
           Delete
@@ -202,6 +199,19 @@ export function PerformanceCard({
                     aria-label={td.pool_tier_id ? "Cap (optional)" : "Quantity available"}
                     placeholder={td.pool_tier_id ? "No cap" : undefined}
                     title={td.pool_tier_id ? "Cap for this tier inside the shared seats. Leave blank to use only the shared total." : "Total quantity available"}
+                  />
+                </label>
+                <label className="block">
+                  <span className={cap}>Displayed capacity</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={td.display_capacity}
+                    onChange={(e) => setTier(t.id, { display_capacity: e.target.value })}
+                    className="border border-ink/20 px-2 py-1 text-sm w-full sm:w-28 tabular-nums"
+                    aria-label="Displayed capacity"
+                    placeholder="Real quantity"
+                    title="The public percent booked is based on this number. Real seats and sales limits do not change."
                   />
                 </label>
                 <button onClick={() => onDeleteTier(t.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger sm:pb-2 text-left sm:text-center">

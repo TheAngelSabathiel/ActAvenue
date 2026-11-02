@@ -103,8 +103,6 @@ export interface Performance {
   datetime: string;
   venue: string;
   capacity: number;
-  /** Seats shown publicly as the show size. Empty means the real total. */
-  display_capacity?: number | null;
   created_at: string;
 }
 
@@ -124,6 +122,8 @@ export interface TicketTier {
   pool_tier_id?: string | null;
   /** Has its own cap inside the pool (quantity_available). */
   pool_capped?: boolean;
+  /** Size shown publicly for the percent booked. Empty means the real quantity. */
+  display_capacity?: number | null;
   discount_valid_from: string | null;
   discount_valid_until: string | null;
   created_at: string;

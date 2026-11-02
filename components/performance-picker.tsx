@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart, CartError } from "@/lib/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
 import { formatDayLong, formatDayShort, formatTime } from "@/lib/datetime";
-import { ID_INSTRUCTION, applyRemaining, showFill, FILL_ALMOST_FULL } from "@/lib/tiers";
+import { ID_INSTRUCTION, applyRemaining, tierFill, FILL_ALMOST_FULL } from "@/lib/tiers";
 import { isTierDiscountActive, cleanBundleTiers } from "@/lib/pricing";
 import { AddedToCartModal, type AddedItem } from "@/components/added-to-cart-modal";
 import type { PerformanceWithTiers, TicketTier } from "@/types/database";
@@ -293,21 +293,6 @@ export function PerformancePicker({
             </span>
           </button>
 
-          {step2Open && (() => {
-            const fill = showFill(active.ticket_tiers, active.display_capacity);
-            return (
-              <div className="space-y-2" aria-label="How full this show is">
-                <div className="flex items-center justify-between text-sm font-bold">
-                  <span>{fill.soldOut ? "Sold out" : `${fill.percent}% booked`}</span>
-                  {!fill.soldOut && fill.percent >= FILL_ALMOST_FULL && <span className="text-danger">Almost full. Book now.</span>}
-                </div>
-                <div className="h-3 w-full bg-[#e9ecef] overflow-hidden" role="img" aria-label={`${fill.percent}% booked`}>
-                  <div className={fill.percent >= FILL_ALMOST_FULL ? "h-full bg-danger" : "h-full bg-black"} style={{ width: `${fill.percent}%` }} />
-                </div>
-              </div>
-            );
-          })()}
-
           {step2Open && bundle?.bundle_enabled && (
             <p className="aa-card px-4 py-3 text-sm font-bold mb-0">
               <i className="bi bi-people" /> Group discount on Regular tickets:{" "}
@@ -319,7 +304,7 @@ export function PerformancePicker({
             {active.ticket_tiers.map((tier) => {
               const s = status[tier.id] ?? "idle";
               const soldOut = tier.remaining <= 0;
-              const low = !soldOut && tier.remaining <= 10;
+              const fill = tierFill(tier, active.ticket_tiers);
               const until = tier.discount_active && tier.discount_valid_until ? new Date(tier.discount_valid_until) : null;
               const endsSoon = !!until && until.getTime() - now <= 3 * 24 * 3600 * 1000;
               return (
@@ -337,7 +322,17 @@ export function PerformancePicker({
                     {endsSoon && !soldOut && (
                       <span className="aa-label bg-danger text-white px-2 py-0.5 inline-block ml-1">Ends soon · {formatDayShort(tier.discount_valid_until!)}</span>
                     )}
-                    {!soldOut && low && <p className="text-sm mt-2 mb-0 text-danger font-bold">Almost gone</p>}
+                    {!soldOut && (
+                      <div className="mt-2" role="img" aria-label={`${fill.percent}% booked`}>
+                        <div className="flex items-center justify-between text-xs font-bold mb-1">
+                          <span>{fill.percent}% booked</span>
+                          {fill.percent >= FILL_ALMOST_FULL && <span className="text-danger">Almost full</span>}
+                        </div>
+                        <div className="h-2 w-full bg-[#e9ecef] overflow-hidden">
+                          <div className={fill.percent >= FILL_ALMOST_FULL ? "h-full bg-danger" : "h-full bg-black"} style={{ width: `${fill.percent}%` }} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="aa-perforation p-5 flex flex-col justify-between gap-3 sm:w-44">
                     <p className="font-black text-2xl mb-0">₱{tier.price.toFixed(2)}</p>

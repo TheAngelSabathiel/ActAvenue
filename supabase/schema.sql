@@ -90,8 +90,6 @@ create table performances (
   datetime timestamptz not null,
   venue text not null,
   capacity integer not null check (capacity >= 0),
-  -- Seats shown publicly as the show size. Empty means the real total.
-  display_capacity integer check (display_capacity is null or display_capacity > 0),
   created_at timestamptz not null default now()
 );
 
@@ -116,6 +114,8 @@ create table ticket_tiers (
   -- means this tier also has its own cap (quantity_available).
   pool_tier_id uuid references ticket_tiers (id) on delete set null,
   pool_capped boolean not null default false,
+  -- Size shown publicly for the percent booked. Empty means the real quantity.
+  display_capacity integer check (display_capacity is null or display_capacity > 0),
   discount_valid_from timestamptz,
   discount_valid_until timestamptz,
   created_at timestamptz not null default now()

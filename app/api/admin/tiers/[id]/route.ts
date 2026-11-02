@@ -20,6 +20,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     "price",
     "quantity_available",
     "pool_tier_id",
+    "display_capacity",
     "is_discount_tier",
     "discount_valid_from",
     "discount_valid_until",
@@ -27,6 +28,12 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
+  }
+  if ("display_capacity" in update) {
+    const n = Number(update.display_capacity);
+    if (update.display_capacity === null || update.display_capacity === "") update.display_capacity = null;
+    else if (Number.isInteger(n) && n > 0) update.display_capacity = n;
+    else return NextResponse.json({ error: "Displayed capacity must be a whole number above 0." }, { status: 400 });
   }
   for (const k of ["discount_valid_from", "discount_valid_until"] as const) {
     if (k in update) update[k] = toIsoManila(update[k]);

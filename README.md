@@ -75,8 +75,8 @@ proxy.ts             Session refresh for protected paths only
 
 - `organizations`: owners of productions (name, logo).
 - `productions`: title, slug, description, poster, banner, status (`draft`, `published`, `closed`), payment details (GCash, bank, QR images), email note.
-- `performances`: a show date under a production (label, date and time, venue, optional displayed capacity used only for the public percent booked).
-- `ticket_tiers`: per performance. Fields: tier type (`regular`, `vip`, `discounted`, `special`), display name, price, quantity, held count, inclusions text, ID requirement, optional time-limited price window, optional link to a main tier (shared seats) with an optional own cap.
+- `performances`: a show date under a production (label, date and time, venue).
+- `ticket_tiers`: per performance. Fields: optional displayed capacity (public percent booked only), tier type (`regular`, `vip`, `discounted`, `special`), display name, price, quantity, held count, inclusions text, ID requirement, optional time-limited price window, optional link to a main tier (shared seats) with an optional own cap.
 - `reservations` and `reservation_items`: a booking and its ticket lines. Status values: `pending_review`, `confirmed`, `rejected`, `expired`. Items track scans used and the uploaded ID.
 - `carts` and `cart_items`: a visitor's cart (guest or signed in).
 - `promo_codes`: per organization, optionally limited to one production, to ticket types, and to a number of uses.
@@ -121,7 +121,7 @@ Each file in `supabase/` named `migration-*.sql` is a one-time change run by han
 - Shared seats: a tier can draw seats from a main tier on the same show (for example Regular 50 with Discounted drawing from it). The linked tier can have its own cap or use only the shared total.
 - Promo codes: percent or fixed amount off per ticket, limited by production, ticket type, expiry and number of uses. One code per reservation. Codes do not stack with time-limited tier pricing.
 - Group discount: per production, off by default, editable steps (defaults: 3+ Regular tickets 5% off, 5+ 8% off, 10+ 12% off). Counted per show and applied automatically to Regular tickets. One discount per order: the group discount or a promo code, whichever saves more.
-- Percent booked: public show pages show a percent booked bar and an Almost full note from 70%. Admins can set a Displayed capacity per show that the percent uses. Real seats and sales limits are unchanged, and the bar stays under 100% until the show truly sells out.
+- Percent booked: each ticket tier card on the public page shows a percent booked bar and an Almost full note from 70%, instead of seat counts. Admins can set a Displayed capacity per ticket tier that the percent uses. Real seats and sales limits are unchanged, and the bar stays under 100% until the tier truly sells out.
 - Checkout: buyer details, a required Data Privacy consent box, optional mailing list opt-in, and payment instructions (GCash or bank, with QR) set per production. Seats are held for 24 hours while payment is reviewed.
 - Payment proof upload with re-upload if it is rejected. A reminder email goes out before the hold ends. Expired holds release seats.
 - After approval the buyer gets an email with an e-ticket and QR code, and a ticket page they can open on the day.
@@ -256,7 +256,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
-- Group discounts per production (off by default, editable steps, per show, Regular tickets only, never stacked with a promo code) and a public percent booked bar with an optional displayed capacity per show. Requires `migration-bundle-display.sql`.
+- Group discounts per production (off by default, editable steps, per show, Regular tickets only, never stacked with a promo code) and a public percent booked bar per ticket tier with an optional displayed capacity per tier. Requires `migration-bundle-display.sql`.
 - Removed the show capacity field. A show's seat total is now the sum of its ticket tier quantities (linked tiers share their main tier's seats).
 - Manual reservations: optional promo code with total preview, optional proof of payment upload, and Add or Replace proof on pending and confirmed reservations.
 - One ID per discounted ticket: the ID upload asks for as many IDs as tickets, checkout checks the count, and staff can open each ID.

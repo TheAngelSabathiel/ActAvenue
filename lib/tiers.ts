@@ -64,14 +64,21 @@ export function applyRemaining<T extends StockTier>(tiers: T[]): (T & { remainin
 export const FILL_ALMOST_FULL = 70;
 
 /**
- * Booked share of a show. The size is the displayed capacity when an admin set
- * one, otherwise the real seat total. It stays under 100 until the show is
- * truly sold out, and a show with seats left never reads as full.
+ * Booked share of one ticket tier. The size is the tier's displayed capacity when
+ * an admin set one, otherwise its real quantity (a tier that shares seats uses the
+ * shared total). It stays under 100 until the tier is truly sold out.
  */
-export function showFill(tiers: StockTier[], displayCapacity?: number | null): { percent: number; soldOut: boolean } {
-  const real = tiers.filter((t) => !t.pool_tier_id).reduce((n, t) => n + t.quantity_available, 0);
-  const booked = tiers.reduce((n, t) => n + t.quantity_held, 0);
-  if (real <= 0 || booked >= real) return { percent: 100, soldOut: real > 0 };
-  const size = displayCapacity && displayCapacity > 0 ? displayCapacity : real;
+export function tierFill(
+  t: StockTier & { display_capacity?: number | null },
+  all: StockTier[]
+): { percent: number; soldOut: boolean } {
+  if (tierRemaining(t, all) <= 0) return { percent: 100, soldOut: true };
+  const rootId = t.pool_tier_id ?? t.id;
+  const own = !t.pool_tier_id || !!t.pool_capped;
+  const root = all.find((x) => x.id === rootId) ?? t;
+  const real = own ? t.quantity_available : root.quantity_available;
+  const booked = own ? t.quantity_held : all.filter((x) => x.id === rootId || x.pool_tier_id === rootId).reduce((n, m) => n + m.quantity_held, 0);
+  const size = t.display_capacity && t.display_capacity > 0 ? t.display_capacity : real;
+  if (size <= 0) return { percent: 0, soldOut: false };
   return { percent: Math.max(0, Math.min(99, Math.round((booked / size) * 100))), soldOut: false };
 }
