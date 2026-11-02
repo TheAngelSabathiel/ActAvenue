@@ -160,9 +160,6 @@ export function PerformanceCard({
           <ManilaDateTimeInput value={d.datetime} onChange={(v) => setD({ ...d, datetime: v })} ariaLabel="Performance date and time" defaultTime="19:00" />
           <input value={d.venue} onChange={(e) => setD({ ...d, venue: e.target.value })} className={box} aria-label="Venue" placeholder="Venue" />
         </div>
-        <button onClick={() => onDelete(perf.id)} className="text-xs font-bold uppercase text-danger/70 hover:text-danger shrink-0">
-          Delete
-        </button>
       </div>
 
       <div className="space-y-4">
@@ -313,6 +310,16 @@ export function PerformanceCard({
           <button className="sm:col-span-2 py-1.5 bg-black text-paper text-xs font-bold uppercase">Add tier</button>
         </form>
       </details>
+
+      <div className="flex justify-end pt-4 border-t border-ink/10">
+        <button
+          type="button"
+          onClick={() => onDelete(perf.id)}
+          className="border border-danger text-danger px-3 py-1 text-[0.7rem] font-bold uppercase tracking-[0.08em] hover:bg-danger hover:text-white transition-colors"
+        >
+          Delete show
+        </button>
+      </div>
     </div>
   );
 }
