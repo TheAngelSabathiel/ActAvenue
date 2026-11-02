@@ -13,6 +13,7 @@ import { Spinner } from "@/components/spinner";
 import { ManilaDateTimeInput } from "@/components/manila-datetime-input";
 import { useParams } from "next/navigation";
 import { BundleSettings } from "@/components/admin/bundle-settings";
+import { CrossshowSettings } from "@/components/admin/crossshow-settings";
 
 type Production = {
   id: string;
@@ -30,6 +31,9 @@ type Production = {
   email_note: string | null;
   bundle_enabled?: boolean;
   bundle_tiers?: { min: number; percent: number }[];
+  crossshow_enabled?: boolean;
+  crossshow_amount?: number;
+  crossshow_source_ids?: string[];
   status: "draft" | "published" | "closed";
   slug: string;
 };
@@ -214,6 +218,14 @@ export default function ProductionEditorPage() {
         productionId={id}
         enabled={production.bundle_enabled}
         tiers={production.bundle_tiers}
+        onSaved={(p) => setProduction((prev) => (prev ? { ...prev, ...p } : prev))}
+      />
+
+      <CrossshowSettings
+        productionId={id}
+        enabled={production.crossshow_enabled}
+        amount={production.crossshow_amount}
+        sourceIds={production.crossshow_source_ids}
         onSaved={(p) => setProduction((prev) => (prev ? { ...prev, ...p } : prev))}
       />
 

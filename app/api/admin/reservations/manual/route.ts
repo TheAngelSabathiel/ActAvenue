@@ -7,6 +7,7 @@ import { holdTicketTier, releaseTicketTierHolds } from "@/lib/inventory";
 import { withRefresh } from "@/lib/refresh-public";
 import { incrementPromoUsage } from "@/lib/inventory";
 import { calculatePricing } from "@/lib/pricing";
+import { lookupCrossSource, crossAllowance } from "@/lib/crossshow";
 import { uploadPaymentProof } from "@/lib/payment-proof";
 
 async function handlePOST(req: NextRequest) {
@@ -17,6 +18,7 @@ async function handlePOST(req: NextRequest) {
   const buyer_phone = (form.get("buyer_phone") as string | null) || null;
   const status = form.get("status") as string | null; // "confirmed" | "pending_review" - admin decides
   const promoCode = ((form.get("promo_code") as string | null) ?? "").toUpperCase().trim();
+  const crossRef = ((form.get("crossshow_ref") as string | null) ?? "").trim();
   const proofFile = form.get("payment_proof") as File | null;
   let items: { ticket_tier_id: string; quantity: number }[] = [];
   try {
@@ -71,12 +73,19 @@ async function handlePOST(req: NextRequest) {
     if (!data) return NextResponse.json({ error: "Promo code not found." }, { status: 400 });
     promo = data;
   }
+  let crossSource: Awaited<ReturnType<typeof lookupCrossSource>>["source"];
+  if (crossRef) {
+    const found = await lookupCrossSource(db, crossRef, buyer_email ?? "");
+    if (found.error) return NextResponse.json({ error: found.error }, { status: 400 });
+    crossSource = found.source;
+  }
   const pricing = calculatePricing(
     items.map((i) => ({ ticket_tier: tierMap.get(i.ticket_tier_id)!, quantity: i.quantity })),
     promo,
     production.id,
     new Date(),
-    production
+    production,
+    crossAllowance(production, crossSource, crossSource?.available ?? 0)
   );
   if (promo && pricing.discountSource === "none") {
     return NextResponse.json(
@@ -138,7 +147,7 @@ async function handlePOST(req: NextRequest) {
       total,
       promo_code_id: pricing.discountSource === "promo" && promo ? promo.id : null,
       promo_uses: pricing.discountSource === "promo" ? pricing.promoUses : null,
-      discount_source: pricing.discountSource === "promo" || pricing.discountSource === "bundle" ? pricing.discountSource : null,
+      discount_source: ["promo", "bundle", "crossshow"].includes(pricing.discountSource) ? pricing.discountSource : null,
       payment_status: status,
       booking_source: "admin_manual",
       hold_expires_at: status === "pending_review"
@@ -151,6 +160,20 @@ async function handlePOST(req: NextRequest) {
   if (reservationError || !reservation) {
     await releaseTicketTierHolds(db, heldSoFar);
     return NextResponse.json({ error: reservationError?.message }, { status: 500 });
+  }
+
+  if (pricing.discountSource === "crossshow" && crossSource) {
+    const { error: claimError } = await db.rpc("claim_crossshow_uses", {
+      p_source: crossSource.id,
+      p_target: reservation.id,
+      p_uses: pricing.crossshowUses ?? 0,
+      p_amount: Number(production.crossshow_amount),
+    });
+    if (claimError) {
+      await db.from("reservations").delete().eq("id", reservation.id);
+      await releaseTicketTierHolds(db, heldSoFar);
+      return NextResponse.json({ error: "That ticket's discount was just used. Try again." }, { status: 409 });
+    }
   }
 
   if (promo && pricing.discountSource === "promo") {

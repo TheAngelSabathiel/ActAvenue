@@ -4,6 +4,7 @@ import { getOrCreateCart } from "@/lib/cart-session";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { calculatePricing } from "@/lib/pricing";
+import { lookupCrossSource, crossAllowance } from "@/lib/crossshow";
 import { subscribe } from "@/lib/mailing";
 import { sendBookingReceivedEmail } from "@/lib/email/send";
 import { holdTicketTier, incrementPromoUsage, releaseTicketTierHolds } from "@/lib/inventory";
@@ -18,6 +19,7 @@ export async function POST(req: NextRequest) {
   const buyer_email = formData.get("buyer_email") as string;
   const buyer_phone = formData.get("buyer_phone") as string;
   const promo_code = (formData.get("promo_code") as string) || null;
+  const crossshow_ref = ((formData.get("crossshow_ref") as string) || "").trim();
   const proofFile = formData.get("payment_proof") as File | null;
 
   // Email is required regardless of whether the buyer is signed in - an
@@ -90,6 +92,15 @@ export async function POST(req: NextRequest) {
     promo = data;
   }
 
+  // Cross-show discount: the code must belong to a confirmed booking with this same email.
+  let crossSource: Awaited<ReturnType<typeof lookupCrossSource>>["source"];
+  if (crossshow_ref) {
+    const found = await lookupCrossSource(db, crossshow_ref, buyer_email);
+    if (found.error) return NextResponse.json({ error: found.error }, { status: 400 });
+    crossSource = found.source;
+  }
+  let crossLeft = crossSource?.available ?? 0;
+
   // Price each show on its own. A promo only discounts the shows it applies to.
   // A code with limited uses is spread across the shows in order: each show
   // sees the uses the earlier ones already took.
@@ -98,7 +109,8 @@ export async function POST(req: NextRequest) {
     const performance = groupItems[0].performance;
     const production = productionById.get(performance.production_id)!;
     const cartLines = groupItems.map((i) => ({ ticket_tier: i.ticket_tier as TicketTier, quantity: i.quantity }));
-    const pricing = calculatePricing(cartLines, promoLeft, production.id, new Date(), production);
+    const pricing = calculatePricing(cartLines, promoLeft, production.id, new Date(), production, crossAllowance(production, crossSource, crossLeft));
+    crossLeft -= pricing.crossshowUses ?? 0;
     if (promoLeft) promoLeft = { ...promoLeft, times_used: promoLeft.times_used + pricing.promoUses };
     return { groupItems, performance, production, pricing };
   });
@@ -185,7 +197,7 @@ export async function POST(req: NextRequest) {
           buyer_phone,
           promo_code_id: plan.pricing.discountSource === "promo" ? promo?.id ?? null : null,
           promo_uses: plan.pricing.discountSource === "promo" ? plan.pricing.promoUses : null,
-          discount_source: plan.pricing.discountSource === "promo" || plan.pricing.discountSource === "bundle" ? plan.pricing.discountSource : null,
+          discount_source: ["promo", "bundle", "crossshow"].includes(plan.pricing.discountSource) ? plan.pricing.discountSource : null,
           subtotal: plan.pricing.subtotal,
           discount_amount: plan.pricing.discountAmount,
           total: plan.pricing.total,
@@ -205,6 +217,20 @@ export async function POST(req: NextRequest) {
         );
       }
       createdIds.push(reservation.id);
+
+      // Spend the earned uses now, atomically. If they were just taken, undo the whole checkout.
+      if (plan.pricing.discountSource === "crossshow" && crossSource) {
+        const { error: claimError } = await db.rpc("claim_crossshow_uses", {
+          p_source: crossSource.id,
+          p_target: reservation.id,
+          p_uses: plan.pricing.crossshowUses ?? 0,
+          p_amount: Number(plan.production.crossshow_amount),
+        });
+        if (claimError) {
+          await rollback();
+          return NextResponse.json({ error: "That ticket's discount was just used. Please check your cart and try again." }, { status: 409 });
+        }
+      }
 
       const { data: reservationItems, error: itemsInsertError } = await db
         .from("reservation_items")

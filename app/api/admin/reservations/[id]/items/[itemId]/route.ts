@@ -6,7 +6,7 @@ import { productionOfReservation } from "@/lib/admin-scope";
 import { holdTicketTier, releaseTicketTierHold } from "@/lib/inventory";
 import { isTransferred } from "@/lib/transfer";
 import { ensureTicketQrs } from "@/lib/tickets";
-import { calculatePricing, eligibleTicketCount, bundleDiscount } from "@/lib/pricing";
+import { calculatePricing, eligibleTicketCount, bundleDiscount, crossshowDiscount } from "@/lib/pricing";
 import type { PromoCode, TicketTier } from "@/types/database";
 import { sendQuantityChangedEmail } from "@/lib/email/send";
 import { withRefresh } from "@/lib/refresh-public";
@@ -86,6 +86,20 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     bundleAmount = bundleDiscount(lines, { bundle_enabled: true, bundle_tiers: prod?.bundle_tiers }, new Date(reservation.created_at)).amount;
   }
 
+  // A cross-show discount keeps its uses; they shrink only if there are fewer Regular tickets left.
+  let crossPlan: { amount: number; uses: number; rowUses: number } | null = null;
+  if (reservation.discount_source === "crossshow") {
+    const { data: row } = await db.from("crossshow_uses").select("uses, amount_each").eq("target_reservation_id", id).maybeSingle();
+    if (row) {
+      const lines = (allItems ?? []).map((i) => ({
+        ticket_tier: ({ ...(Array.isArray(i.ticket_tier) ? i.ticket_tier[0] : i.ticket_tier), price: Number(i.unit_price) }) as TicketTier,
+        quantity: i.id === itemId ? quantity : i.quantity,
+      }));
+      const r = crossshowDiscount(lines, Number(row.amount_each), row.uses, new Date(reservation.created_at));
+      crossPlan = { amount: r.amount, uses: r.uses, rowUses: row.uses };
+    }
+  }
+
   // Availability first. Nothing else changes if the show can't take more.
   const diff = quantity - from;
   if (diff > 0) {
@@ -111,11 +125,11 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   // Keep the order totals in line with the new quantities.
   const { data: all } = await db.from("reservation_items").select("quantity, unit_price").eq("reservation_id", id);
   const subtotal = (all ?? []).reduce((n, i) => n + i.quantity * Number(i.unit_price), 0);
-  const discount = promoPlan ? promoPlan.discount : bundleAmount !== null ? bundleAmount : Number(reservation.discount_amount ?? 0);
+  const discount = promoPlan ? promoPlan.discount : crossPlan ? crossPlan.amount : bundleAmount !== null ? bundleAmount : Number(reservation.discount_amount ?? 0);
   const total = Math.max(0, subtotal - discount);
   const { data: updated } = await db
     .from("reservations")
-    .update({ subtotal, total, discount_amount: discount, ...(promoPlan ? { promo_uses: promoPlan.uses } : {}), ...(bundleAmount !== null ? { discount_source: bundleAmount > 0 ? "bundle" : null } : {}) })
+    .update({ subtotal, total, discount_amount: discount, ...(promoPlan ? { promo_uses: promoPlan.uses } : {}), ...(bundleAmount !== null ? { discount_source: bundleAmount > 0 ? "bundle" : null } : {}), ...(crossPlan ? { discount_source: crossPlan.uses > 0 ? "crossshow" : null } : {}) })
     .eq("id", id)
     .select()
     .single();
@@ -129,6 +143,11 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
         await db.from("promo_codes").update({ times_used: Math.max(0, fresh.times_used + delta) }).eq("id", promoPlan.promo.id);
       }
     }
+  }
+
+  if (crossPlan && crossPlan.uses !== crossPlan.rowUses) {
+    if (crossPlan.uses > 0) await db.from("crossshow_uses").update({ uses: crossPlan.uses }).eq("target_reservation_id", id);
+    else await db.from("crossshow_uses").delete().eq("target_reservation_id", id);
   }
 
   // The reservation is no longer fully admitted if the quantity went up.

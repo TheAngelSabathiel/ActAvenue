@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateCart } from "@/lib/cart-session";
 import { createServiceClient } from "@/lib/supabase/service";
 import { calculatePricing } from "@/lib/pricing";
+import { lookupCrossSource, crossAllowance } from "@/lib/crossshow";
 import { resolvePayment, type PaymentGroup } from "@/lib/payment";
 import type { TicketTier } from "@/types/database";
 
 type PaymentProduction = {
   title: string;
   bundle_enabled?: boolean;
+  crossshow_enabled?: boolean;
+  crossshow_amount?: number;
+  crossshow_source_ids?: string[];
   bundle_tiers?: { min: number; percent: number }[];
   gcash_name: string | null;
   gcash_number: string | null;
@@ -29,8 +33,22 @@ export async function GET(req: NextRequest) {
 
   const { data: items } = await db
     .from("cart_items")
-    .select("*, ticket_tier:ticket_tiers(*), performance:performances(production_id, production:productions(id, title, gcash_name, gcash_number, gcash_qr_url, bank_name, bank_account_name, bank_account_number, bank_qr_url, bundle_enabled, bundle_tiers))")
+    .select("*, ticket_tier:ticket_tiers(*), performance:performances(production_id, production:productions(id, title, gcash_name, gcash_number, gcash_qr_url, bank_name, bank_account_name, bank_account_number, bank_qr_url, bundle_enabled, bundle_tiers, crossshow_enabled, crossshow_amount, crossshow_source_ids))")
     .eq("cart_id", cart.id);
+
+  // Cross-show discount: only checked once both the booking code and email are given.
+  const xref = req.nextUrl.searchParams.get("xref")?.trim() ?? "";
+  const xemail = req.nextUrl.searchParams.get("email")?.trim() ?? "";
+  let crossError: string | undefined;
+  let crossSource: Awaited<ReturnType<typeof lookupCrossSource>>["source"];
+  if (xref && xemail) {
+    const found = await lookupCrossSource(db, xref, xemail);
+    crossError = found.error;
+    crossSource = found.source;
+  }
+  let crossLeft = crossSource?.available ?? 0;
+  let crossDiscount = 0;
+  let crossUsed = 0;
 
   const promo = code
     ? (await db.from("promo_codes").select("*").eq("code", code).maybeSingle()).data
@@ -54,7 +72,12 @@ export async function GET(req: NextRequest) {
   const payees = new Map<string, PaymentGroup>();
   let promoLeft = promo;
   for (const g of groups.values()) {
-    const p = calculatePricing(g.lines, promoLeft, g.productionId, new Date(), g.production);
+    const p = calculatePricing(g.lines, promoLeft, g.productionId, new Date(), g.production, crossAllowance(g.production, crossSource, crossLeft));
+    crossLeft -= p.crossshowUses ?? 0;
+    if (p.discountSource === "crossshow") {
+      crossDiscount += p.discountAmount;
+      crossUsed += p.crossshowUses ?? 0;
+    }
     if (p.discountSource === "bundle") bundles.push({ title: g.production?.title ?? "", percent: p.bundlePercent ?? 0, amount: p.discountAmount });
     if (p.discountSource === "promo") promoDiscount += p.discountAmount;
     if (p.promoSkipped) promoSkipped = true;
@@ -71,5 +94,5 @@ export async function GET(req: NextRequest) {
     payee.total += p.total;
     payees.set(key, payee);
   }
-  return NextResponse.json({ subtotal, discount, total, bundles, promoDiscount, promoSkipped, payments: [...payees.values()] });
+  return NextResponse.json({ subtotal, discount, total, bundles, promoDiscount, promoSkipped, crossshow: { offered: [...groups.values()].some((g) => g.production?.crossshow_enabled), checked: !!(xref && xemail), error: crossError, available: crossSource?.available ?? 0, used: crossUsed, discount: crossDiscount }, payments: [...payees.values()] });
 }

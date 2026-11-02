@@ -34,6 +34,16 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     if (!tiers.length) return NextResponse.json({ error: "Add at least one group step (2 or more tickets, 1 to 90 percent)." }, { status: 400 });
     update.bundle_tiers = tiers;
   }
+  if ("crossshow_enabled" in body) update.crossshow_enabled = body.crossshow_enabled === true;
+  if ("crossshow_amount" in body) {
+    const n = Number(body.crossshow_amount);
+    if (!(n > 0)) return NextResponse.json({ error: "Enter an amount above 0." }, { status: 400 });
+    update.crossshow_amount = Math.round(n * 100) / 100;
+  }
+  if ("crossshow_source_ids" in body) {
+    const ids = Array.isArray(body.crossshow_source_ids) ? body.crossshow_source_ids.filter((x: unknown) => typeof x === "string" && x !== id) : [];
+    update.crossshow_source_ids = [...new Set(ids)];
+  }
   // Blank payment fields clear back to the site default.
   for (const key of paymentFields) {
     if (key in body) update[key] = typeof body[key] === "string" && body[key].trim() ? body[key].trim() : null;

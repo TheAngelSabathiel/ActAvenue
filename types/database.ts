@@ -91,6 +91,9 @@ export interface Production {
   status: ProductionStatus;
   bundle_enabled?: boolean;
   bundle_tiers?: { min: number; percent: number }[];
+  crossshow_enabled?: boolean;
+  crossshow_amount?: number;
+  crossshow_source_ids?: string[];
   carousel_order: number;
   created_at: string;
   updated_at: string;
@@ -191,7 +194,7 @@ export interface Reservation {
   promo_code_id: string | null;
   subtotal: number;
   discount_amount: number;
-  discount_source?: "promo" | "bundle" | null;
+  discount_source?: "promo" | "bundle" | "crossshow" | null;
   total: number;
   payment_status: PaymentStatus;
   booking_source: BookingSource;

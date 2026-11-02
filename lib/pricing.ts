@@ -9,10 +9,12 @@ export interface PricingResult {
   subtotal: number;
   discountAmount: number;
   total: number;
-  discountSource: "promo" | "tier" | "bundle" | "none";
+  discountSource: "promo" | "tier" | "bundle" | "crossshow" | "none";
   rejectedPromoReason?: string;
   /** Set when a group discount applied (percent off the Regular tickets). */
   bundlePercent?: number;
+  /** Tickets discounted by a cross-show discount (each spends one use of the source booking). */
+  crossshowUses?: number;
   /** A promo code was entered but the group discount was bigger, so only that applied. */
   promoSkipped?: boolean;
   /** How many uses of the code this order consumes (a fixed-amount code uses one per discounted ticket). */
@@ -133,6 +135,26 @@ export function bundleDiscount(
   return { amount: Math.round(base * step.percent) / 100, percent: step.percent, count };
 }
 
+/** Cross-show discount: a fixed amount off each Regular ticket, up to the uses the buyer has earned. */
+export function crossshowDiscount(
+  lines: CartLineInput[],
+  amountEach: number,
+  uses: number,
+  now = new Date()
+): { amount: number; uses: number } {
+  let left = Math.max(0, Math.floor(uses));
+  let amount = 0;
+  let used = 0;
+  // Dearest tickets first so a capped number of uses saves the most.
+  for (const l of [...bundleLines(lines, now)].sort((a, b) => b.ticket_tier.price - a.ticket_tier.price)) {
+    const n = Math.min(l.quantity, left);
+    amount += Math.min(amountEach, l.ticket_tier.price) * n;
+    used += n;
+    left -= n;
+  }
+  return { amount: Math.round(amount * 100) / 100, uses: used };
+}
+
 /** The next group step above the current Regular count, for "add 1 more" hints. */
 export function nextBundleStep(count: number, config: BundleConfig | null | undefined): BundleTier | null {
   if (!config?.bundle_enabled) return null;
@@ -154,7 +176,8 @@ export function calculatePricing(
   promo: PromoCode | null,
   productionId: string,
   now = new Date(),
-  bundle?: BundleConfig | null
+  bundle?: BundleConfig | null,
+  crossshow?: { amount: number; uses: number } | null
 ): PricingResult {
   const subtotal = lines.reduce((sum, l) => sum + l.ticket_tier.price * l.quantity, 0);
   const none = (extra: Partial<PricingResult> = {}): PricingResult => ({
@@ -183,21 +206,28 @@ export function calculatePricing(
     }
   }
 
-  // Group side
+  // Group and cross-show sides
   const b = bundleDiscount(lines, bundle, now);
+  const x = crossshow && crossshow.amount > 0 && crossshow.uses > 0 ? crossshowDiscount(lines, crossshow.amount, crossshow.uses, now) : { amount: 0, uses: 0 };
 
-  if (b.amount > 0 && b.amount >= promoAmount) {
+  // One discount only: the biggest. A tie goes to the one that spends nothing (group), then the code, then the cross-show use.
+  const best = Math.max(b.amount, promoAmount, x.amount);
+  const skipped = !!promo && promoAmount > 0;
+  if (best > 0 && b.amount === best) {
     return none({
       discountAmount: b.amount,
       total: Math.max(0, subtotal - b.amount),
       discountSource: "bundle",
       bundlePercent: b.percent,
-      promoSkipped: !!promo && promoAmount > 0,
+      promoSkipped: skipped,
       rejectedPromoReason: promo && promoAmount === 0 ? rejectedPromoReason : undefined,
     });
   }
-  if (promoAmount > 0) {
+  if (best > 0 && promoAmount === best) {
     return none({ discountAmount: promoAmount, total: Math.max(0, subtotal - promoAmount), discountSource: "promo", promoUses });
+  }
+  if (best > 0 && x.amount === best) {
+    return none({ discountAmount: x.amount, total: Math.max(0, subtotal - x.amount), discountSource: "crossshow", crossshowUses: x.uses, promoSkipped: skipped });
   }
   return none({ rejectedPromoReason });
 }

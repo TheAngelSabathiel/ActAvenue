@@ -79,6 +79,7 @@ proxy.ts             Session refresh for protected paths only
 - `ticket_tiers`: per performance. Fields: optional displayed capacity (public percent booked only), tier type (`regular`, `vip`, `discounted`, `special`), display name, price, quantity, held count, inclusions text, ID requirement, optional time-limited price window, optional link to a main tier (shared seats) with an optional own cap.
 - `reservations` and `reservation_items`: a booking and its ticket lines. Status values: `pending_review`, `confirmed`, `rejected`, `expired`. Items track scans used and the uploaded ID.
 - `carts` and `cart_items`: a visitor's cart (guest or signed in).
+- `crossshow_uses`: one row per spend of a confirmed booking's earned uses (source booking, new booking, uses, amount). Available uses = paid tickets minus uses held by live bookings.
 - `promo_codes`: per organization, optionally limited to one production, to ticket types, and to a number of uses.
 - `profiles`: one per account. Role is `public`, `actor`, `organizer` or `admin`. Cast and crew fields: bio, bio style, photo, links, resume, reel, public listing flags.
 - `actor_photos`: extra gallery photos per profile (up to 9).
@@ -95,7 +96,7 @@ proxy.ts             Session refresh for protected paths only
 
 Each file in `supabase/` named `migration-*.sql` is a one-time change run by hand in the Supabase SQL editor. Current files, oldest topics first:
 
-`migration-tiers-partners`, `migration-orders`, `migration-payment-details`, `migration-ticket-qr`, `migration-promo-uses`, `migration-credits-plays`, `migration-play-catalog`, `migration-dancers`, `migration-carousel-order`, `migration-profile-links-email-notes`, `migration-staff-profiles`, `migration-production-staff`, `migration-scanner-role`, `migration-bio-style-play-writers`, `migration-dashboard-mailing`, `migration-play-logline`, `migration-shared-pools`, `migration-multi-id`, `migration-bundle-display`. Also: `fix-patlangreschedule-uses.sql` (one-off data fix) and the `seed-*.sql` files (sample data).
+`migration-tiers-partners`, `migration-orders`, `migration-payment-details`, `migration-ticket-qr`, `migration-promo-uses`, `migration-credits-plays`, `migration-play-catalog`, `migration-dancers`, `migration-carousel-order`, `migration-profile-links-email-notes`, `migration-staff-profiles`, `migration-production-staff`, `migration-scanner-role`, `migration-bio-style-play-writers`, `migration-dashboard-mailing`, `migration-play-logline`, `migration-shared-pools`, `migration-multi-id`, `migration-bundle-display`, `migration-crossshow`. Also: `fix-patlangreschedule-uses.sql` (one-off data fix) and the `seed-*.sql` files (sample data).
 
 ---
 
@@ -121,6 +122,7 @@ Each file in `supabase/` named `migration-*.sql` is a one-time change run by han
 - Shared seats: a tier can draw seats from a main tier on the same show (for example Regular 50 with Discounted drawing from it). The linked tier can have its own cap or use only the shared total.
 - Promo codes: percent or fixed amount off per ticket, limited by production, ticket type, expiry and number of uses. One code per reservation. Codes do not stack with time-limited tier pricing.
 - Group discount: per production, off by default, editable steps (defaults: 3+ Regular tickets 5% off, 5+ 8% off, 10+ 12% off). Counted per show and applied automatically to Regular tickets. One discount per order: the group discount or a promo code, whichever saves more.
+- Cross-show discount: per production, off by default. Admins pick which other shows qualify and a fixed amount off per ticket (default ₱100). Each paid ticket on a confirmed booking of a qualifying show earns one discounted Regular ticket, once. The buyer enters that booking code at checkout and must use the same email on the new booking (no account needed). Staff can enter the code on New reservation. Only one discount applies per order: the biggest of group, promo code or cross-show. Uses return if the new booking is rejected, expires or is deleted.
 - Percent booked: each ticket tier card on the public page shows a percent booked bar and an Almost full note from 70%, instead of seat counts. Admins can set a Displayed capacity per ticket tier that the percent uses. Real seats and sales limits are unchanged, and the bar stays under 100% until the tier truly sells out.
 - Checkout: buyer details, a required Data Privacy consent box, optional mailing list opt-in, and payment instructions (GCash or bank, with QR) set per production. Seats are held for 24 hours while payment is reviewed.
 - Payment proof upload with re-upload if it is rejected. A reminder email goes out before the hold ends. Expired holds release seats.
@@ -256,6 +258,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Cross-show discount (per production, off by default, booking code plus matching email, one use per ticket, tracked in `crossshow_uses`). Requires `migration-crossshow.sql`.
 - Ticket tiers in the show editor are now separate boxes with a gold edge, a header (name, price, Main tier or Shares seats badge) and their own Delete tier button.
 - Cart shows a subtotal per ticket line and an order subtotal before discounts; checkout labels the discount as Group discount or Promo code. Tier Delete moved to a button at the bottom of each tier.
 - Group discounts per production (off by default, editable steps, per show, Regular tickets only, never stacked with a promo code) and a public percent booked bar per ticket tier with an optional displayed capacity per tier. Requires `migration-bundle-display.sql`.

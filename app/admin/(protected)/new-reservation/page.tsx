@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 type Production = { id: string; title: string; slug: string };
 type Performance = { id: string; label: string; datetime: string };
 type Tier = { id: string; label: string; price: number };
-type Preview = { valid: boolean; reason?: string; pricing?: { subtotal: number; discountAmount: number; total: number } };
+type Preview = { pricing?: { subtotal: number; discountAmount: number; total: number; discountSource: string }; promoError?: string; crossError?: string };
 
 export default function NewReservationPage() {
   const [productions, setProductions] = useState<Production[]>([]);
@@ -25,6 +25,7 @@ export default function NewReservationPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [promoCode, setPromoCode] = useState("");
+  const [crossRef, setCrossRef] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [proof, setProof] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
@@ -33,22 +34,27 @@ export default function NewReservationPage() {
   const subtotal = tier ? tier.price * quantity : 0;
 
   useEffect(() => {
-    const code = promoCode.trim();
-    if (!code || !tierId || !productionId || quantity < 1) {
+    if (!tierId || !performanceId || quantity < 1) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreview(null);
       return;
     }
     const t = setTimeout(async () => {
-      const res = await fetch("/api/promo/validate", {
+      const res = await fetch("/api/admin/reservations/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, production_id: productionId, lines: [{ ticket_tier_id: tierId, quantity }] }),
+        body: JSON.stringify({
+          performance_id: performanceId,
+          items: [{ ticket_tier_id: tierId, quantity }],
+          promo_code: promoCode,
+          crossshow_ref: crossRef,
+          buyer_email: buyerEmail,
+        }),
       });
       setPreview(res.ok ? await res.json() : null);
     }, 400);
     return () => clearTimeout(t);
-  }, [promoCode, tierId, quantity, productionId]);
+  }, [promoCode, crossRef, buyerEmail, tierId, quantity, performanceId]);
 
   useEffect(() => {
     fetch("/api/admin/productions")
@@ -83,6 +89,7 @@ export default function NewReservationPage() {
     fd.set("status", status);
     fd.set("items", JSON.stringify([{ ticket_tier_id: tierId, quantity }]));
     if (promoCode.trim()) fd.set("promo_code", promoCode.trim());
+    if (crossRef.trim()) fd.set("crossshow_ref", crossRef.trim());
     if (proof) fd.set("payment_proof", proof);
     const res = await fetch("/api/admin/reservations/manual", { method: "POST", body: fd });
     const data = await res.json();
@@ -100,6 +107,7 @@ export default function NewReservationPage() {
     setBuyerPhone("");
     setQuantity(1);
     setPromoCode("");
+    setCrossRef("");
     setPreview(null);
     setProof(null);
     setFileKey((k) => k + 1);
@@ -194,7 +202,16 @@ export default function NewReservationPage() {
           onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
           className="w-full border border-ink/20 px-3 py-2 uppercase"
         />
-        {preview && !preview.valid && <p className="text-sm text-danger">{preview.reason}</p>}
+        {preview?.promoError && <p className="text-sm text-danger">{preview.promoError}</p>}
+
+        <input
+          placeholder="Booking code from another show (optional)"
+          value={crossRef}
+          onChange={(e) => setCrossRef(e.target.value.toUpperCase())}
+          className="w-full border border-ink/20 px-3 py-2 uppercase"
+        />
+        <p className="text-xs text-muted -mt-2">Cross-show discount. The buyer email above must match that confirmed booking. Only one discount applies per order.</p>
+        {preview?.crossError && <p className="text-sm text-danger">{preview.crossError}</p>}
 
         <label className="block text-sm">
           <span className="block text-xs font-bold uppercase text-muted mb-1">Proof of payment (optional)</span>
@@ -210,12 +227,15 @@ export default function NewReservationPage() {
         {tier && (
           <div className="aa-card p-3 text-sm space-y-0.5">
             <div className="flex justify-between"><span>Subtotal</span><span>₱{subtotal.toFixed(2)}</span></div>
-            {preview?.valid && preview.pricing && (
-              <div className="flex justify-between text-green-700"><span>Discount</span><span>-₱{preview.pricing.discountAmount.toFixed(2)}</span></div>
+            {preview?.pricing && preview.pricing.discountAmount > 0 && (
+              <div className="flex justify-between text-green-700">
+                <span>{{ promo: "Promo code", bundle: "Group discount", crossshow: "Cross-show discount" }[preview.pricing.discountSource] ?? "Discount"}</span>
+                <span>-₱{preview.pricing.discountAmount.toFixed(2)}</span>
+              </div>
             )}
             <div className="flex justify-between font-black">
               <span>Total</span>
-              <span>₱{(preview?.valid && preview.pricing ? preview.pricing.total : subtotal).toFixed(2)}</span>
+              <span>₱{(preview?.pricing ? preview.pricing.total : subtotal).toFixed(2)}</span>
             </div>
           </div>
         )}

@@ -18,7 +18,7 @@ export function PerformancePicker({
 }: {
   performances: PerformanceWithTiers[];
   productionTitle: string;
-  bundle?: { bundle_enabled?: boolean; bundle_tiers?: { min: number; percent: number }[] } | null;
+  bundle?: { bundle_enabled?: boolean; bundle_tiers?: { min: number; percent: number }[]; crossshow_enabled?: boolean; crossshow_amount?: number | string } | null;
 }) {
   const { addItem } = useCart();
   const [performances, setPerformances] = useState(initialPerformances);
@@ -297,6 +297,12 @@ export function PerformancePicker({
             <p className="aa-card px-4 py-3 text-sm font-bold mb-0">
               <i className="bi bi-people" /> Group discount on Regular tickets:{" "}
               {cleanBundleTiers(bundle.bundle_tiers).map((t) => `${t.min}+ tickets ${t.percent}% off`).join(", ")}. Applied automatically per show.
+            </p>
+          )}
+
+          {step2Open && bundle?.crossshow_enabled && (
+            <p className="aa-card px-4 py-3 text-sm font-bold mb-0">
+              <i className="bi bi-ticket-perforated" /> Been to another Act Avenue show? Enter your booking code at checkout for ₱{Number(bundle.crossshow_amount).toFixed(0)} off each Regular ticket, one per ticket you bought.
             </p>
           )}
 
