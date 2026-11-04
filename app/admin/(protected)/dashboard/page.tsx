@@ -30,18 +30,18 @@ function Stat({ label, value, sub, href }: { label: string; value: string; sub?:
   const body = (
     <>
       <p className="aa-label text-muted mb-1">{label}</p>
-      <p className="text-2xl font-black mb-0">{value}</p>
+      <p className="text-xl sm:text-2xl font-black mb-0 [overflow-wrap:anywhere]">{value}</p>
       {sub && <p className="text-xs text-muted mb-0">{sub}</p>}
     </>
   );
   if (href) {
     return (
-      <Link href={href} className="aa-card p-4 block hover:border-black transition-colors">
+      <Link href={href} className="aa-card p-4 block min-w-0 hover:border-black transition-colors">
         {body}
       </Link>
     );
   }
-  return <div className="aa-card p-4">{body}</div>;
+  return <div className="aa-card p-4 min-w-0">{body}</div>;
 }
 
 function SeatBar({ sold, pending, capacity }: { sold: number; pending: number; capacity: number }) {
