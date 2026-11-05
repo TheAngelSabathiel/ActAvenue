@@ -131,46 +131,6 @@ export default function DashboardPage() {
             <Stat label="Online / walk-in" value={`${t.online} / ${t.walkIn}`} sub="Tickets by source" />
           </div>
 
-          <section>
-            <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
-              <h2 className="text-xl mb-0">Sales funnel</h2>
-              <select value={days} onChange={(e) => setDays(e.target.value)} className="border border-ink/20 px-3 py-1.5 text-sm" aria-label="Funnel period">
-                <option value="7">Last 7 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="0">All time</option>
-              </select>
-            </div>
-            {!data.funnel ? (
-              <p className="text-muted">Funnel counts are not set up yet. Run migration-funnel.sql in Supabase.</p>
-            ) : (
-              <div className="aa-card p-4 space-y-3">
-                {([
-                  ["Visited this show's page", data.funnel.views, null],
-                  ["Started a cart", data.funnel.carts, data.funnel.views],
-                  ["Submitted checkout", data.funnel.checkouts, data.funnel.carts],
-                  ["Confirmed online", data.funnel.confirmed, data.funnel.checkouts],
-                ] as [string, number, number | null][]).map(([label, n, prev]) => (
-                  <div key={label} className="space-y-1">
-                    <div className="flex justify-between gap-3 text-sm">
-                      <span>{label}</span>
-                      <span className="tabular-nums whitespace-nowrap">
-                        <strong>{n}</strong>
-                        {prev !== null && prev > 0 && <span className="text-muted"> · {pct(n, prev)}% of previous step</span>}
-                      </span>
-                    </div>
-                    <div className="h-3 bg-[#e9ecef] overflow-hidden">
-                      <div className="h-3 bg-black" style={{ width: `${Math.min(100, pct(n, Math.max(1, data.funnel!.views, data.funnel!.carts, data.funnel!.checkouts, data.funnel!.confirmed)))}%` }} />
-                    </div>
-                  </div>
-                ))}
-                <p className="text-xs text-muted mb-0">
-                  {data.funnel.home} visitor{data.funnel.home === 1 ? "" : "s"} reached the home page (all shows). Each count is unique visitors or carts, and staff are left out.
-                  {data.funnel.trackingSince && ` Counting since ${dayLabel(data.funnel.trackingSince.slice(0, 10))}.`}
-                </p>
-              </div>
-            )}
-          </section>
-
           <section className="space-y-4">
             <h2 className="text-xl">Shows</h2>
             {data.performances.length === 0 && <p className="text-muted">No shows yet.</p>}
@@ -240,6 +200,46 @@ export default function DashboardPage() {
                     <span className="tabular-nums text-right whitespace-nowrap">{d.tickets} · {peso(d.revenue)}</span>
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+              <h2 className="text-xl mb-0">Sales funnel</h2>
+              <select value={days} onChange={(e) => setDays(e.target.value)} className="border border-ink/20 px-3 py-1.5 text-sm" aria-label="Funnel period">
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="0">All time</option>
+              </select>
+            </div>
+            {!data.funnel ? (
+              <p className="text-muted">Funnel counts are not set up yet. Run migration-funnel.sql in Supabase.</p>
+            ) : (
+              <div className="aa-card p-4 space-y-3">
+                {([
+                  ["Visited this show's page", data.funnel.views, null],
+                  ["Started a cart", data.funnel.carts, data.funnel.views],
+                  ["Submitted checkout", data.funnel.checkouts, data.funnel.carts],
+                  ["Confirmed online", data.funnel.confirmed, data.funnel.checkouts],
+                ] as [string, number, number | null][]).map(([label, n, prev]) => (
+                  <div key={label} className="space-y-1">
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span>{label}</span>
+                      <span className="tabular-nums whitespace-nowrap">
+                        <strong>{n}</strong>
+                        {prev !== null && prev > 0 && <span className="text-muted"> · {pct(n, prev)}% of previous step</span>}
+                      </span>
+                    </div>
+                    <div className="h-3 bg-[#e9ecef] overflow-hidden">
+                      <div className="h-3 bg-black" style={{ width: `${Math.min(100, pct(n, Math.max(1, data.funnel!.views, data.funnel!.carts, data.funnel!.checkouts, data.funnel!.confirmed)))}%` }} />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-muted mb-0">
+                  {data.funnel.home} visitor{data.funnel.home === 1 ? "" : "s"} reached the home page (all shows). Each count is unique visitors or carts, and staff are left out.
+                  {data.funnel.trackingSince && ` Counting since ${dayLabel(data.funnel.trackingSince.slice(0, 10))}.`}
+                </p>
               </div>
             )}
           </section>
