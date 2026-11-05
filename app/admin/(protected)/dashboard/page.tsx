@@ -158,8 +158,8 @@ export default function DashboardPage() {
                         {prev !== null && prev > 0 && <span className="text-muted"> · {pct(n, prev)}% of previous step</span>}
                       </span>
                     </div>
-                    <div className="h-3 bg-[#e9ecef]">
-                      <div className="h-3 bg-black" style={{ width: `${pct(n, Math.max(1, data.funnel!.views, data.funnel!.carts))}%` }} />
+                    <div className="h-3 bg-[#e9ecef] overflow-hidden">
+                      <div className="h-3 bg-black" style={{ width: `${Math.min(100, pct(n, Math.max(1, data.funnel!.views, data.funnel!.carts, data.funnel!.checkouts, data.funnel!.confirmed)))}%` }} />
                     </div>
                   </div>
                 ))}
