@@ -3,6 +3,7 @@ import { idPaths } from "@/lib/id-proofs";
 import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateCart } from "@/lib/cart-session";
 import { createServiceClient } from "@/lib/supabase/service";
+import { logFunnel } from "@/lib/funnel";
 
 export async function GET() {
   const cart = await getOrCreateCart();
@@ -117,6 +118,7 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await logCartStarted(db, performance_id, cart.id);
     return NextResponse.json({ item: data });
   }
 
@@ -134,5 +136,16 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logCartStarted(db, performance_id, cart.id);
   return NextResponse.json({ item: data });
+}
+
+/** Funnel: a cart with tickets for this production (counted once per cart). */
+async function logCartStarted(db: ReturnType<typeof createServiceClient>, performanceId: string, cartId: string) {
+  try {
+    const { data: perf } = await db.from("performances").select("production_id").eq("id", performanceId).single();
+    if (perf) await logFunnel("cart_started", perf.production_id, cartId);
+  } catch {
+    /* never blocks adding to cart */
+  }
 }

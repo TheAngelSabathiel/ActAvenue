@@ -19,6 +19,7 @@ type Data = {
   salesByDay?: { day: string; tickets: number; revenue: number }[];
   status?: Record<string, number>;
   totals?: { revenue: number; sold: number; pending: number; capacity: number; online: number; walkIn: number };
+  funnel?: { home: number; views: number; carts: number; checkouts: number; confirmed: number; trackingSince: string | null } | null;
   promos?: { code: string; uses: number; discount: number }[];
 };
 
@@ -55,15 +56,16 @@ function SeatBar({ sold, pending, capacity }: { sold: number; pending: number; c
 
 export default function DashboardPage() {
   const [productionId, setProductionId] = useState("");
+  const [days, setDays] = useState("30");
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (id: string) => {
+  const load = useCallback(async (id: string, range: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/dashboard${id ? `?production_id=${id}` : ""}`);
+      const res = await fetch(`/api/admin/dashboard${id ? `?production_id=${id}&days=${range}` : ""}`);
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Could not load.");
       if (!id && d.productions?.length) {
@@ -81,8 +83,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load(productionId);
-  }, [productionId, load]);
+    load(productionId, days);
+  }, [productionId, days, load]);
 
   if (!data && loading) return <Spinner />;
   const t = data?.totals;
@@ -128,6 +130,46 @@ export default function DashboardPage() {
             <Stat label="Pending" value={`${t.pending}`} sub="Awaiting payment review" href="/admin/reservations?status=pending_review" />
             <Stat label="Online / walk-in" value={`${t.online} / ${t.walkIn}`} sub="Tickets by source" />
           </div>
+
+          <section>
+            <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+              <h2 className="text-xl mb-0">Sales funnel</h2>
+              <select value={days} onChange={(e) => setDays(e.target.value)} className="border border-ink/20 px-3 py-1.5 text-sm" aria-label="Funnel period">
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="0">All time</option>
+              </select>
+            </div>
+            {!data.funnel ? (
+              <p className="text-muted">Funnel counts are not set up yet. Run migration-funnel.sql in Supabase.</p>
+            ) : (
+              <div className="aa-card p-4 space-y-3">
+                {([
+                  ["Visited this show's page", data.funnel.views, null],
+                  ["Started a cart", data.funnel.carts, data.funnel.views],
+                  ["Submitted checkout", data.funnel.checkouts, data.funnel.carts],
+                  ["Confirmed online", data.funnel.confirmed, data.funnel.checkouts],
+                ] as [string, number, number | null][]).map(([label, n, prev]) => (
+                  <div key={label} className="space-y-1">
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span>{label}</span>
+                      <span className="tabular-nums whitespace-nowrap">
+                        <strong>{n}</strong>
+                        {prev !== null && prev > 0 && <span className="text-muted"> · {pct(n, prev)}% of previous step</span>}
+                      </span>
+                    </div>
+                    <div className="h-3 bg-[#e9ecef]">
+                      <div className="h-3 bg-black" style={{ width: `${pct(n, Math.max(1, data.funnel!.views, data.funnel!.carts))}%` }} />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-muted mb-0">
+                  {data.funnel.home} visitor{data.funnel.home === 1 ? "" : "s"} reached the home page (all shows). Each count is unique visitors or carts, and staff are left out.
+                  {data.funnel.trackingSince && ` Counting since ${dayLabel(data.funnel.trackingSince.slice(0, 10))}.`}
+                </p>
+              </div>
+            )}
+          </section>
 
           <section className="space-y-4">
             <h2 className="text-xl">Shows</h2>

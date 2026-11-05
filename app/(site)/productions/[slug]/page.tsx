@@ -9,6 +9,7 @@ import { CreditsDisplay } from "@/components/credits-display";
 import { PerformancePicker } from "@/components/performance-picker";
 import { PartnersSection } from "@/components/partners-section";
 import { getPartners } from "@/lib/data/partners";
+import { TrackView } from "@/components/track-view";
 import { IMAGES } from "@/lib/images";
 
 // Saved by the CDN for a minute; admin edits refresh it right away.
@@ -45,6 +46,7 @@ export default async function ProductionPage({
 
   return (
     <>
+      <TrackView event="production_view" productionId={production.id} />
       <section className="relative bg-black text-white overflow-hidden">
         <Image
           src={production.banner_url ?? IMAGES.bannerPlaceholder}

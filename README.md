@@ -96,7 +96,7 @@ proxy.ts             Session refresh for protected paths only
 
 Each file in `supabase/` named `migration-*.sql` is a one-time change run by hand in the Supabase SQL editor. Current files, oldest topics first:
 
-`migration-tiers-partners`, `migration-orders`, `migration-payment-details`, `migration-ticket-qr`, `migration-promo-uses`, `migration-credits-plays`, `migration-play-catalog`, `migration-dancers`, `migration-carousel-order`, `migration-profile-links-email-notes`, `migration-staff-profiles`, `migration-production-staff`, `migration-scanner-role`, `migration-bio-style-play-writers`, `migration-dashboard-mailing`, `migration-play-logline`, `migration-shared-pools`, `migration-multi-id`, `migration-bundle-display`, `migration-crossshow`, `migration-crossshow-multi`. Also: `fix-patlangreschedule-uses.sql` (one-off data fix) and the `seed-*.sql` files (sample data).
+`migration-tiers-partners`, `migration-orders`, `migration-payment-details`, `migration-ticket-qr`, `migration-promo-uses`, `migration-credits-plays`, `migration-play-catalog`, `migration-dancers`, `migration-carousel-order`, `migration-profile-links-email-notes`, `migration-staff-profiles`, `migration-production-staff`, `migration-scanner-role`, `migration-bio-style-play-writers`, `migration-dashboard-mailing`, `migration-play-logline`, `migration-shared-pools`, `migration-multi-id`, `migration-bundle-display`, `migration-crossshow`, `migration-crossshow-multi`, `migration-funnel`. Also: `fix-patlangreschedule-uses.sql` (one-off data fix) and the `seed-*.sql` files (sample data).
 
 ---
 
@@ -258,6 +258,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Sales funnel on the admin Dashboard (per production; last 7 days, 30 days or all time): unique visitors to the show page, carts started, checkouts submitted, and confirmed online orders, with the percent kept at each step, plus home page visitors. Anonymous only (a random id per browser or cart, no names, emails or IPs). Signed-in admins and organizers and known bots are not counted. Needs `migration-funnel.sql`.
 - Home page: the black "Book Your Seat" section is gone. The carousel now spans the full width, keeps its 6 second auto-scroll, and shows the previous and next productions as dimmed previews at the sides (click one to bring it to the middle; swipe on phones). Under it, a search bar and a card grid (image, title, venue, dates) list every current production.
 - Dashboard stat cards no longer overflow on phones (smaller figure on narrow screens, long amounts wrap inside the card).
 - Organizations page: the name field now has a label and lines up with the logo, and the organization ID is a labeled Copy button.

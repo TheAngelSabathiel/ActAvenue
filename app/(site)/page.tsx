@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listPublishedProductions, listHomeShows } from "@/lib/data/homepage";
 import { IMAGES } from "@/lib/images";
 import { ProductionCarousel } from "@/components/production-carousel";
+import { TrackView } from "@/components/track-view";
 import { HomeShows } from "@/components/home-shows";
 import { PH_TZ } from "@/lib/datetime";
 import { CONTACT_EMAIL, SocialLinks } from "@/components/site-footer";
@@ -40,6 +41,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <TrackView event="visit" />
       {productions.length === 0 ? (
         <section className="aa-container pt-12 pb-6">
           <div className="aa-card p-10 text-center">

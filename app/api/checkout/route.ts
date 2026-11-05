@@ -6,6 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { calculatePricing } from "@/lib/pricing";
 import { lookupCrossSources, crossAllowance, allocateCross, sourceLeft } from "@/lib/crossshow";
 import { subscribe } from "@/lib/mailing";
+import { logFunnel } from "@/lib/funnel";
 import { sendBookingReceivedEmail } from "@/lib/email/send";
 import { holdTicketTier, incrementPromoUsage, releaseTicketTierHolds } from "@/lib/inventory";
 import type { TicketTier } from "@/types/database";
@@ -281,6 +282,11 @@ export async function POST(req: NextRequest) {
 
     // Convert cart, clear items
     await db.from("carts").update({ status: "converted" }).eq("id", cart.id);
+
+    // Funnel: one checkout per production in this order.
+    for (const pid of new Set(plans.map((pl) => pl.production.id as string))) {
+      await logFunnel("checkout_submitted", pid, cart.id);
+    }
 
     // Email 1 - pending confirmation, no QR yet. One email for the whole
     // order. A failure (bad API key, Resend outage) must not turn a

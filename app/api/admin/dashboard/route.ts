@@ -37,13 +37,13 @@ export async function GET(req: NextRequest) {
 
   const { data: reservations, error } = await db
     .from("reservations")
-    .select("id, total, discount_amount, payment_status, created_at, performance_id, booking_source, promo_code:promo_codes(code), reservation_items(quantity, scans_used, ticket_tier_id)")
+    .select("id, total, discount_amount, payment_status, created_at, performance_id, booking_source, order_code, promo_code:promo_codes(code), reservation_items(quantity, scans_used, ticket_tier_id)")
     .eq("production_id", productionId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const now = Date.now();
   const status = { pending_review: 0, confirmed: 0, rejected: 0, expired: 0 } as Record<string, number>;
-  const days = new Map<string, { tickets: number; revenue: number }>();
+  const byDay = new Map<string, { tickets: number; revenue: number }>();
   const promos = new Map<string, { uses: number; discount: number }>();
   let online = 0;
   let walkIn = 0;
@@ -76,10 +76,10 @@ export async function GET(req: NextRequest) {
         tier.set(i.ticket_tier_id, t);
       }
       const day = manilaDay(r.created_at);
-      const d = days.get(day) ?? { tickets: 0, revenue: 0 };
+      const d = byDay.get(day) ?? { tickets: 0, revenue: 0 };
       d.tickets += qty;
       d.revenue += Number(r.total);
-      days.set(day, d);
+      byDay.set(day, d);
       if (r.booking_source === "admin_manual") walkIn += qty;
       else online += qty;
       const code = one(r.promo_code)?.code;
@@ -91,6 +91,32 @@ export async function GET(req: NextRequest) {
       }
     }
     perf.set(r.performance_id, a);
+  }
+
+  // Funnel: unique visitors per step since the chosen start. "all" means since tracking began.
+  const days = Number(req.nextUrl.searchParams.get("days"));
+  const since = days > 0 ? new Date(Date.now() - days * 86400000) : new Date(0);
+  const counts = await db.rpc("funnel_counts", { p_production: productionId, p_since: since.toISOString() });
+  let funnel: null | { home: number; views: number; carts: number; checkouts: number; confirmed: number; trackingSince: string | null } = null;
+  if (!counts.error) {
+    const c: Record<string, number> = {};
+    for (const row of (counts.data ?? []) as { event: string; visitors: number }[]) c[row.event] = Number(row.visitors);
+    // Online orders only, one per order (an order can span several shows).
+    const orders = new Set<string>();
+    for (const r of reservations ?? []) {
+      if (r.payment_status === "confirmed" && r.booking_source !== "admin_manual" && new Date(r.created_at) >= since) {
+        orders.add(r.order_code ?? r.id);
+      }
+    }
+    const { data: first } = await db.from("funnel_events").select("created_at").order("created_at", { ascending: true }).limit(1);
+    funnel = {
+      home: c.visit ?? 0,
+      views: c.production_view ?? 0,
+      carts: c.cart_started ?? 0,
+      checkouts: c.checkout_submitted ?? 0,
+      confirmed: orders.size,
+      trackingSince: first?.[0]?.created_at ?? null,
+    };
   }
 
   const performances = (production.performances ?? [])
@@ -124,11 +150,12 @@ export async function GET(req: NextRequest) {
       };
     });
 
-  const salesByDay = [...days.entries()]
+  const salesByDay = [...byDay.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([day, v]) => ({ day, tickets: v.tickets, revenue: round(v.revenue) }));
 
   return NextResponse.json({
+    funnel,
     productions: productions ?? [],
     production: { id: production.id, title: production.title },
     performances,
