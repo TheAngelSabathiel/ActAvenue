@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { listPublishedProductions } from "@/lib/data/homepage";
+import { listPublishedProductions, listHomeShows } from "@/lib/data/homepage";
 import { IMAGES } from "@/lib/images";
 import { ProductionCarousel } from "@/components/production-carousel";
-import { ScrollButton } from "@/components/scroll-button";
+import { HomeShows } from "@/components/home-shows";
+import { PH_TZ } from "@/lib/datetime";
 import { CONTACT_EMAIL, SocialLinks } from "@/components/site-footer";
 
 // Saved by the CDN for a minute; admin edits refresh it right away.
@@ -15,29 +16,40 @@ const STEPS = [
   { icon: "bi-qr-code", title: "Get your QR", text: "Your e-ticket arrives by email." },
 ];
 
+/** "Nov 14 to 15, 2026", or one date when the run is a single day. */
+function dateSpan(first: string | null, last: string | null) {
+  if (!first || !last) return null;
+  const part = (iso: string) => {
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat("en-PH", { timeZone: PH_TZ, month: "short", day: "numeric", year: "numeric" })
+        .formatToParts(new Date(iso))
+        .map((x) => [x.type, x.value])
+    );
+    return { month: p.month, day: p.day, year: p.year };
+  };
+  const a = part(first);
+  const b = part(last);
+  if (a.month === b.month && a.day === b.day && a.year === b.year) return `${a.month} ${a.day}, ${a.year}`;
+  if (a.month === b.month && a.year === b.year) return `${a.month} ${a.day} to ${b.day}, ${a.year}`;
+  return `${a.month} ${a.day}, ${a.year} to ${b.month} ${b.day}, ${b.year}`;
+}
+
 export default async function HomePage() {
   const productions = await listPublishedProductions();
+  const shows = await listHomeShows(productions.map((p) => p.id));
 
   return (
     <>
-      <section className="bg-black text-white py-24 text-center">
-        <div className="aa-container">
-          <h1 className="text-5xl md:text-7xl mb-4">Book Your Seat</h1>
-          <p className="text-lg opacity-75 tracking-[0.08em] mb-8">Tickets for Act Avenue productions</p>
-          <ScrollButton targetId="now-showing" className="aa-btn aa-btn-light aa-btn-lg">Browse Shows</ScrollButton>
-        </div>
-      </section>
-
-      <section id="now-showing" className="aa-container pt-12 pb-6">
-        <h2 className="text-3xl mb-2">Current Productions</h2>
-        <hr className="aa-divider" />
-        {productions.length === 0 ? (
+      {productions.length === 0 ? (
+        <section className="aa-container pt-12 pb-6">
           <div className="aa-card p-10 text-center">
             <p className="font-bold uppercase tracking-[0.08em] mb-1">No current productions</p>
             <p className="text-muted mb-0">New productions are announced on our socials.</p>
           </div>
-        ) : (
-          <div className="pb-8">
+        </section>
+      ) : (
+        <>
+          <section className="pt-5 md:pt-8 pb-6">
             <ProductionCarousel
               productions={productions.map((p) => ({
                 id: p.id,
@@ -47,9 +59,24 @@ export default async function HomePage() {
                 image: p.banner_url ?? p.poster_url ?? IMAGES.bannerPlaceholder,
               }))}
             />
-          </div>
-        )}
-      </section>
+          </section>
+
+          <section id="now-showing" className="aa-container pt-6 pb-10">
+            <h2 className="text-3xl mb-2">Current Productions</h2>
+            <hr className="aa-divider" />
+            <HomeShows
+              shows={productions.map((p) => ({
+                id: p.id,
+                slug: p.slug,
+                title: p.title,
+                image: p.banner_url ?? p.poster_url ?? IMAGES.bannerPlaceholder,
+                venue: shows[p.id]?.venue ?? null,
+                dates: dateSpan(shows[p.id]?.firstAt ?? null, shows[p.id]?.lastAt ?? null),
+              }))}
+            />
+          </section>
+        </>
+      )}
 
       <section className="py-6">
         <div className="aa-container">

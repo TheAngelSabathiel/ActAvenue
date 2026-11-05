@@ -258,6 +258,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Home page: the black "Book Your Seat" section is gone. The carousel now spans the full width, keeps its 6 second auto-scroll, and shows the previous and next productions as dimmed previews at the sides (click one to bring it to the middle; swipe on phones). Under it, a search bar and a card grid (image, title, venue, dates) list every current production.
 - Dashboard stat cards no longer overflow on phones (smaller figure on narrow screens, long amounts wrap inside the card).
 - Organizations page: the name field now has a label and lines up with the logo, and the organization ID is a labeled Copy button.
 - The cross-show block now lives in the cart only (checkout just carries the codes over). Tighter spacing between the home page sections.
