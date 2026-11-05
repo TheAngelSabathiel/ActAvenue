@@ -63,9 +63,7 @@ export default async function HomePage() {
             />
           </section>
 
-          <section id="now-showing" className="aa-container pt-6 pb-10">
-            <h2 className="text-3xl mb-2">Current Productions</h2>
-            <hr className="aa-divider" />
+          <section id="now-showing" className="aa-container pt-8 pb-10">
             <HomeShows
               shows={productions.map((p) => ({
                 id: p.id,

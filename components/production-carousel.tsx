@@ -104,14 +104,14 @@ export function ProductionCarousel({ productions }: { productions: CarouselProdu
                 alt=""
                 fill
                 priority={i === 0}
-                sizes="(min-width: 768px) 72vw, 86vw"
+                sizes="(min-width: 768px) 88vw, 92vw"
                 className="aa-hero-img"
               />
               <div
-                className="absolute inset-x-0 bottom-0 p-5 md:p-8 text-white transition-opacity duration-500"
-                style={{ opacity: active ? 1 : 0, background: "linear-gradient(to top, rgba(0,0,0,.9), transparent)" }}
+                className="absolute inset-x-0 bottom-0 px-5 pt-16 pb-9 md:px-12 md:pb-14 text-white transition-opacity duration-500"
+                style={{ opacity: active ? 1 : 0, background: "linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.35) 55%, transparent)" }}
               >
-                <h3 className="text-2xl md:text-4xl text-white mb-1">{p.title}</h3>
+                <h3 className="text-2xl md:text-5xl text-white mb-1">{p.title}</h3>
                 {p.description && <p className="text-sm md:text-base text-white line-clamp-2 max-w-2xl">{p.description}</p>}
                 <span className="aa-btn aa-btn-accent aa-btn-sm mt-2">Get Tickets</span>
               </div>
@@ -121,32 +121,30 @@ export function ProductionCarousel({ productions }: { productions: CarouselProdu
       </div>
       {many && (
         <>
-          <button type="button" className="aa-arrow left-2 md:left-6 max-md:!hidden" aria-label="Previous production" onClick={() => go(current - 1)}>
+          <button type="button" className="aa-hero-arrow left-3 md:left-8 max-md:!hidden" aria-label="Previous production" onClick={() => go(current - 1)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 7 12l8 8" /></svg>
           </button>
-          <button type="button" className="aa-arrow right-2 md:right-6 max-md:!hidden" aria-label="Next production" onClick={() => go(current + 1)}>
+          <button type="button" className="aa-hero-arrow right-3 md:right-8 max-md:!hidden" aria-label="Next production" onClick={() => go(current + 1)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8" /></svg>
           </button>
         </>
       )}
+      {many && (
+        <div className="absolute inset-x-0 bottom-3 md:bottom-5 z-[2] flex justify-center items-center gap-2">
+          {productions.map((p, i) => (
+            <button
+              key={p.id}
+              type="button"
+              aria-label={`Show ${p.title}`}
+              aria-current={i === current % count}
+              onClick={() => setIndex(i)}
+              className="aa-hero-dot"
+            />
+          ))}
+        </div>
+      )}
       </div>
 
-      {many && (
-        <>
-          <div className="flex justify-center gap-2 mt-5">
-            {productions.map((p, i) => (
-              <button
-                key={p.id}
-                type="button"
-                aria-label={`Show ${p.title}`}
-                aria-current={i === current % count}
-                onClick={() => setIndex(i)}
-                className={`h-2.5 w-2.5 border border-black transition-colors ${i === current % count ? "bg-black" : "bg-white"}`}
-              />
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }

@@ -22,7 +22,7 @@ export function HomeShows({ shows }: { shows: HomeShowCard[] }) {
 
   return (
     <div>
-      <div className="relative max-w-xl mx-auto mb-10">
+      <div className="relative max-w-xl mx-auto mb-12">
         <input
           type="search"
           value={q}
@@ -33,6 +33,9 @@ export function HomeShows({ shows }: { shows: HomeShowCard[] }) {
         />
         <i className="bi bi-search absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
       </div>
+
+      <h2 className="text-3xl mb-2">Current Productions</h2>
+      <hr className="aa-divider" />
 
       {list.length === 0 ? (
         <p className="text-center text-muted mb-0">No shows match &ldquo;{q.trim()}&rdquo;.</p>
