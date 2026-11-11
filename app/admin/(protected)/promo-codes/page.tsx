@@ -9,6 +9,8 @@ import Link from "next/link";
 import { ManilaDateTimeInput } from "@/components/manila-datetime-input";
 import { TIER_TYPES, tierTypeName } from "@/lib/tiers";
 import { useAdminAccess } from "@/components/admin/access-context";
+import { SaveBar } from "@/components/save-bar";
+import { formatDateTime, toManilaInput } from "@/lib/datetime";
 
 type PromoCode = {
   id: string;
@@ -21,6 +23,167 @@ type PromoCode = {
   applicable_tier_types: string[] | null;
   production: { title: string } | null;
 };
+
+/** What state a code is in right now. */
+function codeStatus(c: PromoCode): "expired" | "used_up" | "active" {
+  if (c.valid_until && new Date(c.valid_until).getTime() < Date.now()) return "expired";
+  if (c.max_uses !== null && c.max_uses > 0 && c.times_used >= c.max_uses) return "used_up";
+  return "active";
+}
+
+const field = "w-full border border-ink/20 px-3 py-2 text-sm";
+
+/** One code in the list, with a staged editor for its value, limit, deadline and ticket types. */
+function PromoRow({ c, onChanged, onDelete }: { c: PromoCode; onChanged: () => void; onDelete: () => void }) {
+  const status = codeStatus(c);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [type, setType] = useState(c.discount_type);
+  const [value, setValue] = useState(String(c.discount_value));
+  const [maxUses, setMaxUses] = useState(c.max_uses ? String(c.max_uses) : "");
+  const [until, setUntil] = useState(c.valid_until ? toManilaInput(c.valid_until) : "");
+  const [types, setTypes] = useState<string[]>(c.applicable_tier_types?.length ? c.applicable_tier_types : TIER_TYPES.map((t) => t.value));
+
+  const original = {
+    type: c.discount_type,
+    value: String(c.discount_value),
+    maxUses: c.max_uses ? String(c.max_uses) : "",
+    until: c.valid_until ? toManilaInput(c.valid_until) : "",
+    types: (c.applicable_tier_types?.length ? c.applicable_tier_types : TIER_TYPES.map((t) => t.value)).slice().sort().join(","),
+  };
+  const dirty =
+    type !== original.type ||
+    value !== original.value ||
+    maxUses !== original.maxUses ||
+    until !== original.until ||
+    types.slice().sort().join(",") !== original.types;
+
+  function discard() {
+    setType(original.type);
+    setValue(original.value);
+    setMaxUses(original.maxUses);
+    setUntil(original.until);
+    setTypes(original.types.split(","));
+  }
+
+  async function save() {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0 || (type === "percent" && n > 100)) {
+      toast.error(type === "percent" ? "Percent must be between 0 and 100." : "Enter a valid amount.");
+      return;
+    }
+    if (types.length === 0) {
+      toast.error("Pick at least one ticket type.");
+      return;
+    }
+    setSaving(true);
+    const res = await fetch(`/api/admin/promo-codes/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        discount_type: type,
+        discount_value: n,
+        max_uses: maxUses ? Number(maxUses) : null,
+        valid_until: until || null,
+        applicable_tier_types: types,
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Could not save the promo code.");
+      return;
+    }
+    toast.success("Promo code updated.");
+    setOpen(false);
+    onChanged();
+  }
+
+  return (
+    <div className="aa-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="tabular-nums mb-0">
+            {c.code}
+            {status === "expired" && <span className="ml-2 text-[0.65rem] font-black uppercase bg-danger text-white px-1.5 py-0.5 align-middle">Expired</span>}
+            {status === "used_up" && <span className="ml-2 text-[0.65rem] font-black uppercase bg-black text-white px-1.5 py-0.5 align-middle">Used up</span>}
+          </p>
+          <p className="text-xs text-muted mb-0">
+            {c.discount_type === "percent" ? `${c.discount_value}% off` : `₱${c.discount_value} off per ticket`}
+            {" · "}
+            {c.applicable_tier_types?.length ? c.applicable_tier_types.map(tierTypeName).join(", ") : "all ticket types"}
+            {" · "}
+            used {c.times_used}
+            {c.max_uses ? `/${c.max_uses}` : ""}
+            {" · "}
+            {c.valid_until ? `${status === "expired" ? "ended" : "until"} ${formatDateTime(c.valid_until)}` : "no deadline"}
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={() => setOpen((o) => !o)} className="text-xs font-bold uppercase underline">
+            {open ? "Close" : status === "active" ? "Edit" : "Reactivate"}
+          </button>
+          <button type="button" onClick={onDelete} className="text-xs font-bold uppercase text-danger">
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="mt-4 pt-4 border-t border-ink/10 grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0">
+          {status !== "active" && (
+            <p className="sm:col-span-2 text-sm mb-0">
+              {status === "expired"
+                ? "This code has expired. Set a later deadline, or clear it for no deadline, then save."
+                : "This code reached its use limit. Raise or clear the limit, then save."}
+            </p>
+          )}
+          <label className="text-xs font-bold uppercase text-muted">
+            Discount
+            <select value={type} onChange={(e) => setType(e.target.value as PromoCode["discount_type"])} className={`${field} mt-1 font-normal normal-case text-ink`}>
+              <option value="percent">Percent off</option>
+              <option value="fixed">Fixed amount off per ticket</option>
+            </select>
+          </label>
+          <label className="text-xs font-bold uppercase text-muted">
+            Value
+            <input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} className={`${field} mt-1 font-normal normal-case text-ink`} />
+          </label>
+          <label className="text-xs font-bold uppercase text-muted">
+            Max uses (blank for unlimited)
+            <input type="number" min={1} value={maxUses} onChange={(e) => setMaxUses(e.target.value)} className={`${field} mt-1 font-normal normal-case text-ink`} />
+          </label>
+          <div className="sm:col-span-2 flex flex-col items-start gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 [&>*]:max-w-full">
+            <span className="text-xs font-bold uppercase text-muted">Valid until</span>
+            <ManilaDateTimeInput value={until} onChange={setUntil} defaultTime="23:59" ariaLabel="Valid until" />
+            {until && (
+              <button type="button" onClick={() => setUntil("")} className="text-xs font-bold uppercase underline">
+                No deadline
+              </button>
+            )}
+          </div>
+          <fieldset className="sm:col-span-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <legend className="sr-only">Ticket types this code applies to</legend>
+            <span className="text-xs font-bold uppercase text-muted">Applies to</span>
+            {[...TIER_TYPES].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
+              <label key={t.value} className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={types.includes(t.value)}
+                  onChange={(e) => setTypes((cur) => (e.target.checked ? [...cur, t.value] : cur.filter((x) => x !== t.value)))}
+                />{" "}
+                {t.name}
+              </label>
+            ))}
+          </fieldset>
+          <div className="sm:col-span-2">
+            <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={discard} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Organization = { id: string; name: string };
 type Production = { id: string; title: string };
@@ -174,22 +337,7 @@ export default function PromoCodesPage() {
             <section key={k || "org"} className="space-y-2">
               <h2 className="text-lg font-black">{k || "Organization-wide"}</h2>
               {groups.get(k)!.map((c) => (
-                <div key={c.id} className="aa-card p-4 flex flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="tabular-nums">{c.code}</p>
-                    <p className="text-xs text-muted">
-                      {c.discount_type === "percent" ? `${c.discount_value}% off` : `₱${c.discount_value} off per ticket`}
-                      {" · "}
-                      {c.applicable_tier_types?.length ? c.applicable_tier_types.map(tierTypeName).join(", ") : "all ticket types"}
-                      {" · "}
-                      used {c.times_used}
-                      {c.max_uses ? `/${c.max_uses}` : ""}
-                    </p>
-                  </div>
-                  <button onClick={() => remove(c.id)} className="text-xs font-bold uppercase text-danger">
-                    Delete
-                  </button>
-                </div>
+                <PromoRow key={c.id} c={c} onChanged={load} onDelete={() => remove(c.id)} />
               ))}
             </section>
           ));

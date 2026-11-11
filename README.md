@@ -258,6 +258,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 
 Newest first. Add a line for each feature or behavior change.
 
+- Promo codes: each code in the list has Edit (Reactivate when it has expired or hit its use limit). You can change the discount, max uses, deadline (or clear it for no deadline) and ticket types, with a Save changes button. Expired and used up codes show a badge.
 - Home page: bigger, sleeker carousel (taller slides with rounded corners, round arrows, dots inside the image), and the search bar now sits between the carousel and the Current Productions heading.
 - Sales funnel on the admin Dashboard, below Sales by booking day (per production; last 7 days, 30 days or all time): unique visitors to the show page, carts started, checkouts submitted, and confirmed online orders, with the percent kept at each step, plus home page visitors. Anonymous only (a random id per browser or cart, no names, emails or IPs). Signed-in admins and organizers and known bots are not counted. Needs `migration-funnel.sql`.
 - Home page: the black "Book Your Seat" section is gone. The carousel now spans the full width, keeps its 6 second auto-scroll, and shows the previous and next productions as dimmed previews at the sides (click one to bring it to the middle; swipe on phones). Under it, a search bar and a card grid (image, title, venue, dates) list every current production.
