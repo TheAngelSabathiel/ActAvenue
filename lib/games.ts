@@ -112,8 +112,8 @@ export const GAMES: Game[] = [
     },
     show: { title: "See it live", line: "Cafe Xia, 2735 Taft Avenue, Pasay City. Nov 14 and 15, 3 PM and 7 PM." },
     promoCode: "AAENJOY",
-    promoLabel: "Your reward for our next show",
-    promoNote: "Enter it at checkout. Limited uses.",
+    promoLabel: "Your reward",
+    promoNote: "Works on any Act Avenue show. Enter it at checkout. Limited uses.",
     shareText: (r) => `My Patlang order: ${r.lead} My play: ${r.title}. Find yours.`,
   },
   {
@@ -203,9 +203,9 @@ export const GAMES: Game[] = [
       title: "Four stories. One bed.",
       line: "Kwentuhog: A Bedtime Story. Nov 28 and 29, 2 PM and 6 PM, Myra Beltran Dance Forum Studio, Quezon City.",
     },
-    promoCode: "",
-    promoLabel: "",
-    promoNote: "",
+    promoCode: "AAENJOY",
+    promoLabel: "Your reward",
+    promoNote: "Works on any Act Avenue show. Enter it at checkout. Limited uses.",
     shareText: (r) => `I am in the ${r.title} stage of sleep. Which stage are you? Kwentuhog: A Bedtime Story.`,
   },
 ];
