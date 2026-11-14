@@ -1,10 +1,12 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import jsQR from "jsqr";
 import { formatDateTime } from "@/lib/datetime";
 import { inScanWindow } from "@/lib/ticket-code";
+import { useAdminAccess } from "@/components/admin/access-context";
 
 type Show = { id: string; label: string; datetime: string; venue: string; production: string; total: number; admitted: number };
 type Ticket = { label: string; used: number; quantity: number };
@@ -50,6 +52,9 @@ function beep(ok: boolean) {
 function ScanScreen() {
   const params = useSearchParams();
   const linkCode = params.get("code");
+  const { isAdmin, assignments } = useAdminAccess();
+  // The check-in report is for managers and admins. Scanner-only staff do not see the link.
+  const canSeeReport = isAdmin || assignments.some((a) => a.role === "manager");
 
   const [shows, setShows] = useState<Show[]>([]);
   const [showId, setShowId] = useState("");
@@ -70,7 +75,9 @@ function ScanScreen() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const busy = useRef(false);
-  const last = useRef<{ text: string; at: number }>({ text: "", at: 0 });
+  // The code the camera just handled. It stays ignored while it is still in front of the lens,
+  // and is released once the camera has not seen it for a moment (the ticket was lowered or swapped).
+  const blocked = useRef<{ text: string; seenAt: number } | null>(null);
   const showRef = useRef("");
   const modeRef = useRef<Mode>("all");
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -125,6 +132,11 @@ function ScanScreen() {
         });
         const d = (await res.json().catch(() => ({ status: "error", message: "Could not reach the server." }))) as Result;
         const r: Result = res.ok ? d : { status: "error", message: (d as { error?: string }).error ?? "Not allowed." };
+        // The server saw this same ticket a second ago and ignored the repeat. Keep what is on screen.
+        if (r.status === "error" && r.kind === "duplicate") {
+          dismissTimer.current = setTimeout(() => setResult(null), 1400);
+          return;
+        }
         setResult(r);
         beep(r.status !== "error");
         if (r.status === "admitted") {
@@ -133,6 +145,7 @@ function ScanScreen() {
         }
       } finally {
         busy.current = false;
+        if (blocked.current) blocked.current.seenAt = Date.now();
       }
     },
     [loadShows]
@@ -141,6 +154,8 @@ function ScanScreen() {
   // A ticket link opened by phone camera or Viber lands here with ?code=
   useEffect(() => {
     if (!linkCode || linkDone.current) return;
+    // Claim the link right away so a re-render can not scan it a second time.
+    linkDone.current = true;
     (async () => {
       let sid = showRef.current;
       if (!sid) {
@@ -151,8 +166,16 @@ function ScanScreen() {
           showRef.current = sid;
         }
       }
-      if (!sid) return;
-      linkDone.current = true;
+      if (!sid) {
+        linkDone.current = false;
+        return;
+      }
+      // Drop the code from the address so a refresh or reopen does not scan it again.
+      try {
+        window.history.replaceState(null, "", window.location.pathname);
+      } catch {
+        /* ignore */
+      }
       scan(linkCode);
     })();
   }, [linkCode, showId, scan]);
@@ -167,6 +190,7 @@ function ScanScreen() {
 
   async function start() {
     setCamError(null);
+    blocked.current = null;
     try {
       const s = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -217,10 +241,16 @@ function ScanScreen() {
       ctx.drawImage(v, 0, 0, w, h);
       const img = ctx.getImageData(0, 0, w, h);
       const hit = jsQR(img.data, w, h, { inversionAttempts: "dontInvert" });
-      if (!hit?.data) return;
       const now = Date.now();
-      if (hit.data === last.current.text && now - last.current.at < 2500) return;
-      last.current = { text: hit.data, at: now };
+      if (!hit?.data) {
+        if (blocked.current && now - blocked.current.seenAt > 800) blocked.current = null;
+        return;
+      }
+      if (blocked.current && hit.data === blocked.current.text) {
+        blocked.current.seenAt = now;
+        return;
+      }
+      blocked.current = { text: hit.data, seenAt: now };
       scan(hit.data);
     };
     raf = requestAnimationFrame(loop);
@@ -229,11 +259,19 @@ function ScanScreen() {
 
   const show = shows.find((s) => s.id === showId);
   const win = show ? inScanWindow(show.datetime, now) : null;
-  const tone = result?.status === "admitted" ? "bg-green-700" : result?.status === "choose" ? "bg-black" : "bg-danger";
+  const alreadyUsed = result?.status === "error" && result.kind === "used";
+  const tone = result?.status === "admitted" ? "bg-green-700" : result?.status === "choose" ? "bg-black" : alreadyUsed ? "bg-amber-600" : "bg-danger";
 
   return (
     <div className="max-w-xl mx-auto space-y-4">
-      <h1 className="font-extrabold text-3xl">Scan tickets</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-extrabold text-3xl mb-0">Scan tickets</h1>
+        {canSeeReport && (
+          <Link href={showId ? `/admin/checkin-report?show=${showId}` : "/admin/checkin-report"} className="aa-btn aa-btn-outline aa-btn-sm">
+            <i className="bi bi-clipboard-data" aria-hidden="true" /> Check-in report
+          </Link>
+        )}
+      </div>
 
       <div className="aa-card p-4 space-y-3">
         <label className="block">
@@ -307,7 +345,7 @@ function ScanScreen() {
             )}
             {result.status === "error" && (
               <>
-                <p className="text-2xl font-black mb-0">Not admitted</p>
+                <p className="text-2xl font-black mb-0">{result.kind === "used" ? "Already scanned" : "Not admitted"}</p>
                 {result.buyer && <p className="text-lg font-bold mb-0">{result.buyer}</p>}
                 <p className="mb-0">{result.message}</p>
                 <div className="flex gap-2 pt-1">

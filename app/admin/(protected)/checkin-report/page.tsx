@@ -41,7 +41,21 @@ export default function CheckinReportPage() {
   useEffect(() => {
     fetch("/api/admin/checkin-report")
       .then((r) => r.json())
-      .then((d) => setProductions(d.productions ?? []))
+      .then((d) => {
+        const list: Production[] = d.productions ?? [];
+        setProductions(list);
+        // Opened from the scan screen: jump straight to that show.
+        try {
+          const show = new URLSearchParams(window.location.search).get("show");
+          const owner = show ? list.find((p) => p.performances.some((s) => s.id === show)) : null;
+          if (owner && show) {
+            setProductionId(owner.id);
+            setPerformanceId(show);
+          }
+        } catch {
+          /* ignore */
+        }
+      })
       .catch(() => setProductions([]));
   }, []);
 

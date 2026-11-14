@@ -80,6 +80,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // The same phone scanned this same ticket a moment ago: a double read, not a second guest.
+  if (!body.override) {
+    const { data: recent } = await db
+      .from("scan_log")
+      .select("id")
+      .eq("ticket_code", code)
+      .eq("scanned_by", gate.access.userId)
+      .gte("created_at", new Date(Date.now() - 3000).toISOString())
+      .limit(1);
+    if (recent && recent.length > 0) return fail("Just scanned. Repeat ignored.", { buyer: reservation.buyer_name, code, kind: "duplicate" });
+  }
+
   const { data: all } = await db
     .from("reservation_items")
     .select("id, quantity, scans_used, ticket_code, ticket_tier:ticket_tiers(label)")
