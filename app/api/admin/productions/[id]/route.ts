@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireProduction } from "@/lib/admin-auth";
+import { requireProduction, requireStaff } from "@/lib/admin-auth";
 import { withRefresh } from "@/lib/refresh-public";
 import { cleanBundleTiers } from "@/lib/pricing";
 
@@ -62,3 +62,38 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export const PATCH = withRefresh(handlePATCH);
+
+/**
+ * DELETE: removes a production with its shows, tickets, promo codes, credits and partners.
+ * Admins only, and only while it has no bookings. Bookings must always trace back to a real
+ * show, so a production that has sold tickets is set to Closed instead of deleted.
+ */
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authError = await requireStaff();
+  if (authError) return authError;
+  const { id } = await params;
+  const db = createServiceClient();
+
+  const { count } = await db.from("reservations").select("id", { count: "exact", head: true }).eq("production_id", id);
+  if (count && count > 0) {
+    return NextResponse.json(
+      { error: `This production has ${count} booking${count === 1 ? "" : "s"}, so it can't be deleted. Set its status to Closed instead.` },
+      { status: 409 }
+    );
+  }
+
+  // Other productions may list this one as a cross-show source. Take it off their lists.
+  const { data: refs } = await db.from("productions").select("id, crossshow_source_ids").contains("crossshow_source_ids", [id]);
+  for (const r of refs ?? []) {
+    await db
+      .from("productions")
+      .update({ crossshow_source_ids: (r.crossshow_source_ids as string[]).filter((x) => x !== id) })
+      .eq("id", r.id);
+  }
+
+  const { error } = await db.from("productions").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
+export const DELETE = withRefresh(handleDELETE);

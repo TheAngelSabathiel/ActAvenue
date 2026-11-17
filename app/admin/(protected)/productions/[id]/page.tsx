@@ -11,7 +11,8 @@ import { ProductionSection } from "@/components/admin/production-section";
 import { PerformanceCard, type Performance } from "@/components/admin/performance-card";
 import { Spinner } from "@/components/spinner";
 import { ManilaDateTimeInput } from "@/components/manila-datetime-input";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useAdminAccess } from "@/components/admin/access-context";
 import { BundleSettings } from "@/components/admin/bundle-settings";
 import { CrossshowSettings } from "@/components/admin/crossshow-settings";
 
@@ -40,6 +41,10 @@ type Production = {
 
 export default function ProductionEditorPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const { isAdmin } = useAdminAccess();
+  const [confirmTitle, setConfirmTitle] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [production, setProduction] = useState<Production | null>(null);
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -58,6 +63,19 @@ export default function ProductionEditorPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  async function deleteProduction() {
+    setDeleting(true);
+    const res = await fetch(`/api/admin/productions/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    setDeleting(false);
+    if (!res.ok) {
+      setMessage(data.error ?? "Could not delete the production.");
+      return;
+    }
+    toast.success("Production deleted.");
+    router.push("/admin/productions");
+  }
 
   async function addPerformance(formData: FormData) {
     const res = await fetch(`/api/admin/productions/${id}/performances`, {
@@ -261,6 +279,36 @@ export default function ProductionEditorPage() {
       <CreditsManager productionId={id} />
 
       <PartnersManager productionId={id} />
+
+      {isAdmin && (
+        <section className="aa-card p-5 border-danger/40">
+          <h2 className="font-extrabold text-xl mb-1">Delete production</h2>
+          <p className="text-sm text-muted">
+            Removes this production with its shows, tickets, promo codes, credits and partners. It can&apos;t be undone. A production that already has
+            bookings can&apos;t be deleted. Set its status to Closed instead.
+          </p>
+          <label className="block text-xs font-bold uppercase text-muted mb-1" htmlFor="confirm-title">
+            Type the title to confirm
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2 [&>*]:min-w-0">
+            <input
+              id="confirm-title"
+              value={confirmTitle}
+              onChange={(e) => setConfirmTitle(e.target.value)}
+              placeholder={production.title}
+              className="border border-ink/20 px-3 py-2 text-sm flex-1"
+            />
+            <button
+              type="button"
+              onClick={deleteProduction}
+              disabled={deleting || confirmTitle.trim() !== production.title.trim()}
+              className="px-4 py-2 bg-danger text-white text-sm font-bold uppercase disabled:opacity-40"
+            >
+              {deleting ? "Deleting..." : "Delete production"}
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
