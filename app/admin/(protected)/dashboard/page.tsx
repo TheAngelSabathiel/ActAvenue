@@ -54,6 +54,8 @@ function SeatBar({ sold, pending, capacity }: { sold: number; pending: number; c
   );
 }
 
+const PRODUCTION_KEY = "aa_dashboard_production";
+
 export default function DashboardPage() {
   const [productionId, setProductionId] = useState("");
   const [days, setDays] = useState("30");
@@ -69,8 +71,15 @@ export default function DashboardPage() {
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Could not load.");
       if (!id && d.productions?.length) {
-        // First visit: open the most recent production.
-        setProductionId(d.productions[0].id);
+        // Open the production looked at last time (kept in this browser), or the first one.
+        let saved: string | null = null;
+        try {
+          saved = localStorage.getItem(PRODUCTION_KEY);
+        } catch {
+          /* storage blocked */
+        }
+        const list = d.productions as { id: string }[];
+        setProductionId(list.some((p) => p.id === saved) ? (saved as string) : list[0].id);
         return;
       }
       setData(d);
@@ -101,7 +110,14 @@ export default function DashboardPage() {
         {data && data.productions.length > 0 && (
           <select
             value={productionId}
-            onChange={(e) => setProductionId(e.target.value)}
+            onChange={(e) => {
+              setProductionId(e.target.value);
+              try {
+                localStorage.setItem(PRODUCTION_KEY, e.target.value);
+              } catch {
+                /* storage blocked */
+              }
+            }}
             className="border border-ink/20 px-3 py-2 text-sm min-w-56"
             aria-label="Production"
           >
