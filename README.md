@@ -257,6 +257,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 ## Change log
 
 Newest first. Add a line for each feature or behavior change.
+- Legal pages: Terms of Service, Data Privacy Notice and Cookie Policy, each as a pop-up (footer, checkout) and as a page at /terms, /privacy and /cookies. Text lives in components/legal. Checkout consent now covers Terms and Privacy. Cookie Policy has a switch to turn off anonymous visit counting, which the funnel tracker respects (localStorage aa_nocount). Texts are drafts, review refund and discount wording before launch.
 
 - Dashboard remembers the production you looked at last (per browser) and opens it next time. If it no longer exists or you lost access, it opens the first one.
 - Delete production (admins only): a Delete production section at the bottom of the production editor, confirmed by typing the title. It removes the production with its shows, tickets, promo codes, credits and partners, and takes it off other productions' cross-show lists. A production that has any bookings can't be deleted (bookings must trace back to a real show), so set it to Closed instead.

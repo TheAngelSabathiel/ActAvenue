@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import { visitCountingOff } from "@/components/legal/visit-counting";
 
 /** Counts one anonymous visit per browser session. A random id is kept in this browser; nothing personal is sent. */
 export function TrackView({ event, productionId }: { event: "visit" | "production_view"; productionId?: string }) {
   useEffect(() => {
+    if (visitCountingOff()) return;
     try {
       const key = `aa_seen_${event}_${productionId ?? "home"}`;
       if (sessionStorage.getItem(key)) return;
