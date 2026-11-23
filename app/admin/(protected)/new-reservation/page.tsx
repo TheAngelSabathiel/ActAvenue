@@ -2,6 +2,7 @@
 
 import { sortByName } from "@/lib/sort";
 import { toast } from "@/lib/toast";
+import { inScanWindow } from "@/lib/ticket-code";
 
 import { useEffect, useState } from "react";
 
@@ -18,7 +19,7 @@ export default function NewReservationPage() {
   const [performanceId, setPerformanceId] = useState("");
   const [tierId, setTierId] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [status, setStatus] = useState<"confirmed" | "pending_review">("confirmed");
+  const [status, setStatus] = useState<"confirmed" | "admit" | "pending_review">("confirmed");
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
@@ -32,6 +33,18 @@ export default function NewReservationPage() {
   const [fileKey, setFileKey] = useState(0);
 
   const tier = tiers.find((t) => t.id === tierId);
+  const performance = performances.find((p) => p.id === performanceId);
+  // Re-checked every 30s so the option appears or goes away as the scan window opens and closes.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const canAdmit = !!performance && inScanWindow(performance.datetime, now).ok;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!canAdmit && status === "admit") setStatus("confirmed");
+  }, [canAdmit, status]);
   const subtotal = tier ? tier.price * quantity : 0;
 
   useEffect(() => {
@@ -88,7 +101,8 @@ export default function NewReservationPage() {
     fd.set("buyer_name", buyerName);
     fd.set("buyer_email", buyerEmail);
     fd.set("buyer_phone", buyerPhone);
-    fd.set("status", status);
+    fd.set("status", status === "admit" ? "confirmed" : status);
+    if (status === "admit") fd.set("admit", "1");
     fd.set("items", JSON.stringify([{ ticket_tier_id: tierId, quantity }]));
     if (promoCode.trim()) fd.set("promo_code", promoCode.trim());
     if (crossRef.trim()) fd.set("crossshow_ref", crossRef.trim());
@@ -103,8 +117,12 @@ export default function NewReservationPage() {
       setMessage(data.error);
       return;
     }
-    toast.success(`Reservation ${data.reservation.reference_code} created.`);
-    setMessage(`Reservation ${data.reservation.reference_code} created.`);
+    const done = data.admitted
+      ? `Reservation ${data.reservation.reference_code} created. ${data.admitted} admitted.`
+      : `Reservation ${data.reservation.reference_code} created.`;
+    toast.success(done);
+    setMessage(done);
+    if (data.admitWarning) toast.error(data.admitWarning);
     setBuyerName("");
     setBuyerEmail("");
     setBuyerPhone("");
@@ -251,7 +269,7 @@ export default function NewReservationPage() {
           </div>
         )}
 
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
           <label className="flex items-center gap-2">
             <input
               type="radio"
@@ -260,6 +278,16 @@ export default function NewReservationPage() {
             />
             Confirmed (paid now)
           </label>
+          {canAdmit && (
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={status === "admit"}
+                onChange={() => setStatus("admit")}
+              />
+              Confirm and admit
+            </label>
+          )}
           <label className="flex items-center gap-2">
             <input
               type="radio"
@@ -270,6 +298,10 @@ export default function NewReservationPage() {
           </label>
         </div>
 
+        {status === "admit" && (
+          <p className="text-xs text-muted -mt-2">Paid at the door. {quantity === 1 ? "The ticket is" : `All ${quantity} tickets are`} checked in right away and logged on the Check-in report.</p>
+        )}
+
         {message && <p className="text-sm text-danger">{message}</p>}
 
         <button
@@ -277,7 +309,7 @@ export default function NewReservationPage() {
           disabled={submitting}
           className="w-full py-3  bg-black text-paper font-bold uppercase tracking-widest hover:bg-black transition-colors disabled:opacity-50"
         >
-          {submitting ? "Creating..." : "Create reservation"}
+          {submitting ? "Creating..." : status === "admit" ? "Create and admit" : "Create reservation"}
         </button>
       </form>
     </div>

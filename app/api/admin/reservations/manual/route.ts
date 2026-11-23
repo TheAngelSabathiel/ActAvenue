@@ -9,6 +9,8 @@ import { incrementPromoUsage } from "@/lib/inventory";
 import { calculatePricing } from "@/lib/pricing";
 import { lookupCrossSources, crossAllowance, allocateCross, sourceLeft } from "@/lib/crossshow";
 import { uploadPaymentProof } from "@/lib/payment-proof";
+import { inScanWindow } from "@/lib/ticket-code";
+import { logScan } from "@/lib/scan-log";
 
 async function handlePOST(req: NextRequest) {
   const form = await req.formData();
@@ -21,6 +23,7 @@ async function handlePOST(req: NextRequest) {
   const crossRef = ((form.get("crossshow_ref") as string | null) ?? "").trim();
   const crossEmail = ((form.get("crossshow_email") as string | null) ?? "").trim() || (buyer_email ?? "");
   const proofFile = form.get("payment_proof") as File | null;
+  const admit = form.get("admit") === "1"; // confirm and check everyone in now (walk-ins at the door)
   let items: { ticket_tier_id: string; quantity: number }[] = [];
   try {
     items = JSON.parse((form.get("items") as string) || "[]");
@@ -53,6 +56,18 @@ async function handlePOST(req: NextRequest) {
 
   const gate = await requireProduction(production.id, "foh");
   if (gate.error) return gate.error;
+
+  if (admit) {
+    if (status !== "confirmed") {
+      return NextResponse.json({ error: "Only a confirmed reservation can be admitted." }, { status: 400 });
+    }
+    if (!inScanWindow(performance.datetime).ok) {
+      return NextResponse.json(
+        { error: "Confirm and admit only works from 1 hour before to 3 hours after the show starts." },
+        { status: 400 }
+      );
+    }
+  }
 
   const tierIds = items.map((i: { ticket_tier_id: string }) => i.ticket_tier_id);
   const { data: tiers } = await db.from("ticket_tiers").select("*").in("id", tierIds);
@@ -269,7 +284,37 @@ async function handlePOST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ reservation, proofWarning });
+  // Confirm and admit: mark every ticket used and log it for the Check-in report.
+  let admitted = 0;
+  let admitWarning: string | undefined;
+  if (admit && status === "confirmed") {
+    let failed = false;
+    for (const item of reservationItems ?? []) {
+      const { error } = await db.from("reservation_items").update({ scans_used: item.quantity }).eq("id", item.id);
+      if (error) failed = true;
+      else admitted += item.quantity;
+    }
+    if (!failed) {
+      const at = new Date().toISOString();
+      await db.from("reservations").update({ checked_in: true, checked_in_at: at }).eq("id", reservation.id);
+      reservation.checked_in = true;
+      reservation.checked_in_at = at;
+    } else {
+      admitWarning = "Reservation created, but not everyone was checked in. Admit them from Check-in.";
+    }
+    if (admitted > 0) {
+      await logScan(db, {
+        reservation_id: reservation.id,
+        performance_id: performance.id,
+        production_id: production.id,
+        admitted,
+        source: "manual",
+        scanned_by: gate.access.userId,
+      });
+    }
+  }
+
+  return NextResponse.json({ reservation, proofWarning, admitted, admitWarning });
 }
 
 export const POST = withRefresh(handlePOST);

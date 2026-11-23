@@ -257,6 +257,7 @@ Notes: admin status is set by a database change, not from the site (see `SETUP.m
 ## Change log
 
 Newest first. Add a line for each feature or behavior change.
+- New reservation: a "Confirm and admit" option for walk-ins (admin, manager, FOH). It only shows for a show inside the scan window (1 hour before to 3 hours after start), and the server checks the same window. All tickets are checked in at once and logged on the Check-in report as manual.
 - Legal pages: Terms of Service, Data Privacy Notice and Cookie Policy, each as a pop-up (footer, checkout) and as a page at /terms, /privacy and /cookies. Text lives in components/legal. Checkout consent now covers Terms and Privacy. Cookie Policy has a switch to turn off anonymous visit counting, which the funnel tracker respects (localStorage aa_nocount). Texts are drafts, review refund and discount wording before launch.
 
 - Dashboard remembers the production you looked at last (per browser) and opens it next time. If it no longer exists or you lost access, it opens the first one.
