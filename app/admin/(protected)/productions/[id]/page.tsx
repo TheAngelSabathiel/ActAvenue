@@ -15,6 +15,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAdminAccess } from "@/components/admin/access-context";
 import { BundleSettings } from "@/components/admin/bundle-settings";
 import { CrossshowSettings } from "@/components/admin/crossshow-settings";
+import { TicketHolderUpdate } from "@/components/admin/ticket-holder-update";
 
 type Production = {
   id: string;
@@ -275,6 +276,8 @@ export default function ProductionEditorPage() {
           </form>
         </details>
       </section>
+
+      <TicketHolderUpdate productionId={id} performances={performances} />
 
       <CreditsManager productionId={id} />
 

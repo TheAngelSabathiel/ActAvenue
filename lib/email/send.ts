@@ -340,6 +340,61 @@ If you have questions, feel free to reach out to us directly.
   });
 }
 
+/** Plain text to simple HTML: paragraphs, line breaks and clickable links. */
+function messageHtml(body: string) {
+  return body
+    .split(/\n{2,}/)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>").replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')}</p>`)
+    .join("\n");
+}
+
+/** Same subject as the booking email they already have, so it lands in the same thread. */
+export function updateSubject(production: Production, paymentStatus: string) {
+  return paymentStatus === "confirmed"
+    ? `You're confirmed - ${production.title}`
+    : `Booking received - ${production.title} (pending confirmation)`;
+}
+
+/**
+ * Show update for one booking: the staff message, then the current show
+ * details, then (confirmed bookings) the same QR codes they were sent.
+ */
+export function updateMessage(ctx: ReservationEmailContext, body: string, opts: { withQr: boolean; to?: string; test?: boolean }): BulkMessage {
+  const { reservation, production, performance, items } = ctx;
+  const confirmed = reservation.payment_status === "confirmed";
+  const showQr = confirmed && opts.withQr;
+  const subject = `${opts.test ? "[Test] " : ""}${updateSubject(production, reservation.payment_status)}`;
+  const qrLine = confirmed
+    ? "Your QR code stays the same. Show it at the door."
+    : "Your booking is still pending. We send your QR code once payment is confirmed.";
+  return {
+    to: opts.to ?? reservation.buyer_email ?? "",
+    subject,
+    html: `<p>Hi ${escapeHtml(reservation.buyer_name)},</p>
+${messageHtml(body)}
+<p><strong>${qrLine}</strong></p>
+<p><strong>Reference code:</strong> ${reservation.reference_code}</p>
+<pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(showDetails(production, performance))}
+
+${escapeHtml(itemsList(items))}</pre>
+${showQr ? ticketBlocksHtml(items) : ""}<p>See you at the show!<br>- Act Avenue</p>`,
+    text: `Hi ${reservation.buyer_name},
+
+${body}
+
+${qrLine}
+
+Reference code: ${reservation.reference_code}
+
+${showDetails(production, performance)}
+
+${itemsList(items)}
+${showQr ? `\n${ticketBlocksText(items)}\n` : ""}
+See you at the show!
+- Act Avenue`,
+  };
+}
+
 export type BulkMessage = { to: string; subject: string; html: string; text: string; headers?: Record<string, string> };
 
 /** Sends announcements in batches of 100. Returns how many were accepted. */
